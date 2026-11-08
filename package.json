@@ -6,14 +6,23 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,css}\" \"tools/**/*.mjs\" \"*.js\"",
+    "format:check": "prettier --check \"src/**/*.{js,css}\" \"tools/**/*.mjs\" \"*.js\"",
+    "smoke": "node tools/smoke.mjs",
+    "test": "vite build && node tools/smoke.mjs",
+    "check": "npm run lint && npm run format:check && npm test"
   },
   "dependencies": {
-    "three": "0.170.0",
-    "topojson-client": "^3.1.0",
-    "world-atlas": "^2.0.2"
+    "three": "0.170.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "playwright": "^1.65.0",
+    "prettier": "^3.9.10",
     "vite": "^8.3.0"
   }
 }

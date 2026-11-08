@@ -2,10 +2,11 @@
 // off). It shows the frame rate, every frame that took too long (a freeze) with how long and where you were, the sound's
 // state and every time it changed, memory, and how much is being drawn. Screenshot it when something goes wrong.
 import { Sound } from './audio.js';
+import { store } from './util.js';
 
 export function perfHud(renderer, getState){
   let on = false;
-  try { const q = new URLSearchParams(location.search).get('perf'); if (q !== null) localStorage.setItem('gudu.perf', q); on = localStorage.getItem('gudu.perf') === '1'; } catch {}
+  const q = new URLSearchParams(location.search).get('perf'); if (q !== null) store.set('perf', q === '1'); on = store.get('perf', false) === true;
   if (!on) return () => {};
   const el = document.createElement('pre');
   el.style.cssText = 'position:fixed;left:6px;top:calc(env(safe-area-inset-top) + 56px);z-index:99999;margin:0;padding:6px 8px;background:rgba(0,0,0,.72);color:#9f9;font:11px/1.3 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre;max-width:60vw';
@@ -13,7 +14,7 @@ export function perfHud(renderer, getState){
   const log = [], frames = []; let prev = performance.now(), lastPaint = 0, audioState = '', t0 = performance.now();
   const note = s => { log.unshift(`${((performance.now() - t0) / 1000).toFixed(1)}s ${s}`); log.length = Math.min(log.length, 8); };
   // long tasks the browser itself reports (Chrome): work on the page that blocked it
-  try { new PerformanceObserver(l => { for (const e of l.getEntries()) if (e.duration > 80) note(`busy ${Math.round(e.duration)}ms`); }).observe({ type: 'longtask', buffered: false }); } catch {}
+  try { new PerformanceObserver(l => { for (const e of l.getEntries()) if (e.duration > 80) note(`busy ${Math.round(e.duration)}ms`); }).observe({ type: 'longtask', buffered: false }); } catch { /* this browser doesn't report long tasks */ }
   document.addEventListener('visibilitychange', () => note(document.hidden ? 'tab hidden' : 'tab back'));
   return () => {
     const now = performance.now(), ft = now - prev; prev = now;

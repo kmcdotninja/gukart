@@ -22,7 +22,7 @@ export const Haptics = {
   buzz(pattern, gap = 70, ui = false){
     if (!this.on || !isTouch) return;
     const now = performance.now(); if (now - last < gap) return; last = now;   // never a constant rattle
-    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch {} return; }
+    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch { /* vibration blocked (no tap yet, or turned off) */ } return; }
     if (!ui) return;   // iPhone: buttons only
     iosTick();
     if (Array.isArray(pattern)) { let t = 0; for (let k = 1; k < pattern.length; k += 2) { t += pattern[k - 1] + pattern[k]; setTimeout(iosTick, t); } }

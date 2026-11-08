@@ -19,7 +19,7 @@ import { buildMap } from './mapscreen.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CHAPTERS } from './chapters.js';
 import { dressDoha } from './doha.js';
-import { Sound } from './audio.js';
+import { Sound, engineMode } from './audio.js';
 import { clamp, lerp, isTouch, store, fmtTime, ordinal } from './util.js';
 
 const $ = s => document.querySelector(s);
@@ -527,7 +527,7 @@ soundBtn.addEventListener('click', () => { Sound.init(); Sound.toggle(); paintSo
   const pct = v => Math.round(v * 100) + '%', fill = el => el.style.setProperty('--v', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   const paint = () => {
     const v = $('#setVol'), e = $('#setEng'); v.value = Sound.vol; e.value = Sound.engVol; fill(v); fill(e); $('#setVolO').textContent = pct(Sound.vol); $('#setEngO').textContent = pct(Sound.engVol);
-    const m = (() => { try { return localStorage.getItem('gudu.engineMode') || 'supra'; } catch { return 'supra'; } })();
+    const m = engineMode();
     document.querySelectorAll('#setMode button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
     document.querySelectorAll('#setHap button').forEach(b => b.classList.toggle('on', (b.dataset.h === '1') === Haptics.on));
     document.querySelectorAll('#setSteer button').forEach(b => b.classList.toggle('on', b.dataset.s === Tilt.mode));
@@ -1005,6 +1005,7 @@ function frame(now){
   if (!CAPTURE) requestAnimationFrame(frame);
   perfTick();
   const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (document.body.dataset.state !== state) document.body.dataset.state = state;   // what's on screen, for the smoke test (tools/smoke.mjs)
   if (state === 'paused') { renderer.render(scene, cam); return; }
   clock += dt;
   if (state === 'modes') { if (modesRoom.dirty > 0) { modesRoom.dirty--; renderer.render(modesRoom.scene, modesRoom.cam); } return; }   // a still room: drawn for a few frames when it opens (so nothing can paint over it), then left

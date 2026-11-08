@@ -28,10 +28,54 @@ export function rng(a){
 
 export const isTouch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
+// Everything the game remembers (settings, coins, records, unlocks) lives in localStorage under "gukart.<key>", as JSON.
+// Every read and write goes through here. Storage can be blocked (private browsing, full disk): reads then fall back to
+// the default and writes are dropped, and the game still plays.
+const PREFIX = 'gukart.';
 export const store = {
-  get(k, d){ try { const v = localStorage.getItem('gudu.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v){ try { localStorage.setItem('gudu.' + k, JSON.stringify(v)); } catch { /* storage blocked */ } },
+  get(k, d) {
+    try {
+      const v = localStorage.getItem(PREFIX + k);
+      return v === null ? d : JSON.parse(v);
+    } catch {
+      return d;   // storage blocked, or a value that isn't JSON: use the default
+    }
+  },
+  set(k, v) {
+    try {
+      localStorage.setItem(PREFIX + k, JSON.stringify(v));
+    } catch {
+      // storage blocked or full: this setting just isn't remembered
+    }
+  },
+  remove(k) {
+    try {
+      localStorage.removeItem(PREFIX + k);
+    } catch {
+      // storage blocked: nothing to remove
+    }
+  },
 };
+
+// The game was called "gudu" while it was being built, and saves were kept under "gudu.<key>". Move them across to the
+// new name once, so nobody loses their coins or records. (A few were saved as plain text, not JSON: those are wrapped.)
+(function migrateOldSaves() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k?.startsWith('gudu.')) continue;
+      const key = PREFIX + k.slice('gudu.'.length), v = localStorage.getItem(k);
+      if (localStorage.getItem(key) === null) {
+        let json = v;
+        try { JSON.parse(v); } catch { json = JSON.stringify(v); }
+        localStorage.setItem(key, json);
+      }
+      localStorage.removeItem(k);
+    }
+  } catch {
+    // storage blocked: there's nothing saved to move
+  }
+})();
 
 export const fmtTime = s => {
   if (!isFinite(s)) return '—';

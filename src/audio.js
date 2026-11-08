@@ -30,7 +30,7 @@ export const VEHICLE_SOUND = {
   muscle: { pitch: .82, half: .13, rumble: .75, rasp: .3, turbo: .2, tone: .9, vol: 1.1 },    // a burbling V8 weight
 };
 export function engineParams(type){
-  let tune = {}; try { tune = JSON.parse(localStorage.getItem('gudu.engineTune.' + type) || '{}'); } catch {}
+  const tune = store.get('engineTune.' + type, {});   // tweaks saved from the sound studio (sound.html)
   return { ...ENGINE_BASE, ...(VEHICLE_SOUND[type] || {}), ...tune };
 }
 
@@ -44,7 +44,7 @@ export function loadSupra(c){
     .then(list => { supraBufs = list; return list; }).catch(() => { supraLoading = null; });
   return supraLoading;
 }
-export const engineMode = () => { try { return localStorage.getItem('gudu.engineMode') || 'supra'; } catch { return 'supra'; } };
+export const engineMode = () => store.get('engineMode', 'supra');
 
 let noiseBuf = null;
 const noise = c => { if (noiseBuf) return noiseBuf; const n = c.sampleRate * 2; noiseBuf = c.createBuffer(1, n, c.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; return noiseBuf; };
@@ -151,8 +151,8 @@ export class EngineVoice {
   stop(){
     if (this.dead) return; this.dead = true;
     const t = this.ctx.currentTime; this.out.gain.setTargetAtTime(0, t, .05);
-    for (const o of [this.oA, this.oB, this.oH, this.tb, this.rum, this.rsp, ...this.samples.map(sm => sm.src)]) { try { o.stop(t + .3); } catch {} }
-    setTimeout(() => { try { this.out.disconnect(); this.pan?.disconnect(); } catch {} }, 450);
+    for (const o of [this.oA, this.oB, this.oH, this.tb, this.rum, this.rsp, ...this.samples.map(sm => sm.src)]) { try { o.stop(t + .3); } catch { /* never started, or already stopped */ } }
+    setTimeout(() => { try { this.out.disconnect(); this.pan?.disconnect(); } catch { /* already disconnected */ } }, 450);
   }
 }
 
@@ -193,7 +193,7 @@ export const Sound = {
   },
   setVolume(v){ this.vol = v; store.set('volume', v); if (this.master) this.master.gain.setTargetAtTime(this.on ? .75 * v : 0, this.ctx.currentTime, .05); },
   setEngineVolume(v){ this.engVol = v; store.set('engineVolume', v); if (this.engBus) this.engBus.gain.setTargetAtTime(v, this.ctx.currentTime, .05); },
-  setEngineMode(m){ try { localStorage.setItem('gudu.engineMode', m); } catch {} this.voice?.stop(); this.voice = null; this.rivalVoices?.forEach(r => { r.v?.stop(); r.v = null; }); },
+  setEngineMode(m){ store.set('engineMode', m); this.voice?.stop(); this.voice = null; this.rivalVoices?.forEach(r => { r.v?.stop(); r.v = null; }); },
   // the player's vehicle: o = { type, speed (share of top speed), throttle, brake, air, drift, boost, running }
   drive(o, dt = .016){
     if (!this.ctx) return;

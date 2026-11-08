@@ -253,7 +253,19 @@
 
   <!-- two loaders to choose between: "new" (the drift poster, the Figma logo) and "classic" (the pack poster, the
        original GUKART lettering). Pick with ?loader=classic|new; the choice is remembered -->
-  <script>window.LOADER = (() => { let v = new URLSearchParams(location.search).get('loader'); try { if (v) localStorage.setItem('gudu.loader', v); else v = localStorage.getItem('gudu.loader'); } catch (e) {} return v === 'classic' ? 'classic' : 'new'; })();</script>
+  <script>
+    // which loader to show: ?loader=classic|new, remembered (saved as JSON, like everything in src/util.js's store)
+    window.LOADER = (() => {
+      let v = new URLSearchParams(location.search).get('loader');
+      try {
+        if (v) localStorage.setItem('gukart.loader', JSON.stringify(v));
+        else v = JSON.parse(localStorage.getItem('gukart.loader') || 'null') || localStorage.getItem('gudu.loader');   // (gudu: the old name, before the save moves)
+      } catch (e) {
+        // storage blocked: the default loader
+      }
+      return v === 'classic' ? 'classic' : 'new';
+    })();
+  </script>
   <div id="loading">
     <!-- the poster, the logo and Buddy, locked to one frame the shape of the poster (covering the screen like the poster
          does) so the logo sits just behind his head at any size -->
@@ -267,7 +279,19 @@
     <!-- switching city: not the poster (that's for opening the game), a plain navy screen saying what's loading, like
          switching circuits ("LOADING KANO", "LOADING KANO MAP") -->
     <div class="ld-travel" id="ldTravel" hidden><span>LOADING</span><b id="ldTravelName"></b></div>
-    <script>try { const t = JSON.parse(localStorage.getItem('gudu.travelTo') || '""'); if (t && t.name) { document.getElementById('loading').classList.add('travel'); document.getElementById('ldTravelName').textContent = t.name + (t.then === 'map' ? ' MAP' : t.then === 'garage' ? ' GARAGE' : ''); document.getElementById('ldTravel').hidden = false; } } catch (e) {}</script>
+    <script>
+      // switching city reloads the page: say which city (and what opens after) instead of showing the poster
+      try {
+        const t = JSON.parse(localStorage.getItem('gukart.travelTo') || '""');
+        if (t && t.name) {
+          document.getElementById('loading').classList.add('travel');
+          document.getElementById('ldTravelName').textContent = t.name + (t.then === 'map' ? ' MAP' : t.then === 'garage' ? ' GARAGE' : '');
+          document.getElementById('ldTravel').hidden = false;
+        }
+      } catch (e) {
+        // storage blocked: the normal poster loader
+      }
+    </script>
     <script>if (getComputedStyle(document.getElementById('loading')).display === 'flex') document.documentElement.classList.remove('booting');   // (the styles came with the page: no need to wait for the game)</script>
     <div class="track"><div class="stripebar"><i id="loadFill"></i></div></div>
   </div>

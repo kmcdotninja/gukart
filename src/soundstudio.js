@@ -9,6 +9,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildTextures, setAniso } from './textures.js';
 import { makeKart, RACERS, ENV, setFace, DEFAULT_CUSTOM } from './buddy.js';
 import { Sound, engineParams, ENGINE_BASE, VEHICLE_SOUND, engineMode } from './audio.js';
+import { store } from './util.js';
 
 const $ = s => document.querySelector(s);
 const TOP = 66, KMH = 3.2;
@@ -54,7 +55,7 @@ let popFlash = 0, bovPuff = 0;
 $('#veh').innerHTML = Object.keys(VEHICLE_SOUND).map(v => `<button class="slant ${v === type ? 'on' : ''}" data-v="${v}">${v.toUpperCase()}</button>`).join('');
 $('#veh').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; type = b.dataset.v; document.querySelectorAll('#veh button').forEach(x => x.classList.toggle('on', x === b)); buildCar(); buildSliders(); });
 const paintMode = () => document.querySelectorAll('#mode button').forEach(b => b.classList.toggle('on', b.dataset.m === engineMode()));
-$('#mode').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; localStorage.setItem('gudu.engineMode', b.dataset.m); paintMode(); });
+$('#mode').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; store.set('engineMode', b.dataset.m); paintMode(); });
 paintMode();
 
 const SL = [['pitch', 'PITCH', .5, 1.6, .01], ['half', 'RUMBLE ½', 0, .3, .005], ['tone', 'BRIGHT', .4, 1.6, .01], ['load', 'LOAD OPEN', 0, 1, .01], ['rumble', 'EXHAUST', 0, 1.5, .01],
@@ -66,8 +67,8 @@ function buildSliders(){
 }
 $('#sliders').addEventListener('input', e => { const k = e.target.dataset.k; if (!k) return; params[k] = +e.target.value; e.target.nextElementSibling.textContent = (+e.target.value).toFixed(+e.target.step < 1 ? 2 : 0); });
 const diff = () => { const base = { ...ENGINE_BASE, ...(VEHICLE_SOUND[type] || {}) }, out = {}; for (const [k] of SL) if (Math.abs(params[k] - base[k]) > 1e-6) out[k] = params[k]; return out; };
-$('#save').onclick = () => { localStorage.setItem('gudu.engineTune.' + type, JSON.stringify(diff())); $('#msg').textContent = `Saved ${type.toUpperCase()} (${engineMode() === 'supra' ? 'Supra' : 'our engine'}). The game uses it in this browser now.`; };
-$('#reset').onclick = () => { localStorage.removeItem('gudu.engineTune.' + type); buildSliders(); $('#msg').textContent = `${type.toUpperCase()} is back to its default sound.`; };
+$('#save').onclick = () => { store.set('engineTune.' + type, diff()); $('#msg').textContent = `Saved ${type.toUpperCase()} (${engineMode() === 'supra' ? 'Supra' : 'our engine'}). The game uses it in this browser now.`; };
+$('#reset').onclick = () => { store.remove('engineTune.' + type); buildSliders(); $('#msg').textContent = `${type.toUpperCase()} is back to its default sound.`; };
 $('#copy').onclick = async () => { const txt = JSON.stringify({ mode: engineMode(), [type]: diff() }); try { await navigator.clipboard.writeText(txt); $('#msg').textContent = 'Copied: ' + txt; } catch { $('#msg').textContent = txt; } };
 
 const start = () => { Sound.init(); };
