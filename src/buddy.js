@@ -36,14 +36,6 @@ const buggyF = (x, y, z) => {
   }
   return smax(d, -(y - 0.32), 0.05);
 };
-// the monster's pickup body: cab and bed on one tub, a raised hood, the cab open (a roll cage goes over it)
-const monsterF = (x, y, z) => {
-  let d = rbox(x, y - 0.55, z, 1.22, 0.42, 2.25, 0.3);
-  d = smin(d, rbox(x, y - 1.0, z - 1.25, 1.05, 0.24, 0.9, 0.2), 0.2); // the hood
-  d = smax(d, -rbox(x, y - 1.25, z + 0.45, 0.9, 0.55, 0.75, 0.2), 0.08); // the cab, open
-  d = smax(d, -rbox(x, y - 1.15, z + 1.55, 1.0, 0.45, 0.55, 0.12), 0.06); // the bed
-  return d;
-};
 // the muscle car: long low body, a long hood with a power bulge, wide rear haunches, a short deck with a ducktail lip,
 // the cockpit open (a convertible), arches cut for the wheels
 const muscleF = (x, y, z) => {
@@ -62,21 +54,6 @@ const muscleF = (x, y, z) => {
     d = smax(d, -cap(x, y, z, [sx * 1.12, 0.4, -1.62], [sx * 2.3, 0.4, -1.62], 0.74), 0.04);
   } // the arches start at the tyre's inner face, so the hood keeps its full thickness
   return smax(d, -(y - 0.4), 0.03);
-};
-// the rally car, as a distance field: x to the left, y up, z forward
-const rallyF = (x, y, z) => {
-  let d = rbox(x, y - 0.95, z, 1.12, 0.42, 2.15, 0.4);
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) d = smin(d, blob(x - sx * 1.22, y - 1.0, z - sz * 1.48, 0.5, 0.52, 0.9), 0.35);
-  d = smin(d, blob(x, y - 1.15, z - 1.55, 0.95, 0.32, 0.75), 0.3); // the hood, rising to the windscreen
-  let cab = blob(x, y - 1.35, z + 0.35, 1.02, 0.82, 1.4);
-  cab = smax(cab, -(y - 1.05), 0.12);
-  d = smin(d, cab, 0.3);
-  d = smax(d, -rbox(x, y - 2.0, z + 0.45, 1.0, 0.9, 0.95, 0.32), 0.14); // the open roof where Buddy sits
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1])
-      d = smax(d, -cap(x, y, z, [sx * 0.95, 0.62, sz * 1.48], [sx * 2.2, 0.62, sz * 1.48], 0.8), 0.07); // wheel arches
-  return smax(d, -(y - 0.38), 0.06);
 };
 
 export const RACERS = [
@@ -120,44 +97,6 @@ export function roundedBox(w, h, d, r, seg = 4) {
 }
 
 export const SUN = new THREE.Vector3(-0.6, 0.55, 0.45).normalize(); // late afternoon: long shadows
-const furVS = `uniform float uL, uLen; varying vec3 vO; varying vec3 vN;
-void main(){ vO = position; vN = normalize(mat3(modelMatrix) * normal);
-  vec3 p = position + normal * uL * uLen; p.y -= uL * uL * uLen * .35;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.); }`;
-const furFS = `uniform float uL, uF; uniform vec3 uC, uSun; varying vec3 vO; varying vec3 vN;
-float h3(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-void main(){
-  vec3 q = vO * uF; vec3 c = floor(q); float n = h3(c); vec3 f = fract(q) - .5 - (vec3(h3(c + 3.1), h3(c + 7.7), h3(c + 1.3)) - .5) * .45;
-  if (uL > 0.) { if (n < uL * .9) discard; if (length(f) > (1. - uL) * .8 + .06) discard; }
-  float d = max(dot(normalize(vN), uSun), 0.);
-  vec3 col = uC * (.45 + .7 * uL) * (.55 + .8 * d + .12 * vN.y);
-  gl_FragColor = vec4(col, 1.);
-  #include <colorspace_fragment>
-}`;
-function furMats(color, layers, len, freq = 38) {
-  const uC = { value: new THREE.Color(color) },
-    uSun = { value: SUN };
-  return Array.from(
-    { length: layers },
-    (_, l) =>
-      new THREE.ShaderMaterial({
-        uniforms: { uL: { value: l / (layers - 1) }, uLen: { value: len }, uF: { value: freq }, uC, uSun },
-        vertexShader: furVS,
-        fragmentShader: furFS,
-      }),
-  );
-}
-function furry(parent, geo, mats, x, y, z) {
-  const g = new THREE.Group();
-  g.position.set(x, y, z);
-  mats.forEach((m, l) => {
-    const s = new THREE.Mesh(geo, m);
-    if (l === 0) s.castShadow = true;
-    g.add(s);
-  });
-  parent.add(g);
-  return g;
-}
 
 // shapes every kart shares
 let G = null;
@@ -1187,12 +1126,6 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
     tip.add(fl);
     flames.push(fl);
   };
-  const plate = (x, y, z, ry = Math.PI, rx = 0) => {
-    const p = new THREE.Mesh(g.plate, new THREE.MeshBasicMaterial({ map: tex.plate }));
-    p.position.set(x, y, z);
-    p.rotation.set(rx, ry, 0);
-    chassis.add(p);
-  };
   const T = V.track,
     B = V.base;
 
@@ -1545,7 +1478,7 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
         -1.55,
       );
       head.scale.set(1.4, 1, 1); // the engine's cylinder heads
-      const filt = add((g.bFilt ||= new THREE.CylinderGeometry(0.24, 0.24, 0.14, 20)), chrome, 0, 1.12, -1.62); // the chrome air filter
+      add((g.bFilt ||= new THREE.CylinderGeometry(0.24, 0.24, 0.14, 20)), chrome, 0, 1.12, -1.62); // the chrome air filter
       box(0.12, 0.26, 0.3, 0.04, carbon, 0, 0.4, 2.42); // tow hook mount
       tube([0, 0.42, 2.5], [0, 0.3, 2.62], 0.04, frame);
     } else if (type === 'monster') {

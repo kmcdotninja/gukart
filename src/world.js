@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { W } from './track.js';
 import { clamp, lerp, sstep, fbm, rng } from './util.js';
-import { signTex, canvasTex, loopKnot, starKnot, diamondBand } from './textures.js';
+import { canvasTex, loopKnot, starKnot, diamondBand } from './textures.js';
 
 // many copies of one shape in one draw call
 class Inst {
@@ -68,26 +68,16 @@ const MUD = [
   '#e8c27a',
   '#a9d3cc',
 ];
-const WALL = '#dcc39c';
 const TARP = ['#e8336a', '#2ec4b6', '#ffc22e', '#1f8a4c', '#3a7bfd', '#ff6a00', '#8a5cff', '#f6f0e4'];
 const GOODS = ['#ff8a1c', '#e0302a', '#c7a089', '#d9a441', '#8d6a4b', '#7cb342', '#ffd23a'];
 
 // a small seeded random, so each island looks the same every time
-function mulberry(a) {
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 export function buildWorld(scene, tr, tex, opts = {}) {
   const rand = rng(1957),
     rr = (a, b) => a + (b - a) * rand(),
     pick = a => a[(rand() * a.length) | 0];
-  const { N, P, L, T, out, center: C } = tr;
+  const { N, P, out, center: C } = tr;
   const R0 = tr.radius + 150; // island radius
   const city = opts.city || 'kano',
     doha = city === 'doha';
@@ -792,7 +782,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       }
     };
     const RED = ['rgba(90,20,28,.4)', 'rgba(255,255,255,.75)', '#e0334a'];
-    let side = 12;
+    let side;
     if (name === 'KOFAR NASSARAWA') {
       // rebuilt 2014: a white portal, crenellated, the piers' inner edges lined in red, the Kano horned emblem in red on
       // top, the name painted in red on the beam; a red pavilion with white trim and an arched opening each side
@@ -1762,202 +1752,6 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       if (roadGap(x, z) > W / 2 + 15) tree(x, z, 'doum');
     }
 
-  // the archipelago: every chapter's city is its own island out in the sea around Kano, each with its circuit laid
-  // round it and its landmarks, so the map can fly from island to island
-  const others = new THREE.Group(); // the other cities' islands, seen from the map
-  const islands = [{ id: city, name: city.toUpperCase(), ch: 0, open: true, x: C.x, z: C.z, r: R0 }];
-  {
-    const sand = c => new THREE.MeshLambertMaterial({ color: c }),
-      lam = c => new THREE.MeshLambertMaterial({ color: c }),
-      flatM = c => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
-    const roadT = tex.road.clone();
-    roadT.needsUpdate = true;
-    roadT.wrapS = roadT.wrapT = THREE.RepeatWrapping;
-    const roadM = new THREE.MeshLambertMaterial({ map: roadT, side: THREE.DoubleSide });
-    const put = (g, m, x, y, z) => {
-      const o = new THREE.Mesh(g, m);
-      o.position.set(x, y, z);
-      scene.add(o);
-      return o;
-    };
-    const circuit = (cx, cz, r, seed, into = scene) => {
-      // a closed loop of road round the island
-      const pts = [];
-      for (let k = 0; k < 12; k++) {
-        const a = (k / 12) * Math.PI * 2,
-          rad = r * (0.58 + 0.14 * Math.sin(a * 3 + seed) + 0.06 * Math.cos(a * 5 + seed * 2));
-        pts.push(new THREE.Vector3(cx + Math.cos(a) * rad, 0.7, cz + Math.sin(a) * rad));
-      }
-      const cv = new THREE.CatmullRomCurve3(pts, true, 'centripetal'),
-        n = 300,
-        w = 7,
-        P = [],
-        U = [],
-        I = [];
-      let dist = 0,
-        prev = null;
-      for (let k = 0; k <= n; k++) {
-        const t = k / n,
-          p = cv.getPointAt(t % 1),
-          tg = cv.getTangentAt(t % 1),
-          nx = -tg.z,
-          nz = tg.x;
-        if (prev) dist += p.distanceTo(prev);
-        prev = p;
-        P.push(p.x + nx * w, 0.7, p.z + nz * w, p.x - nx * w, 0.7, p.z - nz * w);
-        U.push(0, dist / 26, 1, dist / 26);
-        if (k < n) {
-          const b = k * 2;
-          I.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
-        }
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-      g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
-      g.setIndex(I);
-      g.computeVertexNormals();
-      const m = new THREE.Mesh(g, roadM);
-      into.add(m);
-      return cv;
-    };
-    const tower = (x, z, w, h, col, round = false) => {
-      const g = round ? new THREE.CylinderGeometry(w / 2, w / 2, h, 16) : new THREE.BoxGeometry(w, h, w);
-      put(g, lam(col), x, h / 2, z);
-    };
-    const dome = (x, y, z, r, col) =>
-      put(new THREE.SphereGeometry(r, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), lam(col), x, y, z);
-    const DIST = R0 + 470,
-      IR = 200;
-    const defs = [
-      ['doha', 'DOHA', 2, 0.35, '#efdcb4'],
-      ['abudhabi', 'ABU DHABI', 3, 1.6, '#f1e0bc'],
-      ['singapore', 'SINGAPORE', 4, 2.85, '#b9d3c4'],
-      ['lagos', 'LAGOS', 5, 4.1, '#e3cfa2'],
-    ];
-    // where each island sits, with Kano in the middle of the archipelago; the city that's built sits at the centre of this
-    // scene and the rest are placed round it the same way (Kano and Doha are built: tapping one travels there)
-    const ALL = [['kano', 'KANO', 1, null], ...defs.map(d => d.slice(0, 4))],
-      at = ang => (ang === null ? [0, 0] : [Math.cos(ang) * 1500, Math.sin(ang) * 1500]);
-    const here = at(ALL.find(d => d[0] === city)[3]);
-    for (const [id, name, ch, ang] of ALL) {
-      if (id === city) {
-        islands[0].name = name;
-        islands[0].ch = ch;
-        continue;
-      }
-      const p = at(ang);
-      islands.push({
-        id,
-        name,
-        ch,
-        x: C.x + p[0] - here[0],
-        z: C.z + p[1] - here[1],
-        r: IR,
-        built: id === 'kano' || id === 'doha',
-      });
-    }
-    islands.sort((a, b) => a.ch - b.ch);
-    // the other islands, seen from the map: a stand-in for each city, all in a few draw calls (one per material, merged)
-    others.visible = false;
-    scene.add(others); // (shown only while the map is open: main.js)
-    {
-      const SAND = Object.fromEntries([['kano', '#d9b98a'], ...defs.map(d => [d[0], d[4]])]),
-        geos = [],
-        tint = (g, c) => {
-          const col = new THREE.Color(c),
-            n = g.attributes.position.count,
-            a2 = new Float32Array(n * 3);
-          for (let k = 0; k < n; k++) col.toArray(a2, k * 3);
-          g.setAttribute('color', new THREE.BufferAttribute(a2, 3));
-          return g.index ? g.toNonIndexed() : g;
-        };
-      const at2 = (g, x, y, z, ry = 0) => g.rotateY(ry).translate(x, y, z);
-      for (const is of islands) {
-        if (is.id === city) continue;
-        const { x, z } = is,
-          r = is.r,
-          rnd = mulberry(is.ch * 7919);
-        geos.push(tint(at2(new THREE.CylinderGeometry(r + 40, r + 40, 0.3, 48), x, -1.15, z), '#62cfd6')); // the shallows
-        geos.push(tint(at2(new THREE.CylinderGeometry(r, r + 14, 2.4, 48), x, -0.6, z), SAND[is.id] || '#e3cfa2')); // the sand
-        const box = (bx, bz, w, h, d, c, ry = 0) =>
-          geos.push(tint(at2(new THREE.BoxGeometry(w, h, d), x + bx, h / 2 + 0.6, z + bz, ry), c));
-        if (is.id === 'kano') {
-          // the old city wall, the palace and its dome, mud houses packed inside
-          for (let k = 0; k < 40; k++) {
-            const a3 = (k / 40) * Math.PI * 2;
-            box(
-              Math.cos(a3) * r * 0.72,
-              Math.sin(a3) * r * 0.72,
-              4,
-              7,
-              (r * 0.72 * Math.PI * 2) / 40 + 1,
-              '#b9784a',
-              -a3,
-            );
-          }
-          box(0, 0, 34, 9, 26, '#e7d3ad');
-          geos.push(
-            tint(
-              at2(new THREE.SphereGeometry(9, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0, 9.6, 0),
-              '#2f8a5a',
-            ).translate(x, 0, z),
-          );
-          for (let k = 0; k < 70; k++) {
-            const a3 = rnd() * Math.PI * 2,
-              rr2 = r * (0.2 + rnd() * 0.48);
-            box(
-              Math.cos(a3) * rr2,
-              Math.sin(a3) * rr2,
-              6 + rnd() * 6,
-              3 + rnd() * 3,
-              6 + rnd() * 6,
-              rnd() < 0.5 ? '#c99a6a' : '#d8b07c',
-              rnd(),
-            );
-          }
-        } else if (is.id === 'doha') {
-          // West Bay: glass towers round the Doha Tower
-          geos.push(tint(at2(new THREE.CylinderGeometry(10, 10, 90, 20), 0, 45.6, 0), '#9fb3c8').translate(x, 0, z));
-          for (let k = 0; k < 26; k++) {
-            const a3 = rnd() * Math.PI * 2,
-              rr2 = 20 + rnd() * r * 0.55,
-              h = 25 + rnd() * 60;
-            box(
-              Math.cos(a3) * rr2,
-              Math.sin(a3) * rr2,
-              10 + rnd() * 8,
-              h,
-              10 + rnd() * 8,
-              ['#2f6a9a', '#3f8a8a', '#8a9aac', '#26405e'][k % 4],
-              rnd(),
-            );
-          }
-        } else {
-          // a city still to come: low blocks round a ring road
-          for (let k = 0; k < 40; k++) {
-            const a3 = rnd() * Math.PI * 2,
-              rr2 = r * (0.15 + rnd() * 0.55);
-            box(
-              Math.cos(a3) * rr2,
-              Math.sin(a3) * rr2,
-              6 + rnd() * 8,
-              4 + rnd() * (k % 6 ? 6 : 22),
-              6 + rnd() * 8,
-              rnd() < 0.5 ? '#efe6d4' : '#d9cbb0',
-              rnd(),
-            );
-          }
-        }
-        circuit(x, z, r * 1.1, is.ch, others); // its race loop
-      }
-      if (geos.length) {
-        const m = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshLambertMaterial({ vertexColors: true }));
-        m.receiveShadow = true;
-        others.add(m);
-      }
-    }
-  }
-
   // street lights: a lamp post every 32 m along the road, alternating sides; at night each throws a pool of light
   // (Doha: white poles, both sides of the road every 18 m, a cooler, brighter light; Kano: dark poles, one side every 32 m)
   const poleM = new THREE.MeshLambertMaterial({ color: doha ? '#e9ecf1' : '#3a3f4a' });
@@ -2061,8 +1855,6 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     water,
     hill,
     palace: palaceAt,
-    islands,
-    others,
     places: dk.places || [],
     // the start lights: n red pods lit (0..5), or 'go' for all green
     startLights(n) {

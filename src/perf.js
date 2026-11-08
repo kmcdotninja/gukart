@@ -5,10 +5,9 @@ import { Sound } from './audio.js';
 import { store } from './util.js';
 
 export function perfHud(renderer, getState) {
-  let on = false;
   const q = new URLSearchParams(location.search).get('perf');
   if (q !== null) store.set('perf', q === '1');
-  on = store.get('perf', false) === true;
+  const on = store.get('perf', false) === true;
   if (!on) return () => {};
   const el = document.createElement('pre');
   el.style.cssText =
@@ -18,8 +17,8 @@ export function perfHud(renderer, getState) {
     frames = [];
   let prev = performance.now(),
     lastPaint = 0,
-    audioState = '',
-    t0 = performance.now();
+    audioState = '';
+  const t0 = performance.now();
   const note = s => {
     log.unshift(`${((performance.now() - t0) / 1000).toFixed(1)}s ${s}`);
     log.length = Math.min(log.length, 8);

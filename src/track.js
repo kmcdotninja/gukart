@@ -1189,7 +1189,7 @@ export function buildForkRoads(scene, tr, tex) {
         gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
         gg.setIndex(idx);
         gg.computeVertexNormals();
-        const roof = mesh(
+        mesh(
           gg,
           new THREE.MeshLambertMaterial({ color: '#e8ebf0', emissive: '#9aa0aa', side: THREE.DoubleSide }),
           true,

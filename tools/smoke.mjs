@@ -7,6 +7,14 @@ import { chromium } from 'playwright';
 import { preview } from 'vite';
 
 const headed = process.argv.includes('--headed');
+// never hang: if the whole run takes more than 6 minutes, something is stuck
+setTimeout(
+  () => {
+    console.log('\nFAIL  the smoke test took over 6 minutes: something hung');
+    process.exit(1);
+  },
+  6 * 60 * 1000,
+).unref();
 const server = await preview({ preview: { port: 4199, strictPort: true, host: '127.0.0.1' }, logLevel: 'silent' });
 const URL = 'http://127.0.0.1:4199/';
 const browser = await chromium.launch({
@@ -74,12 +82,38 @@ async function booted(page, what, timeout = 240000) {
     fail(`${what} (still loading after ${timeout / 1000}s)`);
   }
 }
-const click = (page, sel) =>
-  page
-    .locator(sel)
-    .first()
-    .click({ timeout: 8000 })
-    .catch(e => fail(`could not click ${sel}: ${e.message.split('\n').slice(0, 12).join(' | ')}`));
+// press a button the way a finger would: once it's on screen and nothing (a card still fading out) sits on top of it.
+// (Playwright's own wait for it to stop moving is unreliable while the 3D scene renders behind it)
+async function click(page, sel) {
+  const el = page.locator(sel).first();
+  try {
+    await el.waitFor({ state: 'visible', timeout: 8000 });
+    await page.waitForFunction(
+      s => {
+        const b = document.querySelector(s),
+          r = b?.getBoundingClientRect();
+        if (!r || !r.width) return false;
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !!top && (b === top || b.contains(top));
+      },
+      sel,
+      { timeout: 8000, polling: 100 },
+    );
+    await el.click({ force: true, timeout: 8000 });
+  } catch (e) {
+    const top = await page
+      .evaluate(s => {
+        const r = document.querySelector(s)?.getBoundingClientRect();
+        const t = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const m = document.querySelector('#menu'),
+          cs = getComputedStyle(m);
+        const info = `menu hidden=${m.hidden} class="${m.className}" display=${cs.display} vis=${cs.visibility} op=${cs.opacity} z=${cs.zIndex} state=${document.body.dataset.state}`;
+        return (t ? `${t.tagName}#${t.id}.${t.className} in ${t.closest('[id]')?.id}` : 'nothing') + ' | ' + info;
+      }, sel)
+      .catch(() => 'the page did not answer');
+    fail(`could not click ${sel} (on top of it: ${top}): ${e.message.split('\n')[0]}`);
+  }
+}
 
 try {
   // ---- Kano: a first visit, with the coach hints already seen so they don't cover the buttons

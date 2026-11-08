@@ -17,16 +17,16 @@ p.on('console', m => {
 });
 await p.addInitScript(
   ([city, c]) => {
-    localStorage.setItem('gudu.city', JSON.stringify(city));
-    if (c) localStorage.setItem('gudu.circuit.doha', JSON.stringify(c));
+    localStorage.setItem('gukart.city', JSON.stringify(city));
+    if (c) localStorage.setItem('gukart.circuit.doha', JSON.stringify(c));
   },
   [city, circ],
 );
 await p.goto('http://localhost:5191/#capture', { waitUntil: 'commit', timeout: 0 });
-await p.waitForFunction(() => window.gudu?.ready, null, { timeout: 300000 });
+await p.waitForFunction(() => window.gukart?.ready, null, { timeout: 300000 });
 const r = await p.evaluate(async () => {
-  const g = window.gudu,
-    tr = g.track,
+  const g = window.gukart,
+    tr = g.game.track,
     THREE = await import('/node_modules/.vite/deps/three.js').catch(() => null);
   const RC = THREE ? new THREE.Raycaster() : null;
   if (!RC) return { err: 'no three' };

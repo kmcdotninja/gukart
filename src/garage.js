@@ -327,7 +327,7 @@ export class Garage {
 
       // props
       const crateCols = ['#c4532c', '#3a7bfd', '#b9915a', '#ff6a00', '#2a3a78'];
-      for (const sx of [-1]) {
+      {
         // shelving on the left back corner
         for (let lvl = 0; lvl < 4; lvl++) {
           put(
@@ -484,8 +484,6 @@ export class Garage {
     put(skirt, 0, 0.275, 0);
     put(new THREE.Mesh(new THREE.CylinderGeometry(SR + 1.15, SR + 1.15, 0.08, 96), steel('#2a2e38', 0.4)), 0, 0.56, 0); // skirt cap
     put(new THREE.Mesh(new THREE.CylinderGeometry(SR + 0.55, SR + 0.7, 0.3, 96), steel('#9aa1ad', 0.3)), 0, 0.74, 0); // brushed ring step
-    const padLampG = new THREE.CylinderGeometry(0.14, 0.14, 0.04, 16),
-      padLampM = new THREE.MeshBasicMaterial({ color: '#fff4dc' });
     this.ring = new THREE.Mesh(
       new THREE.TorusGeometry(SR + 0.3, 0.07, 10, 96).rotateX(Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: '#ff8a2a' }),

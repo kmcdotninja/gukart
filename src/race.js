@@ -1682,8 +1682,7 @@ export class Race {
 
   // where each kart is drawn, from its road-space state
   place(dt, snap = false) {
-    const tr = this.tr,
-      e = dt ? 1 - Math.exp(-dt * 8) : 1,
+    const e = dt ? 1 - Math.exp(-dt * 8) : 1,
       v1 = this.v1,
       v2 = this.v2;
     for (const k of this.karts) {

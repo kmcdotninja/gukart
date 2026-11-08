@@ -455,8 +455,7 @@ export function dressDoha(k) {
   });
   for (const f of fOf('westbay')) {
     // West Bay stands across the water from the Corniche, on its own stretch of shore (world.js raises the land)
-    const sd = -inside(f.s),
-      mid = f.s + f.len * 0.5,
+    const mid = f.s + f.len * 0.5,
       cI = tr.idx(mid),
       ctr = tr.beside(cI, tr.out[cI] * (W / 2 + 330));
     const WB = (along, across) => {

@@ -7,7 +7,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { buildTextures, setAniso, kanoHorns } from './textures.js';
 import { buildTrack, buildRoad, buildForks, buildForkRoads } from './track.js';
 import { buildWorld } from './world.js';
-import { makeKart, RACERS, ENV, SUN, setFace, DEFAULT_CUSTOM } from './buddy.js';
+import { makeKart, RACERS, ENV, setFace, DEFAULT_CUSTOM } from './buddy.js';
 import { CHAPTERS } from './chapters.js';
 
 const fmt = new URLSearchParams(location.search).get('f') || 'desk';
@@ -123,65 +123,6 @@ const puff = (() => {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 })();
-const smoke = (s, lat, n = 22, spread = 10) => {
-  for (let i = 0; i < n; i++) {
-    const u = i / (n - 1);
-    const sp = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: puff,
-        color: new THREE.Color().setHSL(0.08, 0.3, 0.9 - u * 0.12),
-        transparent: true,
-        opacity: 0.85 * (1 - u * 0.6),
-        depthWrite: false,
-        fog: false,
-      }),
-    );
-    sp.position.copy(at(s - u * spread, lat + (Math.random() - 0.5) * 2.4 + u * 2.5, 0.9 + u * 2.2).p);
-    sp.scale.setScalar(2 + u * 6.5);
-    sp.layers.set(1);
-    scene.add(sp);
-  }
-};
-const sparkM = new THREE.MeshBasicMaterial({
-  color: '#ffb347',
-  transparent: true,
-  opacity: 0.95,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  fog: false,
-});
-const sparks = (s, lat, n = 50) => {
-  for (let i = 0; i < n; i++) {
-    const p0 = at(s, lat, 0.35).p,
-      dir = new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 0.8, (Math.random() - 0.5) * 2).normalize();
-    const len = 0.25 + Math.random() * 0.8,
-      g = new THREE.CylinderGeometry(0.02, 0.006, len, 4).translate(0, len / 2, 0);
-    const m = new THREE.Mesh(g, sparkM);
-    m.position.copy(p0).addScaledVector(dir, 0.3 + Math.random() * 2.6);
-    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    m.layers.set(1);
-    scene.add(m);
-  }
-};
-const rubber = (s, lat, len = 26, swing = 2.6) => {
-  const m = new THREE.MeshBasicMaterial({
-    color: '#0d0d10',
-    transparent: true,
-    opacity: 0.5,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -3,
-  });
-  for (const off of [-1.1, 1.1]) {
-    const pts = [];
-    for (let i = 0; i <= 24; i++) {
-      const u = i / 24;
-      pts.push(at(s - u * len, lat + off + Math.sin(u * 2.2) * swing * u, 0.09).p);
-    }
-    const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.3, 4, false);
-    scene.add(new THREE.Mesh(g, m));
-  }
-};
 
 // fire off the rear tyres of a drifting vehicle, at its real wheels whichever way it faces. The flames are textures grown
 // from turbulence noise (ragged tongues, white-yellow at the root, orange, then red going transparent), licking up from
@@ -536,7 +477,6 @@ cam.lookAt(look);
 }
 
 // the sky: the game's own dome
-const skyCol = new THREE.Color('#a9d4f2');
 scene.background = null;
 
 // a painted sky: deep blue overhead to pale at the horizon, then cumulus clouds painted pixel by pixel. Each cloud is a

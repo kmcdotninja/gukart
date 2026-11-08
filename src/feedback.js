@@ -158,8 +158,8 @@ const SOUNDS = {
 
 /* ---------- picking the kind, playing it ---------- */
 let said = null,
-  pre = null,
-  sliderStep = new WeakMap();
+  pre = null;
+const sliderStep = new WeakMap();
 function kindOf(el) {
   if (el.dataset.fx) return el.dataset.fx;
   if (el.disabled || el.getAttribute('aria-disabled') === 'true') return 'deny';
