@@ -17,15 +17,23 @@ const browser = await chromium.launch({
 
 const problems = [];
 let passed = 0;
-const fail = msg => { problems.push(msg); console.log(`  FAIL  ${msg}`); };
-const pass = msg => { passed++; console.log(`  ok    ${msg}`); };
+const fail = msg => {
+  problems.push(msg);
+  console.log(`  FAIL  ${msg}`);
+};
+const pass = msg => {
+  passed++;
+  console.log(`  ok    ${msg}`);
+};
 
 async function newPage(saves = {}) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 640 } });
   page.on('pageerror', e => fail(`page error: ${e.message}`));
-  page.on('console', m => { if (m.type() === 'error') fail(`console error: ${m.text().slice(0, 200)}`); });
+  page.on('console', m => {
+    if (m.type() === 'error') fail(`console error: ${m.text().slice(0, 200)}`);
+  });
   await page.addInitScript(s => {
-    if (sessionStorage.getItem('smoke.seeded')) return;   // only before the first load: a city switch reloads the page
+    if (sessionStorage.getItem('smoke.seeded')) return; // only before the first load: a city switch reloads the page
     sessionStorage.setItem('smoke.seeded', '1');
     localStorage.clear();
     for (const [k, v] of Object.entries(s)) localStorage.setItem('gukart.' + k, JSON.stringify(v));
@@ -33,23 +41,45 @@ async function newPage(saves = {}) {
   return page;
 }
 async function inState(page, state, what, timeout = 30000) {
-  try { await page.locator(`body[data-state="${state}"]`).waitFor({ state: 'attached', timeout }); pass(what); } catch { fail(`${what} (the game never reached "${state}")`); }
+  try {
+    await page.locator(`body[data-state="${state}"]`).waitFor({ state: 'attached', timeout });
+    pass(what);
+  } catch {
+    fail(`${what} (the game never reached "${state}")`);
+  }
 }
 const visible = (page, sel) => page.locator(sel).first().isVisible();
 async function expectVisible(page, sel, what, timeout = 8000) {
-  try { await page.locator(sel).first().waitFor({ state: 'visible', timeout }); pass(what); } catch { fail(`${what} (${sel} never showed)`); }
+  try {
+    await page.locator(sel).first().waitFor({ state: 'visible', timeout });
+    pass(what);
+  } catch {
+    fail(`${what} (${sel} never showed)`);
+  }
 }
 async function expectHidden(page, sel, what, timeout = 8000) {
-  try { await page.locator(sel).first().waitFor({ state: 'hidden', timeout }); pass(what); } catch { fail(`${what} (${sel} stayed on screen)`); }
+  try {
+    await page.locator(sel).first().waitFor({ state: 'hidden', timeout });
+    pass(what);
+  } catch {
+    fail(`${what} (${sel} stayed on screen)`);
+  }
 }
 async function booted(page, what, timeout = 240000) {
   try {
     await page.waitForFunction(() => document.querySelector('#loading')?.classList.contains('done'), null, { timeout });
     pass(what);
     await page.waitForTimeout(600);
-  } catch { fail(`${what} (still loading after ${timeout / 1000}s)`); }
+  } catch {
+    fail(`${what} (still loading after ${timeout / 1000}s)`);
+  }
 }
-const click = (page, sel) => page.locator(sel).first().click({ timeout: 8000 }).catch(e => fail(`could not click ${sel}: ${e.message.split('\n').slice(0, 12).join(' | ')}`));
+const click = (page, sel) =>
+  page
+    .locator(sel)
+    .first()
+    .click({ timeout: 8000 })
+    .catch(e => fail(`could not click ${sel}: ${e.message.split('\n').slice(0, 12).join(' | ')}`));
 
 try {
   // ---- Kano: a first visit, with the coach hints already seen so they don't cover the buttons
@@ -60,7 +90,8 @@ try {
   await booted(page, 'the game boots');
   console.log(`        (boot took ${((Date.now() - t0) / 1000).toFixed(0)}s headless)`);
   await expectVisible(page, '#menu', 'the home screen shows');
-  if ((await page.locator('#chName').textContent()) !== 'KANO') fail('the home card should start on Kano'); else pass('the home card is on Kano');
+  if ((await page.locator('#chName').textContent()) !== 'KANO') fail('the home card should start on Kano');
+  else pass('the home card is on Kano');
 
   // garage: open it, change vehicle, the name and the wallet follow, back home
   await click(page, '#garageBtn');
@@ -69,7 +100,8 @@ try {
   await click(page, '#gNext');
   await page.waitForTimeout(500);
   const after = await page.locator('#gName').textContent();
-  if (after && after !== before) pass(`next vehicle (${before} > ${after})`); else fail('next vehicle did not change the name');
+  if (after && after !== before) pass(`next vehicle (${before} > ${after})`);
+  else fail('next vehicle did not change the name');
   await click(page, '#custOpen');
   await expectVisible(page, '#cust', 'Customise opens');
   await click(page, '#custCancel');
@@ -90,12 +122,18 @@ try {
   await expectVisible(page, '#hud', 'the race starts', 20000);
   await inState(page, 'race', 'the countdown ends and the race is on', 90000);
   const time0 = await page.locator('#timer').textContent();
-  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(1200); await page.keyboard.up('ArrowLeft');
-  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1200); await page.keyboard.up('ArrowRight');
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(1200);
+  await page.keyboard.up('ArrowLeft');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(1200);
+  await page.keyboard.up('ArrowRight');
   const time1 = await page.locator('#timer').textContent();
-  if (time1 !== time0) pass(`the race clock runs (${time0} > ${time1})`); else fail('the race clock did not move');
+  if (time1 !== time0) pass(`the race clock runs (${time0} > ${time1})`);
+  else fail('the race clock did not move');
   const speed = +(await page.locator('#speed').textContent());
-  if (speed > 0) pass(`the kart is moving (${speed} km/h)`); else fail('the kart is not moving');
+  if (speed > 0) pass(`the kart is moving (${speed} km/h)`);
+  else fail('the kart is not moving');
 
   // pause, the quit question, back, resume
   await page.keyboard.press('KeyP');
@@ -127,7 +165,8 @@ try {
   // ---- Doha: switching city reloads; then another circuit swaps in place
   console.log('Doha');
   await click(page, '#nextCh');
-  if ((await page.locator('#chName').textContent()) === 'DOHA') pass('the home card steps to Doha'); else fail('next chapter is not Doha');
+  if ((await page.locator('#chName').textContent()) === 'DOHA') pass('the home card steps to Doha');
+  else fail('next chapter is not Doha');
   await click(page, '#goBtn');
   await booted(page, 'Doha loads');
   await expectVisible(page, '#modes', 'Doha opens on the race modes');
