@@ -13,3 +13,6 @@ dist/
 # local secrets
 .env
 .env.*
+
+# race videos (node tools/record.mjs makes them)
+recordings/
