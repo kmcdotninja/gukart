@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800&display=swap">
+  <title>Gukart Vehicle Studio</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b1330; color: #f4f7ff; font: italic 700 15px/1.4 'Barlow Condensed', 'Arial Narrow', sans-serif; }
+    #bar { position: fixed; top: 0; left: 0; right: 0; display: flex; gap: 8px; padding: 10px; z-index: 2; align-items: center; }
+    #bar a { color: #f4f7ff; padding: 6px 12px; border: 1px solid #6fd3ff66; text-decoration: none; }
+    #bar a.on { background: #ff6a00; border-color: #ff6a00; }
+    #hits { margin-left: auto; color: #ffc400; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .lbl { position: fixed; color: #9fb0dc; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="bar"></div>
+  <canvas id="c"></canvas>
+  <script type="module" src="/src/studio.js"></script>
+</body>
+</html>

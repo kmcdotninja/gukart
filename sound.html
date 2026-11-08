@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gukart Sound Studio</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&display=swap">
+  <style>
+    :root { --navy: #0b1330; --navy-2: #131f4a; --glass: rgba(12, 21, 54, .8); --line: #6fd3ff; --line-dim: rgba(111, 211, 255, .45); --orange: #ff6a00; --orange-2: #ff9a3c; --hazard: #ffc400; --white: #f4f7ff; --muted: #9fb0dc; --race: 'Barlow Condensed', 'Arial Narrow', sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #060a1c; color: var(--white); font-family: var(--race); }
+    button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 16px 16px 40px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 330px; }
+    @media (max-width: 960px) { .page { grid-template-columns: 1fr; } }
+    header { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    h1 { margin: 0; font-style: italic; font-weight: 900; font-size: 36px; letter-spacing: .02em; line-height: 1; }
+    h1 span { color: var(--orange); }
+    .slant { clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+    .tabs { display: flex; gap: 4px; }
+    .tabs button { height: 40px; padding: 0 22px; font-style: italic; font-weight: 800; font-size: 19px; background: var(--navy-2); }
+    .tabs button.on { background: var(--orange); }
+    .mode { margin-left: auto; display: flex; gap: 2px; padding: 3px; background: rgba(255, 255, 255, .06); }
+    .mode button { height: 38px; padding: 0 20px; font-style: italic; font-weight: 800; font-size: 18px; color: var(--muted); }
+    .mode button.on { background: var(--white); color: var(--navy); }
+    .card { --cut: 14px; position: relative; background: var(--glass); border: 1.5px solid var(--line-dim); clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+    .tag { display: inline-flex; align-items: center; gap: 10px; height: 28px; padding: 0 30px 0 14px; margin: -1px 0 12px -1px; background: var(--orange); font-style: italic; font-weight: 800; font-size: 18px; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+    .tag i { width: 6px; height: 100%; background: rgba(255, 255, 255, .9); transform: skewX(-28deg); }
+    .pad { padding: 0 14px 14px; }
+
+    /* the stage: the vehicle in 3D, the gauges over it */
+    .stage { aspect-ratio: 16 / 9; min-height: 300px; overflow: hidden; background: #0a1028; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .stage .tag { position: absolute; top: 0; left: 0; margin: 0; z-index: 2; }
+    .hudstate { position: absolute; top: 14px; right: 18px; z-index: 2; height: 34px; display: flex; align-items: center; padding: 0 22px; font-style: italic; font-weight: 900; font-size: 22px; letter-spacing: .04em; background: var(--navy); border-left: 4px solid var(--line); clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+    .hudstate.hot { background: var(--orange); border-color: var(--white); }
+    .tach { position: absolute; left: 18px; bottom: 14px; z-index: 2; width: 190px; height: 190px; }
+    .tach svg { width: 100%; height: 100%; overflow: visible; }
+    .tach .num { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+    .tach .num b { display: block; font-style: italic; font-weight: 900; font-size: 64px; line-height: .8; }
+    .tach .num small { display: block; font-family: var(--race); font-style: italic; font-weight: 700; font-size: 13px; letter-spacing: .04em; color: var(--muted); margin-top: 4px; }
+    .spd { position: absolute; right: 22px; bottom: 18px; z-index: 2; text-align: right; }
+    .spd b { display: block; font-style: italic; font-weight: 900; font-size: 72px; line-height: .85; font-variant-numeric: tabular-nums; text-shadow: 0 4px 24px rgba(0, 0, 0, .5); }
+    .spd small { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 14px; letter-spacing: .04em; color: var(--muted); }
+    .hint { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 2; font-family: var(--race); font-style: italic; font-weight: 700; font-size: 13px; letter-spacing: .1em; color: rgba(255, 255, 255, .45); }
+    @media (max-width: 640px) { .tach { width: 130px; height: 130px; } .tach .num b { font-size: 44px; } .spd b { font-size: 48px; } .hint { display: none; } }
+
+    /* the pedals */
+    .pedals { display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr; gap: 8px; }
+    @media (max-width: 640px) { .pedals { grid-template-columns: 1fr 1fr; } .pedals .gas { grid-column: 1 / -1; } }
+    .pedals button { height: 66px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-style: italic; font-weight: 900; font-size: 22px; background: var(--navy-2); user-select: none; -webkit-user-select: none; touch-action: none; clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); transition: transform .08s ease, filter .15s ease; }
+    .pedals button small { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 12px; font-style: normal; font-weight: 500; letter-spacing: .1em; color: var(--muted); }
+    .pedals .gas { position: relative; background: linear-gradient(100deg, var(--orange), var(--orange-2)); font-size: 30px; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18); }
+    .pedals .gas::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 42%; background: repeating-linear-gradient(-62deg, rgba(255, 255, 255, .22) 0 9px, transparent 9px 22px); -webkit-mask: linear-gradient(90deg, transparent, #000 75%); mask: linear-gradient(90deg, transparent, #000 75%); }
+    .pedals .gas small { color: #ffe3cc; }
+    .pedals button.on { filter: brightness(1.25); transform: scale(.98); }
+    .pedals .brake { background: var(--white); color: var(--navy); } .pedals .brake small { color: #4a5a8a; }
+    .speedrow { display: grid; grid-template-columns: 70px 1fr 54px; align-items: center; gap: 10px; margin-top: 12px; }
+    .speedrow span { font-style: italic; font-weight: 800; font-size: 18px; }
+    .speedrow output { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 15px; text-align: right; color: var(--hazard); }
+    /* our slider: the stripe bar (slanted track, orange stripes filled to the value, the white glowing tick as the handle) */
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; margin: 0; background: transparent; transform: skewX(-24deg); cursor: pointer; --v: 50%; }
+    input[type=range]::-webkit-slider-runnable-track { height: 10px; background: linear-gradient(90deg, transparent var(--v), #1b2552 var(--v)), repeating-linear-gradient(-62deg, #ff6a00 0 8px, #ff9a3c 8px 14px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+    input[type=range]::-moz-range-track { height: 10px; background: linear-gradient(90deg, transparent var(--v), #1b2552 var(--v)), repeating-linear-gradient(-62deg, #ff6a00 0 8px, #ff9a3c 8px 14px); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 5px; height: 20px; margin-top: -5px; border: 0; border-radius: 0; background: #fff3dc; box-shadow: 0 0 10px #ffd29a, 0 0 18px #ff9a3c; }
+    input[type=range]::-moz-range-thumb { width: 5px; height: 20px; border: 0; border-radius: 0; background: #fff3dc; box-shadow: 0 0 10px #ffd29a, 0 0 18px #ff9a3c; }
+    input[type=range]:focus-visible { outline: 2px solid var(--line); outline-offset: 4px; }
+
+    .scen { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .scen button { height: 56px; display: flex; flex-direction: column; justify-content: center; padding: 0 20px; text-align: left; background: var(--navy-2); clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
+    .scen button b { font-style: italic; font-weight: 800; font-size: 20px; line-height: 1; }
+    .scen button small { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 12px; color: var(--muted); letter-spacing: .03em; margin-top: 3px; }
+    .scen button.on { background: var(--orange); } .scen button.on small { color: #ffe3cc; }
+
+    .specs { display: grid; gap: 6px; }
+    .specs label { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 13px; letter-spacing: .04em; color: var(--muted); }
+    .specs canvas { display: block; width: 100%; height: 130px; background: #03071a; }
+    .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+    .btn2, .btn3 { height: 46px; font-style: italic; font-weight: 800; font-size: 19px; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
+    .btn2 { background: var(--white); color: var(--navy); } .btn3 { background: var(--navy-2); }
+    .sliders { display: grid; gap: 9px; }
+    .sl { display: grid; grid-template-columns: 86px 1fr 46px; align-items: center; gap: 8px; }
+    .sl span { font-style: italic; font-weight: 700; font-size: 16px; }
+    .sl output { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 14px; text-align: right; color: var(--hazard); }
+    .note { font-family: var(--race); font-style: italic; font-weight: 700; font-size: 14px; color: var(--muted); line-height: 1.5; margin: 0; }
+    .side { display: grid; gap: 14px; align-content: start; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>SOUND <span>STUDIO</span></h1>
+      <nav class="tabs" id="veh"></nav>
+      <div class="mode slant" id="mode"><button data-m="supra" class="slant">SUPRA</button><button data-m="synth" class="slant">OUR ENGINE</button></div>
+    </header>
+
+    <main style="display:grid;gap:14px;min-width:0">
+      <section class="card stage" id="stage">
+        <div class="tag"><span>LIVE</span><i></i><i></i></div>
+        <div class="hudstate" id="state">TAP A SCENE OR HOLD GAS</div>
+        <div class="tach"><svg viewBox="0 0 200 200" aria-hidden="true">
+          <path d="M40 160 A80 80 0 1 1 160 160" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="14" stroke-linecap="butt"/>
+          <path d="M146 54 A80 80 0 0 1 160 160" fill="none" stroke="#e02a2a" stroke-width="14" opacity=".55"/>
+          <path id="tachArc" d="M40 160 A80 80 0 1 1 160 160" fill="none" stroke="url(#tg)" stroke-width="14" pathLength="100" stroke-dasharray="0 100"/>
+          <defs><linearGradient id="tg" x1="0" x2="1"><stop offset="0" stop-color="#ff6a00"/><stop offset="1" stop-color="#ffc400"/></linearGradient></defs>
+        </svg><div class="num"><div><b id="gear">1</b><small id="rpm">0 RPM</small></div></div></div>
+        <div class="spd"><b id="kmh">0</b><small>KM/H</small></div>
+        <div class="hint">DRAG TO TURN THE CAR</div>
+        <canvas id="gl"></canvas>
+      </section>
+
+      <section class="card">
+        <div class="tag"><span>DRIVE</span><i></i><i></i></div>
+        <div class="pad">
+          <div class="pedals">
+            <button class="gas" id="gas">GAS<small>HOLD · SPACE</small></button>
+            <button class="brake" id="brk">BRAKE<small>HOLD · B</small></button>
+            <button id="jmp">JUMP<small>J</small></button>
+            <button id="dft">DRIFT<small>HOLD · D</small></button>
+            <button id="nit">NITRO<small>N</small></button>
+          </div>
+          <div class="speedrow"><span>SPEED</span><input type="range" id="spd" min="0" max="230" value="0"><output id="spdO">0</output></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="tag"><span>SCENES</span><i></i><i></i></div>
+        <div class="pad" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:10px">
+          <span style="font-style:italic;font-weight:800;font-size:18px">HEAR</span>
+          <div class="mode slant" id="listen" style="margin:0"><button data-l="ours" class="slant on">OUR SOUND</button><button data-l="real" class="slant">THE RECORDING</button></div>
+          <span id="msg2" style="font-style:italic;font-weight:700;font-size:15px;color:var(--muted)"></span>
+        </div>
+        <div class="pad scen" id="scenes"></div>
+      </section>
+
+      <section class="card">
+        <div class="tag"><span>COMPARE</span><i></i><i></i></div>
+        <div class="pad specs">
+          <label>WHAT YOU'RE HEARING</label><canvas id="specOurs" width="900" height="130"></canvas>
+          <label>THE SUPRA RECORDING</label><canvas id="specRef" width="900" height="130"></canvas>
+          <div class="row"><button class="btn2" id="refPlay">PLAY THE RECORDING</button><button class="btn3" id="refStop">STOP</button></div>
+          <audio id="ref" src="/studio/supra-reference.m4a" preload="auto"></audio>
+        </div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section class="card">
+        <div class="tag"><span>TUNE</span><i></i><i></i></div>
+        <div class="pad sliders" id="sliders"></div>
+        <div class="pad" style="display:grid;gap:8px">
+          <div class="row"><button class="btn2" id="save">SAVE TO GAME</button><button class="btn3" id="reset">RESET</button></div>
+          <button class="btn3" id="copy">COPY SETTINGS</button>
+          <p class="note" id="msg">SUPRA plays the recording itself, pitched to the revs. OUR ENGINE is synthesised from its measurements. Whichever you pick is what the game plays. SAVE keeps your tuning for the game in this browser.</p>
+        </div>
+      </section>
+    </aside>
+  </div>
+  <script type="module" src="/src/soundstudio.js"></script>
+</body>
+</html>

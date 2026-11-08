@@ -1,0 +1,15 @@
+# installed tools (npm install brings them back)
+node_modules/
+
+# the built game (npm run build makes it)
+dist/
+
+# Mac and editor clutter
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# local secrets
+.env
+.env.*

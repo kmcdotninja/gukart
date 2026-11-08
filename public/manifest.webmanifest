@@ -1,0 +1,11 @@
+{
+  "name": "Gukart",
+  "short_name": "Gukart",
+  "description": "Race Buddy across the islands of Naija.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#10183f",
+  "theme_color": "#1d2a6b",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

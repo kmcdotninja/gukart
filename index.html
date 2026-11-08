@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en" class="booting">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1330">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gukart">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&family=Barlow:wght@500;600&family=Permanent+Marker&display=swap">
+  <title>Gukart</title>
+  <!-- the very first frame, before the game's own styles arrive: navy, nothing else. A reload to another city flashed the
+       bare, unstyled page for a moment; main.js lifts this the moment its styles are in, and the loader is there -->
+  <style>
+    html, body { margin: 0; background: #0b1330; }
+    .booting body > *, .booting #loading > * { visibility: hidden; }
+    .booting #loading { visibility: visible; position: fixed; inset: 0; z-index: 50; background: #0b1330; }
+  </style>
+</head>
+<body>
+  <!-- the GUKART logo (designed in Figma: GU in white, KART in Buddy orange, a yellow speed bar, a cyan line, navy outline), defined once; drawn with <use> on the loader and the home screen -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gukartLogo" viewBox="0 0 627 237"><path d="M384.365 0.0788977C406.572 -1.08868 429.431 10.9529 448.925 19.6269C478.875 32.9534 507.071 34.8926 536.99 20.7314C541.177 18.7504 545.891 15.3186 549.768 19.5033C550.96 23.004 544.97 38.0197 543.421 42.4099L531.8 75.2431C534.982 73.4362 536.153 72.8998 539.787 72.8759C555.955 72.7682 572.166 72.8748 588.338 72.8536L606.619 72.8328C622.881 72.8206 630.934 73.7844 623.892 92.6575C621.627 99.3862 619.372 106.062 616.794 112.677C613.091 122.187 601.734 120.144 593.056 120.085C588.755 136.521 582.856 154.51 578.148 171.111C576.262 177.838 574.417 184.578 572.617 191.329C571.061 197.109 569.647 204.899 565.742 209.422C558.961 217.334 552.023 225.13 545.005 232.83C540.805 237.436 533.731 236.29 527.888 236.311L507.189 236.315L443.449 236.256L232.516 236.271C215.815 235.958 198.202 236.257 181.394 236.247L70.7892 236.241L29.79 236.268C22.5229 236.277 15.2244 236.381 7.96665 236.157C5.65601 236.086 3.84287 235.416 2.17842 233.804C-2.25942 229.507 0.98054 224.41 3.9662 220.413C8.66043 214.129 13.4704 207.923 18.4338 201.804C16.8899 200.409 15.4245 198.967 14.053 197.402C7.1544 189.529 4.12392 180.095 4.8257 169.702C5.73244 156.263 17.788 114.13 24.1731 102.245C27.2379 96.5864 31.3162 91.5385 36.2043 87.3525C53.6875 72.0984 76.2099 69.8173 98.5519 71.1767C110.988 71.9333 122.559 74.7377 131.08 84.5281C132.86 79.36 135.869 73.1705 142.371 73.0273C155.376 72.7414 169.192 72.0362 182.078 73.5127C185.819 73.9414 189.136 78.2542 190.788 81.2739C190.844 81.1693 190.9 81.0651 190.957 80.9608C192.705 77.7674 195.208 74.632 198.841 73.602C203.752 72.2095 232.621 72.1984 238.388 73.0996C240.301 73.3987 241.77 74.048 243.453 74.9861C244.381 74.5177 245.338 74.112 246.32 73.7722C253.561 71.3132 274.413 73.373 282.924 73.0628C287.298 72.9033 291.366 76.9851 292.742 81.1662C297.168 76.2826 299.214 73.3779 306.003 72.8168L322.71 36.349C325.274 30.7761 328.828 22.0218 332.243 17.0414C333.431 15.3108 339.056 12.4066 341.199 11.3404C354.62 4.55554 369.336 0.716051 384.365 0.0788977Z" fill="#0b1330"/><path d="M309.268 196.835C313.774 188.291 318.485 177.7 322.925 168.853C334.47 145.673 346.549 122.765 359.153 100.145C362.29 94.5711 365.601 88.1742 369.343 83.0951C370.33 81.753 383.281 82.2428 385.518 82.2435L413.138 82.2529C413.305 109.503 412.071 137.418 412.092 164.715C412.099 175.376 411.303 187.706 411.741 198.198L411.251 199.717C408.972 200.545 382.006 200.046 377.716 200.013C377.674 194.62 378.536 186.279 378.796 180.501C369.93 180.374 360.814 180.474 351.927 180.464C349.985 184.351 344.777 196.916 342.464 199.454C339.122 200.798 280.93 200.173 272.821 199.995C268.891 185.44 265.873 171.206 262.742 156.452C261.837 160.785 252.273 199.686 250.34 199.74C245.525 199.875 220.889 200.927 217.627 199.388L217.444 198.852C219.317 186.421 244.572 89.9804 249.09 82.8602C251.675 81.7919 276.828 82.2825 281.899 82.2901C281.052 85.8309 279.365 90.2761 278.305 93.8881C275.158 104.613 270.969 115.815 268.176 126.579C277.812 113.454 293.055 94.2091 304.196 82.4864L341.939 82.525C325.329 101.024 309.098 119.862 293.26 139.026C297.811 157.812 303.734 178.279 309.268 196.835Z" fill="#ff6a00"/><path d="M381.794 113.756C382.555 115.966 380.724 150.343 380.498 155.185L363.225 155.183C362.971 153.879 379.54 118.543 381.794 113.756Z" fill="#0b1330"/><path d="M415.434 198.456C422.966 165.566 431.547 132.925 441.167 100.584C442.181 97.2195 445.461 85.4387 447.288 83.0127C449.501 81.5428 476.165 82.4169 481.488 82.2491C502.145 81.5977 524.049 81.4657 524.935 108.298L524.945 109.426L524.997 110.772C523.966 131.05 515.704 150.494 495.443 158.001C497.573 167.019 499.921 175.985 502.485 184.89C503.687 189.202 505.74 195.814 506.55 200.04C495.057 200.058 481.873 200.376 470.492 200.043C467.904 191.537 466.299 180.836 464.301 172.059C463.832 170.001 462.661 162.17 461.987 160.7C460.921 160.355 460.751 160.407 459.646 160.642C458.023 162.247 451.179 194.714 449.178 199.976C445.086 200.11 417.008 200.501 415.253 199.567L415.434 198.456Z" fill="#ff6a00"/><path d="M474.181 107.168C477.555 107.131 482.408 106.935 485.646 107.304C495.269 108.396 489.777 122.015 487.265 127.167C486.056 129.65 484.59 131.192 482.314 132.728C477.829 134.825 471.406 134.218 466.372 134.165C468.901 125.145 471.506 116.146 474.181 107.168Z" fill="#0b1330"/><path d="M85.3426 80.3285C104.384 79.4648 128.798 83.8374 125.158 108.803C124.662 112.204 123.681 118.459 121.97 121.237C121.214 122.464 110.768 122.018 109.054 122.01L87.7109 121.918C89.0005 116.855 91.586 109.279 84.7211 107.228C80.787 106.093 76.5635 106.559 72.9723 108.526C67.5169 111.535 64.8008 118.121 63.3751 124.03C59.9781 138.11 54.5546 153.014 52.8926 167.326C51.8427 176.365 65.118 176.912 70.6902 173.56C76.1209 170.293 77.3789 164.066 78.8735 158.307C76.2786 158.259 67.1486 158.756 65.4929 157.757C65.4668 157.553 65.4359 157.225 65.4376 157.114C65.4748 154.629 70.9806 132.442 72.3463 132.297C78.8332 131.611 107.007 131.946 113.151 131.954C114.685 131.909 117.648 131.505 118.864 132.474C119.192 132.735 119.183 132.893 119.209 133.29C119.463 137.161 109.594 172.882 107.411 178.015C105.662 182.128 103.398 185.946 100.399 189.278C91.7083 198.935 78.7199 201.708 66.2933 202.361C52.9551 203.063 34.4645 202.808 23.9459 193.28C18.6815 188.511 15.7581 181.909 15.404 174.846C15.2439 171.492 15.4311 168.13 15.9627 164.814C17.081 157.672 20.0378 146.98 22.0028 139.84C24.4371 130.993 27.7698 117.691 31.5271 109.507C33.523 105.158 36.1779 101.144 39.3988 97.6053C51.5613 84.2685 68.2187 81.115 85.3426 80.3285Z" fill="#f4f7ff"/><path d="M142.971 82.2698L165.177 82.2152C167.857 82.211 175.334 82.03 177.628 82.5748C178.549 84.4154 173.134 100.994 172.296 104.01C168.553 117.535 164.926 131.091 161.413 144.676C159.521 151.985 156.817 160.266 156.681 167.748C156.508 177.219 169.393 177.008 174.519 172.149C176.65 170.129 178.122 166.333 179.092 163.602C181.227 155.81 183.077 147.635 184.99 139.799C188.602 124.477 192.685 109.27 197.234 94.2002C198.097 91.4095 199.724 84.9956 201.385 83.0834C206.258 80.9336 229.056 82.7204 235.51 82.4327C236.094 82.4066 236.416 83.1056 236.674 83.5458C236.468 85.6345 231.669 101.214 230.821 104.122C226.133 119.086 222.467 134.739 218.244 149.863C215.672 159.891 213.387 169.067 209.267 178.637C198.253 204.224 166.08 204.917 142.468 200.97C112.056 195.886 120.389 168.002 125.476 146.778C128.063 135.973 130.716 125.185 133.436 114.413C135.076 107.956 136.751 101.508 138.46 95.0691C139.19 92.3346 141.145 83.7591 142.971 82.2698Z" fill="#f4f7ff"/><path d="M33.8529 207.844L347.202 207.857L450.432 207.858C467.852 207.864 485.931 207.589 503.294 207.919C501.137 210.197 499.014 212.51 496.93 214.857L492.66 219.392C475.411 219.593 457.742 219.397 440.465 219.396L339.472 219.401L16.0754 219.408C18.9871 215.629 22.0721 211.462 25.1912 207.896L33.8529 207.844Z" fill="#ffc400"/><path d="M529.184 107.272C530.313 103.522 535.608 84.9742 537.619 82.7608C541.027 82.0163 547.684 82.2282 551.373 82.2275L571.728 82.2303L601.526 82.2501C606.108 82.2543 612.545 82.0813 617.031 82.3151C615.86 86.1088 609.123 110.116 605.587 110.278C600.744 110.499 591.023 110.358 585.781 110.386C580.427 127.818 575.261 145.306 570.286 162.85C568.97 167.563 561.333 197.72 559.801 199.809C557.484 200.255 549.424 200.133 546.603 200.083C540.086 199.967 532.995 200.24 526.537 200.036C528.003 191.3 531.234 179.453 533.44 170.806C538.658 150.527 544.383 130.382 550.609 110.39C546.725 110.373 536.681 110.064 533.2 110.429C531.049 110.453 529.611 110.987 528.437 109.132L529.184 107.272Z" fill="#ff6a00"/><path d="M339.802 21.2322C350.867 15.5855 362.409 10.5934 374.874 8.99121L366.317 31.4966C378.358 29.2398 386.043 29.0487 398.018 30.4874L390.695 50.327L390.184 51.7566C378.553 50.8902 369.319 51.724 357.906 53.9269C360.678 46.3884 363.524 38.8756 366.432 31.3889C354.977 33.4355 343.832 36.9343 333.261 41.8008C332.566 43.8016 331.986 45.5581 331.044 47.4727L325.694 60.5813C327.056 61.81 328.241 61.7023 329.425 62.3854C339.757 58.3443 347.112 56.3307 357.837 53.88C355.3 60.8352 352.504 68.8306 349.676 75.5908C344.52 73.1197 339.326 73.7958 333.726 73.8069L315.324 73.8215C319.413 64.4796 324.12 54.637 328.466 45.4115C329.106 43.8412 329.821 42.4297 330.579 40.9143C333.462 34.2516 336.78 27.8092 339.802 21.2322Z" fill="#f4f7ff"/><path d="M325.694 60.5813C327.056 61.8101 328.241 61.7024 329.425 62.3854L324.103 64.6676L325.694 60.5813Z" fill="#0b1330"/><path d="M12.2803 224.98L487.657 224.959L484.187 228.618C482.62 229.196 460.636 228.868 457.089 228.868L385.397 228.857L9.13379 228.863L12.2803 224.98Z" fill="#6fd3ff"/><path d="M506.498 53.9009L506.776 54.2987L500.203 72.4635C508.287 71.3858 518.407 67.8394 526.043 64.992C524.296 69.9937 522.493 74.9742 520.627 79.9328C516.267 77.5284 514.19 76.6154 509.416 75.2393C506.369 74.5639 502.53 74.3506 500.119 73.7371L499.918 72.8435C499.001 72.601 492.706 73.3389 491.187 73.3879C484.906 73.5915 478.59 73.5359 472.309 73.5335L479.33 55.0216C489.61 55.8374 496.308 55.3475 506.498 53.9009Z" fill="#f4f7ff"/><path d="M425.551 38.4841C434.379 41.9913 442.876 45.9062 451.916 48.8895L444.19 68.0715C450.523 70.0396 455.102 71.2927 461.626 72.6219C462.703 72.7612 464.735 72.9224 465.621 73.3813C463.822 73.6315 448.716 73.7187 447.136 73.3549C444.499 74.0848 443.637 74.3926 441.261 75.7621C442.206 73.1663 443.213 70.5947 444.287 68.0499C435.608 65.0712 427.114 61.0656 418.415 58.1814C420.843 51.6333 423.22 45.0676 425.551 38.4841Z" fill="#f4f7ff"/><path d="M461.626 72.6218C462.703 72.7611 464.735 72.9223 465.621 73.3813C463.822 73.6314 448.716 73.7186 447.135 73.3549C448.588 72.8737 458.565 73.3768 461.421 73.029L461.626 72.6218Z" fill="#9fb0dc"/><path d="M390.695 50.3271C391.918 50.5505 394.617 50.8729 395.288 51.7873L394.454 52.2087C402.622 53.3927 410.65 55.3938 418.415 58.1814C417.05 62.6745 414.736 68.7032 413.134 73.2362C402.733 73.2497 393.141 73.4485 382.732 72.6182C385.296 65.869 387.794 58.5949 390.184 51.7568L390.695 50.3271Z" fill="#f4f7ff"/><path d="M390.695 50.3271C391.918 50.5505 394.617 50.8729 395.288 51.7873L394.454 52.2087C393.026 52.099 391.608 51.9225 390.184 51.7568L390.695 50.3271Z" fill="#0b1330"/><path d="M405.422 10.5552C413.937 12.6783 423.779 17.1937 431.877 20.697C431.113 22.923 426.464 37.4232 425.207 38.0985C415.632 34.4941 408.25 31.9695 398.126 30.4819C400.033 24.4227 403.17 16.6512 405.422 10.5552Z" fill="#f4f7ff"/><path d="M458.704 31.7681C468.349 35.2929 475.759 36.8472 485.886 38.1368L479.379 54.905C469.137 53.8989 461.647 52.0337 451.923 48.8854C454.146 43.1653 456.408 37.4594 458.704 31.7681Z" fill="#f4f7ff"/><path d="M552.189 206.099L557.776 206.151L535.948 230.171L525.623 230.154L519.435 230.123L541.117 206.125L552.189 206.099Z" fill="#ffc400"/><path d="M515.183 206.128L531.807 206.141L510.021 229.965C509.204 230.452 495.579 230.087 493.678 230.059C500.109 222.349 508.37 213.658 515.183 206.128Z" fill="#ffc400"/><path d="M538.481 28.8093C538.814 29.9245 533.572 43.9582 532.786 46.1549C523.58 49.6853 517.507 51.8539 507.721 53.6576L507.46 53.5176C507.14 52.4056 512.369 38.9312 513.119 36.8964C521.6 35.332 530.542 32.115 538.481 28.8093Z" fill="#f4f7ff"/><path d="M524.935 108.298C526.064 106.541 527.443 106.196 529.184 107.272L528.437 109.132C527.023 109.151 526.38 109.177 524.945 109.426L524.935 108.298Z" fill="#0b1330"/><path d="M411.741 198.197C412.849 198.081 414.559 197.691 415.434 198.456L415.253 199.567C414.162 200.14 412.419 199.974 411.251 199.717L411.741 198.197Z" fill="#0b1330"/></symbol></svg>
+  <canvas id="gl"></canvas>
+
+  <!-- home: the chapter's island turning behind, chapter dock in front -->
+  <section id="menu">
+    <header class="topbar">
+      <div class="wallet"><i class="coin-icon"></i><span id="wallet">0</span></div>
+      <button class="sq-btn" id="nightBtn" aria-label="Day or night"><svg class="i-day" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(45 12 12)"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(90 12 12)"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(135 12 12)"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(180 12 12)"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(225 12 12)"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(270 12 12)"/><rect x="10.7" y="1" width="2.6" height="3.8" rx="1.3" transform="rotate(315 12 12)"/></svg><svg class="i-night" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1z"/><path d="M17.5 2.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg></button>
+      <button class="sq-btn" id="soundBtn" aria-label="Sound on"><svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9H7l5-4.5v15L7 15H3.5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z"/><path d="M15.3 8a5.6 5.6 0 0 1 0 8l-1.8-1.8a3 3 0 0 0 0-4.4z"/><path d="M18.1 5.2a9.6 9.6 0 0 1 0 13.6l-1.8-1.8a7 7 0 0 0 0-10z"/></svg><svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9H7l5-4.5v15L7 15H3.5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z"/><rect x="16.7" y="7.5" width="2.6" height="9" rx="1.3" transform="rotate(45 18 12)"/><rect x="16.7" y="7.5" width="2.6" height="9" rx="1.3" transform="rotate(-45 18 12)"/></svg></button>
+      <button class="sq-btn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M10.3 2.6a1.8 1.8 0 0 1 3.4 0l.4 1.2a7.8 7.8 0 0 1 1.7.7l1.1-.6a1.8 1.8 0 0 1 2.4 2.4l-.6 1.1c.3.5.5 1.1.7 1.7l1.2.4a1.8 1.8 0 0 1 0 3.4l-1.2.4a7.8 7.8 0 0 1-.7 1.7l.6 1.1a1.8 1.8 0 0 1-2.4 2.4l-1.1-.6a7.8 7.8 0 0 1-1.7.7l-.4 1.2a1.8 1.8 0 0 1-3.4 0l-.4-1.2a7.8 7.8 0 0 1-1.7-.7l-1.1.6a1.8 1.8 0 0 1-2.4-2.4l.6-1.1a7.8 7.8 0 0 1-.7-1.7l-1.2-.4a1.8 1.8 0 0 1 0-3.4l1.2-.4c.2-.6.4-1.2.7-1.7l-.6-1.1a1.8 1.8 0 0 1 2.4-2.4l1.1.6c.5-.3 1.1-.5 1.7-.7zM12 15.4a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8z"/></svg></button>
+    </header>
+
+    <div class="chapter-head">
+      <h1 class="sr">Gukart</h1>
+      <div class="logo-lockup"><span class="burst" aria-hidden="true"></span><svg class="logo-svg" viewBox="0 0 627 237" role="img" aria-label="Gukart"><use href="#gukartLogo"/></svg></div>
+    </div>
+
+    <div class="dock">
+      <div class="panel chapter-panel">
+        <div class="tag"><span id="chNum">CHAPTER 1</span><i></i><i></i></div>
+        <div class="ch-title"><h2 id="chName">KANO</h2><span id="chTag">The Walled City</span></div>
+        <div class="ch-circ" id="chCirc" hidden></div>
+        <div class="ch-row">
+          <div class="stars" id="chStars" aria-label="Stars"></div>
+          <div class="reward" id="chReward"></div>
+        </div>
+        <div class="stepper">
+          <button class="arrow" id="prevCh" aria-label="Previous chapter"><svg class="ic flip" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
+          <ol id="dots"></ol>
+          <button class="arrow" id="nextCh" aria-label="Next chapter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
+        </div>
+      </div>
+      <div class="dock-row">
+        <button class="map-tile" id="mapBtn" aria-label="Open the world map"><img id="mapThumb" src="/tile-map.jpg" alt=""><span>MAP</span></button>
+        <button class="map-tile garage-tile" id="garageBtn" aria-label="Open the garage"><img id="garageThumb" src="/tile-garage.png" alt=""><span>GARAGE</span></button>
+        <button class="go" id="goBtn"><span>GO!</span><small class="mono">RACE · KANO</small></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- garage: the vehicle in the middle of the room, stats top-left, arrows either side, the line-up along the bottom -->
+  <section id="garage" hidden>
+    <header class="g-top">
+      <button class="sq-btn" id="gBack" aria-label="Home"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M11.35 3.25a1 1 0 0 1 1.3 0l8.6 7.4a.9.9 0 0 1-.6 1.6H19V20a1 1 0 0 1-1 1h-4v-5.5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1V21H6a1 1 0 0 1-1-1v-7.75H3.35a.9.9 0 0 1-.6-1.6z"/></svg></button>
+      <h2 class="g-title">GARAGE</h2>
+      <button class="sq-btn" id="gLights" aria-label="Garage lights"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+      <div class="wallet"><i class="coin-icon"></i><span id="gWallet">0</span></div>
+    </header>
+    <div class="panel g-card">
+      <div class="tag"><span id="gName">KART</span><i></i><i></i></div>
+      <dl class="gstats" id="gStats"></dl>
+    </div>
+    <section class="cust" id="cust" hidden>
+      <nav class="cust-icons" id="custTabs">
+        <!-- one icon set: 24px grid, flat solid fill in currentColor, details cut out (see .cust-icons in style.css) -->
+        <button data-ct="body" class="on" aria-label="Body"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M2 16.5V13l3-1.2L8 7.5h7.5l3 4 3 1v4h-2.3a3.2 3.2 0 0 0-6.4 0h-1.6a3.2 3.2 0 0 0-6.4 0zM9.2 9L8 11.2h4V9zm4 0v2.2h4L15.5 9z"/><circle cx="8" cy="16.5" r="2.5"/><circle cx="16" cy="16.5" r="2.5"/></svg></button>
+        <button data-ct="paint" aria-label="Paint"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2.5S5.5 9.6 5.5 14.2a6.5 6.5 0 0 0 13 0C18.5 9.6 12 2.5 12 2.5zM8.6 14a3.4 3.4 0 0 0 3.4 3.4v-1.7a1.7 1.7 0 0 1-1.7-1.7z"/></svg></button>
+        <button data-ct="decal" aria-label="Decals"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M6 3.5h12a2 2 0 0 1 2 2v7h-5.5a2.5 2.5 0 0 0-2.5 2.5v5.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2zM12.6 6L8.5 11.8h2.9l-1.2 4.7 4.4-6.2h-2.8z"/><path d="M20 14l-6 6v-4.5a1.5 1.5 0 0 1 1.5-1.5z"/></svg></button>
+        <button data-ct="rim" aria-label="Wheels"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19zm0 2.5a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/><g><rect x="11" y="4" width="2" height="6"/><rect x="11" y="4" width="2" height="6" transform="rotate(72 12 12)"/><rect x="11" y="4" width="2" height="6" transform="rotate(144 12 12)"/><rect x="11" y="4" width="2" height="6" transform="rotate(216 12 12)"/><rect x="11" y="4" width="2" height="6" transform="rotate(288 12 12)"/></g></svg></button>
+        <button data-ct="tyre" aria-label="Tyres"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M10 2.5h4a4.5 4.5 0 0 1 4.5 4.5v10a4.5 4.5 0 0 1-4.5 4.5h-4A4.5 4.5 0 0 1 5.5 17V7A4.5 4.5 0 0 1 10 2.5zM8 6.2v2.2l4 2.3 4-2.3V6.2l-4 2.3zm0 5.4v2.2l4 2.3 4-2.3v-2.2l-4 2.3z"/></svg></button>
+        <button data-ct="plate" aria-label="Plates"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm3.5 4.5v3h7v-3zM5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm12 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/></svg></button>
+        <button data-ct="nitro" aria-label="Nitro"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="10" y="2.5" width="4" height="3.5" rx="1"/><path fill-rule="evenodd" d="M10.5 7h3a3.5 3.5 0 0 1 3.5 3.5V18a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3v-7.5A3.5 3.5 0 0 1 10.5 7zm2.3 2.5L10 14h2l-.8 4.5 2.8-5h-2z"/></svg></button>
+      </nav>
+      <div class="panel cust-panel">
+        <div class="cust-bar"><button id="custPrev" aria-label="Previous"><svg class="ic flip" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button><b id="custTitle">PAINT</b><button id="custNext" aria-label="Next"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button></div>
+        <div class="cust-grid" id="custList"></div>
+        <div class="cust-foot"><button class="btn" id="custCancel">CANCEL</button><button class="btn primary" id="custSave">SAVE</button></div>
+      </div>
+    </section>
+    <button class="g-arrow left" id="gPrev" aria-label="Previous vehicle"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M22 8L10 20l12 12M32 8L20 20l12 12" stroke="currentColor" stroke-width="4" fill="none"/></svg></button>
+    <button class="g-arrow right" id="gNext" aria-label="Next vehicle"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M18 8l12 12-12 12M8 8l12 12-12 12" stroke="currentColor" stroke-width="4" fill="none"/></svg></button>
+    <div class="g-bottom">
+      <button class="cust-open" id="custOpen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2.5c-4.6 0-8.5 3.6-8.5 8.6 0 4.6 3.6 8.4 8 8.4 1.3 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8h2.1c2.4 0 4.1-1.8 4.1-4.2 0-3.6-3.8-6.6-8.5-6.6zM7 12.3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.6-3.8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.7 3.8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg><span><b>CUSTOMISE</b><small>PAINT · WHEELS · DECALS</small></span></button>
+      <button class="go g-play" id="gPlay"><span>PLAY</span><small class="mono">KANO</small></button>
+      <div class="tiles" id="tiles"></div>
+    </div>
+  </section>
+
+  <!-- the modes: tall picture cards, the chosen one stands forward with its PLAY -->
+  <section id="modes" hidden>
+    <header class="m-top">
+      <button class="sq-btn" id="mBack" aria-label="Back"><svg class="ic flip" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
+      <div class="tag m-tag"><span>KANO</span><i></i><i></i></div>
+    </header>
+    <div class="m-cards" id="mCards"></div>
+  </section>
+
+  <!-- the map: Naija, each chapter a city -->
+  <section id="map" hidden></section>
+  <div id="swapVeil" hidden aria-live="polite"><span>LOADING</span><b>THE PEARL</b><i class="stripebar"><i></i></i></div>
+
+  <!-- in-race HUD -->
+  <div id="hud" hidden>
+    <div id="speedlines"></div>
+    <div class="hud-tl">
+      <button class="sq-btn" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg></button>
+      <div class="posbig" id="posBig"><b id="pos">5</b><span id="posSfx">TH</span></div>
+    </div>
+    <div class="hud-row">
+      <span class="chip2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h13l-3 4 3 4H6z" fill="currentColor"/></svg><b id="lap">1/3</b></span>
+      <span class="chip2" id="coinChip"><i class="coin-icon"></i><b id="coins">0</b></span>
+    </div>
+    <div class="hud-tr">
+      <div class="speedo">
+        <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true"><circle class="g-bg" cx="60" cy="60" r="52"/><circle class="g-fg" id="gArc" cx="60" cy="60" r="52"/></svg>
+        <div class="sp-num"><b id="speed">0</b><span class="mono">KM/H</span></div>
+      </div>
+      <div class="timetag mono" id="timer">0:00.00</div>
+      <div class="scorebar"><span class="sc-l">SCORE</span><b id="score">0</b><em id="combo"></em></div>
+    </div>
+    <div class="hud-tc">
+      <div class="progress"><div class="stripebar thin"><i id="progFill"></i></div></div>
+      <div class="weapon panel empty" id="weapon"><span class="wicon" id="wicon"></span><span class="wname mono" id="wname">NO WEAPON</span><b id="wammo"></b></div>
+    </div>
+    <canvas id="minimap" width="240" height="240"></canvas>
+    <span hidden id="kos"></span>
+    <div class="shortcut-hint" id="scHint" hidden><svg class="hand" viewBox="0 0 48 56" aria-hidden="true"><path d="M18 4c3 0 5 2 5 5v14l2-1c3-1 5 0 6 2l1 1c3-1 5 0 6 2l1 1c3-1 6 1 6 4v10c0 8-6 14-14 14h-4c-5 0-9-2-12-6L4 37c-2-3-1-6 2-7 2-1 5 0 6 2l1 2V9c0-3 2-5 5-5z" fill="#fff" stroke="#0b1330" stroke-width="3" stroke-linejoin="round"/></svg><span>SHORTCUT</span></div>
+    <div class="toasts" id="toasts"></div>
+    <div class="center" id="center"></div>
+    <div class="wrong" id="wrong" hidden>WRONG WAY</div>
+    <div class="steer-pad" id="steerPad">
+      <button class="touch-btn steer-btn" id="leftBtn" aria-label="Steer left"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M24 8L12 20l12 12" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="touch-btn steer-btn" id="rightBtn" aria-label="Steer right"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M16 8l12 12-12 12" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <!-- first-race coach: a hand pointing at the control you need right now -->
+    <div class="coach" id="coach" hidden>
+      <svg class="hand" viewBox="0 0 48 56" aria-hidden="true"><path d="M18 4c3 0 5 2 5 5v14l2-1c3-1 5 0 6 2l1 1c3-1 5 0 6 2l1 1c3-1 6 1 6 4v10c0 8-6 14-14 14h-4c-5 0-9-2-12-6L4 37c-2-3-1-6 2-7 2-1 5 0 6 2l1 2V9c0-3 2-5 5-5z" fill="#fff" stroke="#0b1330" stroke-width="3" stroke-linejoin="round"/></svg>
+      <p class="coach-text" id="coachText"></p>
+    </div>
+    <button class="touch-btn fire-btn" id="fireBtn">FIRE</button>
+    <!-- the brake pedal: the kart drives itself (like Beach Buggy Racing and Mario Kart Tour); hold to slow, keep holding to reverse -->
+    <button class="touch-btn brake-btn" id="brakeBtn" aria-label="Brake"><svg viewBox="0 0 64 48" aria-hidden="true"><rect x="4" y="6" width="56" height="36" rx="9" fill="currentColor" opacity=".9"/><g fill="#0b1330" opacity=".55"><rect x="12" y="14" width="40" height="4" rx="2"/><rect x="12" y="22" width="40" height="4" rx="2"/><rect x="12" y="30" width="40" height="4" rx="2"/></g></svg></button>
+    <button class="touch-btn nitro-btn" id="nitroBtn" aria-label="Nitro"><svg class="nbottle" viewBox="0 0 80 80" aria-hidden="true">
+      <defs>
+        <clipPath id="nClip"><rect x="27" y="23" width="26" height="46" rx="10"/></clipPath>
+        <linearGradient id="nLiqG" x1="0" x2="1"><stop offset="0" stop-color="#1f6bff"/><stop offset=".45" stop-color="#7fd0ff"/><stop offset="1" stop-color="#1a4fd6"/></linearGradient>
+        <linearGradient id="nGlass" x1="0" x2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".22"/><stop offset=".3" stop-color="#ffffff" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+      </defs>
+      <rect x="27" y="23" width="26" height="46" rx="10" fill="#0b1430"/>
+      <g clip-path="url(#nClip)">
+        <g id="nLiq" style="transform: translateY(46px)"><path class="nwave" d="M0 23 q6 -3 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 V80 H0 Z" fill="url(#nLiqG)"/>
+          <circle class="nb" cx="34" cy="62" r="1.6"/><circle class="nb b2" cx="44" cy="66" r="1.2"/><circle class="nb b3" cx="39" cy="64" r="1.8"/></g>
+        <path d="M27 38 H53 M27 53 H53" stroke="#fff" stroke-opacity=".35" stroke-width="1"/>
+      </g>
+      <rect x="27" y="23" width="26" height="46" rx="10" fill="url(#nGlass)" stroke="#cfe0ff" stroke-width="2"/>
+      <rect x="27" y="42" width="26" height="8" fill="#fff" fill-opacity=".9"/><text x="40" y="48.6" text-anchor="middle" class="nlab">N2O</text>
+      <rect x="35" y="15" width="10" height="9" rx="2" fill="#c9d2e3"/><rect x="31" y="10" width="18" height="6" rx="2.5" fill="#eef2f8"/>
+      <rect x="45" y="17" width="9" height="4" rx="2" fill="#c9d2e3"/><circle cx="55" cy="19" r="3.2" fill="#e0302a"/>
+    </svg></button>
+  </div>
+
+  <div id="youCame" hidden></div>
+  <div class="wipe" id="wipe" aria-hidden="true"><i></i><i></i></div>
+  <div class="fs-tip" id="fsTip" hidden><b>Play full screen</b><span>Tap <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M5 12v8h14v-8" stroke="currentColor" stroke-width="2" fill="none"/></svg> Share, then <b>Add to Home Screen</b>. Open Gukart from your home screen.</span><button id="fsTipX" aria-label="Close">✕</button></div>
+
+  <!-- before a race: the chapter's card, after Asphalt's level loading -->
+  <section id="raceLoad" hidden>
+    <div class="rl-left">
+      <p class="rl-tag"><span id="rlCity">KANO</span><i></i><i></i></p>
+      <h2 id="rlTitle">THE WALLED CITY</h2>
+      <p class="rl-laps mono"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c6 0 4-8 9-8s4 5 6 5" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="5" cy="19" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="16" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg><span id="rlLaps">3 LAPS</span></p>
+      <p class="rl-chip" id="rlChip">FINISH 1ST TO WIN +500</p>
+    </div>
+    <p class="rl-goal"><b id="rlGoal">500 COINS · 3 STARS</b></p>
+    <svg class="dia rl-dia" id="rlDia" viewBox="0 0 60 60" aria-hidden="true"><rect x="12" y="12" width="36" height="36" transform="rotate(45 30 30)" class="dia-bg"/><rect x="12" y="12" width="36" height="36" transform="rotate(45 30 30)" class="dia-fg" pathLength="100"/></svg>
+  </section>
+
+  <section id="pause" class="sheet" hidden>
+    <div class="panel card">
+      <div class="tag"><span>PAUSED</span><i></i><i></i></div>
+      <button class="btn primary" id="resumeBtn">RESUME</button>
+      <button class="btn" id="ctrlBtn">CONTROLS</button>
+      <button class="btn" id="setBtn2">SETTINGS</button>
+      <button class="btn" id="restartBtn">RESTART RACE</button>
+      <button class="btn" id="quitBtn">QUIT</button>
+    </div>
+  </section>
+
+  <!-- quitting: a check first, in the pause card's place; BACK returns to pause -->
+  <section id="quitAsk" class="sheet" hidden>
+    <div class="panel card">
+      <div class="tag"><span>QUIT RACE?</span><i></i><i></i></div>
+      <p class="ask-text">You'll lose this race and go back to the chapters.</p>
+      <div class="row"><button class="btn" id="quitNo">BACK</button><button class="btn primary" id="quitYes">QUIT</button></div>
+    </div>
+  </section>
+
+  <!-- controls: its own card, opened from pause, back to pause -->
+  <section id="controls" class="sheet" hidden>
+    <div class="panel card ctrl-card">
+      <div class="ctrl-head"><div class="tag"><span>CONTROLS</span><i></i><i></i></div><button class="sq-btn" id="ctrlBack" aria-label="Back to pause"><svg class="ic flip" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button></div>
+      <ul class="ctrl-list" id="ctrlList"></ul>
+    </div>
+  </section>
+
+  <!-- settings: a card of its own, from the home screen's gear or from pause -->
+  <section id="settings" class="sheet" hidden>
+    <div class="panel card set-card">
+      <div class="ctrl-head"><div class="tag"><span>SETTINGS</span><i></i><i></i></div><button class="sq-btn" id="setBack" aria-label="Back"><svg class="ic flip" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button></div>
+      <div class="set-list">
+        <label class="set-row"><b>VOLUME</b><input type="range" id="setVol" min="0" max="1" step=".01"><output id="setVolO"></output></label>
+        <label class="set-row"><b>ENGINES</b><input type="range" id="setEng" min="0" max="1.5" step=".01"><output id="setEngO"></output></label>
+        <div class="set-row"><b>ENGINE SOUND</b><div class="seg" id="setMode"><button data-m="supra">SUPRA</button><button data-m="synth">CLASSIC</button></div></div>
+        <div class="set-row" id="setSteerRow"><b>STEERING</b><div class="seg" id="setSteer"><button data-s="buttons">ARROWS</button><button data-s="tilt">TILT</button></div></div>
+        <p class="set-note" id="setSteerNote" hidden></p>
+        <div class="set-row"><b>VIBRATION</b><div class="seg" id="setHap"><button data-h="1">ON</button><button data-h="0">OFF</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="results" class="sheet" hidden>
+    <div class="wallet res-wallet" id="resWalletChip"><i class="coin-icon"></i><span id="resWallet">0</span></div>
+    <div class="panel card">
+      <div class="tag"><span>KANO · RESULT</span><i></i><i></i></div>
+      <p class="mono eyebrow" id="resChapter"></p>
+      <h2 class="place-big"><b id="resPlace">1</b><span id="resSfx">ST</span></h2>
+      <ol class="standings" id="standings"></ol>
+      <dl class="res-stats" id="resStats"></dl>
+      <div class="prize" id="prize"></div>
+      <div class="row">
+        <button class="btn primary" id="againBtn">RACE AGAIN</button>
+        <button class="btn" id="menuBtn">CHAPTERS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- two loaders to choose between: "new" (the drift poster, the Figma logo) and "classic" (the pack poster, the
+       original GUKART lettering). Pick with ?loader=classic|new; the choice is remembered -->
+  <script>window.LOADER = (() => { let v = new URLSearchParams(location.search).get('loader'); try { if (v) localStorage.setItem('gudu.loader', v); else v = localStorage.getItem('gudu.loader'); } catch (e) {} return v === 'classic' ? 'classic' : 'new'; })();</script>
+  <div id="loading">
+    <!-- the poster, the logo and Buddy, locked to one frame the shape of the poster (covering the screen like the poster
+         does) so the logo sits just behind his head at any size -->
+    <div class="ld-frame" id="ldFrame">
+      <picture class="ld-art"><source id="ldSrc" media="(orientation: portrait)" srcset="/loader-drift-phone.jpg"><img id="ldImg" src="/loader-drift-desk.jpg" alt="" fetchpriority="high" decoding="async" onload="document.getElementById('ldFrame').classList.add('in')"></picture>
+      <svg class="logo-svg ld-new-logo" viewBox="0 0 627 237" role="img" aria-label="Gukart"><use href="#gukartLogo"/></svg>
+      <picture class="ld-hero"><source media="(orientation: portrait)" srcset="/loader-drift-phone-hero.webp"><img src="/loader-drift-desk-hero.webp" alt="" decoding="async"></picture>
+    </div>
+    <svg class="logo-svg ld-classic-logo" viewBox="-1.8 29.2 315.1 107.6" width="3.151em" height="1.076em" role="img" aria-label="Gukart"><defs><linearGradient id="lgGu" gradientUnits="userSpaceOnUse" x1="0" y1="29.0" x2="0" y2="111.0"><stop offset=".34" stop-color="#fff"/><stop offset=".52" stop-color="#9be7ff"/><stop offset=".8" stop-color="#2f8cff"/><stop offset="1" stop-color="#6f5cff"/></linearGradient><linearGradient id="lgKart" gradientUnits="userSpaceOnUse" x1="0" y1="29.0" x2="0" y2="111.0"><stop offset=".22" stop-color="#fff59a"/><stop offset=".44" stop-color="#ffc400"/><stop offset=".66" stop-color="#ff6a00"/><stop offset="1" stop-color="#ff2fb4"/></linearGradient><filter id="lgBlur" x="-20%" y="-20%" width="140%" height="160%"><feGaussianBlur stdDeviation="15"/></filter><path id="lgG" d="M27.10 110.80Q18.30 110.80 13.25 106.15Q8.20 101.50 8.20 93.50L8.20 93.50Q8.20 92.60 8.40 90.40L8.40 90.40L12.20 59.50Q13.30 50.20 19.80 44.70Q26.30 39.20 35.90 39.20L35.90 39.20Q44.60 39.20 49.75 43.90Q54.90 48.60 54.90 56.60L54.90 56.60Q54.90 57.70 54.70 59.70L54.70 59.70L54.30 63Q54 64.50 52.60 64.50L52.60 64.50L37.30 64.50Q36.60 64.50 36.25 64.10Q35.90 63.70 36 63L36 63L36.50 59.50Q36.70 57.60 36 56.45Q35.30 55.30 34 55.30L34 55.30Q32.60 55.30 31.60 56.45Q30.60 57.60 30.40 59.50L30.40 59.50L26.60 90.50Q26.40 92.40 27.10 93.55Q27.80 94.70 29.10 94.70L29.10 94.70Q30.50 94.70 31.45 93.55Q32.40 92.40 32.60 90.50L32.60 90.50L33.30 85.50Q33.30 85 32.80 85L32.80 85L32 85Q31.30 85 30.95 84.60Q30.60 84.20 30.70 83.50L30.70 83.50L32.10 72Q32.20 71.30 32.65 70.90Q33.10 70.50 33.70 70.50L33.70 70.50L51.90 70.50Q52.60 70.50 52.95 70.90Q53.30 71.30 53.20 72L53.20 72L50.90 90.40Q49.80 99.70 43.25 105.25Q36.70 110.80 27.10 110.80L27.10 110.80ZM74.70 110.80Q66.10 110.80 61.10 105.90Q56.10 101 56.10 92.70L56.10 92.70Q56.10 91.60 56.30 89.20L56.30 89.20L62.20 41.50Q62.30 40.80 62.75 40.40Q63.20 40 63.80 40L63.80 40L79.20 40Q79.80 40 80.15 40.40Q80.50 40.80 80.40 41.50L80.40 41.50L74.40 91Q74.20 92.70 74.80 93.70Q75.40 94.70 76.70 94.70L76.70 94.70Q78 94.70 78.85 93.70Q79.70 92.70 79.90 91L79.90 91L86 41.50Q86.10 40.80 86.50 40.40Q86.90 40 87.60 40L87.60 40L102.90 40Q103.60 40 103.95 40.40Q104.30 40.80 104.20 41.50L104.20 41.50L98.30 89.20Q97.50 95.60 94.30 100.50Q91.10 105.40 86 108.10Q80.90 110.80 74.70 110.80L74.70 110.80Z"/><path id="lgK" d="M103.10 110Q102.50 110 102.15 109.60Q101.80 109.20 101.90 108.50L101.90 108.50L110.10 41.50Q110.20 40.80 110.65 40.40Q111.10 40 111.70 40L111.70 40L127.10 40Q127.70 40 128.05 40.40Q128.40 40.80 128.30 41.50L128.30 41.50L125.90 61.60Q125.80 62 126.00 62Q126.20 62 126.40 61.70L126.40 61.70L137.20 41.20Q137.80 40 139.10 40L139.10 40L155.10 40Q156.30 40 156.30 40.90L156.30 40.90Q156.30 41.30 156 41.80L156 41.80L138.70 71.40Q138.60 71.80 138.60 72L138.60 72L148.30 108.30L148.30 108.70Q148.30 110 146.90 110L146.90 110L130.80 110Q129.50 110 129.20 108.80L129.20 108.80L124.10 88.20Q124.10 87.90 123.90 87.85Q123.70 87.80 123.60 88.20L123.60 88.20L122.40 90.40L122.30 91L120.10 108.50Q120.00 109.20 119.55 109.60Q119.10 110 118.50 110L118.50 110L103.10 110ZM183.30 110Q181.90 110 182.00 108.60L182.00 108.60L181.80 101Q181.90 100.80 181.70 100.65Q181.50 100.50 181.30 100.50L181.30 100.50L172.60 100.50Q172.10 100.50 171.90 101L171.90 101L170.00 108.60Q169.70 110 168.30 110L168.30 110L153.10 110Q151.60 110 152.00 108.40L152.00 108.40L174.00 41.30Q174.40 40 175.80 40L175.80 40L193.50 40Q194.90 40 195.00 41.30L195.00 41.30L200.50 108.40L200.50 108.60Q200.50 110 199.00 110L199.00 110L183.30 110ZM176.00 85.60Q175.80 86.10 176.30 86.10L176.30 86.10L181.00 86.10Q181.30 86.10 181.50 85.60L181.50 85.60L181.10 67.10Q181.10 66.70 180.85 66.75Q180.60 66.80 180.60 67.10L180.60 67.10L176.00 85.60ZM231.80 110Q230.60 110 230.40 108.70L230.40 108.70L227.50 83.50Q227.50 83.10 227.20 83.10L227.20 83.10Q226.80 83.10 226.80 83.60L226.80 83.60L223.70 108.50Q223.60 109.20 223.15 109.60Q222.70 110 222.10 110L222.10 110L206.70 110Q206.10 110 205.75 109.60Q205.40 109.20 205.50 108.50L205.50 108.50L213.70 41.50Q213.80 40.80 214.25 40.40Q214.70 40 215.30 40L215.30 40L237.20 40Q245.20 40 249.85 45.10Q254.50 50.20 254.50 58.60L254.50 58.60Q254.50 61 254.30 62.30L254.30 62.30Q253.60 67.80 251.20 72.15Q248.80 76.50 245.00 79.20L245.00 79.20Q244.50 79.50 244.70 79.90L244.70 79.90L249.00 108.30L249.00 108.70Q249.00 109.30 248.60 109.65Q248.20 110 247.60 110L247.60 110L231.80 110ZM232.00 56.10L230.60 56.10Q230.10 56.10 230.10 56.60L230.10 56.60L228.60 68.30Q228.60 68.80 229.10 68.80L229.10 68.80L230.40 68.80Q232.80 68.80 234.45 66.70Q236.10 64.60 236.10 60.90L236.10 60.90Q236.10 58.60 235.00 57.35Q233.90 56.10 232.00 56.10L232.00 56.10ZM305.10 40Q305.70 40 306.05 40.40Q306.40 40.80 306.30 41.50L306.30 41.50L304.70 54.60Q304.60 55.30 304.20 55.70Q303.80 56.10 303.10 56.10L303.10 56.10L291.50 56.10Q291 56.10 291 56.60L291 56.60L284.60 108.50Q284.50 109.20 284.10 109.60Q283.70 110 283 110L283 110L267.70 110Q267 110 266.65 109.60Q266.30 109.20 266.40 108.50L266.40 108.50L272.80 56.60Q272.80 56.10 272.30 56.10L272.30 56.10L261.10 56.10Q260.40 56.10 260.05 55.70Q259.70 55.30 259.80 54.60L259.80 54.60L261.40 41.50Q261.50 40.80 261.95 40.40Q262.40 40 263.10 40L263.10 40L305.10 40Z"/></defs><g fill="#0b1330" stroke="#0b1330" stroke-width="8" stroke-linejoin="round"><g transform="translate(0 20)" filter="url(#lgBlur)" opacity=".45" fill="#05091c" stroke="#05091c"><use href="#lgG"/><use href="#lgK"/></g><g transform="translate(0 12)" fill="#05091c" stroke="#05091c"><use href="#lgG"/><use href="#lgK"/></g><g transform="translate(0 7)"><use href="#lgG"/><use href="#lgK"/></g><use href="#lgG"/><use href="#lgK"/></g><use href="#lgG" fill="url(#lgGu)"/><use href="#lgK" fill="url(#lgKart)"/></svg>
+    <div class="ld-to" id="ldTo" hidden></div>
+    <!-- switching city: not the poster (that's for opening the game), a plain navy screen saying what's loading, like
+         switching circuits ("LOADING KANO", "LOADING KANO MAP") -->
+    <div class="ld-travel" id="ldTravel" hidden><span>LOADING</span><b id="ldTravelName"></b></div>
+    <script>try { const t = JSON.parse(localStorage.getItem('gudu.travelTo') || '""'); if (t && t.name) { document.getElementById('loading').classList.add('travel'); document.getElementById('ldTravelName').textContent = t.name + (t.then === 'map' ? ' MAP' : t.then === 'garage' ? ' GARAGE' : ''); document.getElementById('ldTravel').hidden = false; } } catch (e) {}</script>
+    <script>if (getComputedStyle(document.getElementById('loading')).display === 'flex') document.documentElement.classList.remove('booting');   // (the styles came with the page: no need to wait for the game)</script>
+    <div class="track"><div class="stripebar"><i id="loadFill"></i></div></div>
+  </div>
+  <script>if (window.LOADER === 'classic') { const l = document.getElementById('loading'); l.classList.add('classic'); document.getElementById('ldSrc').srcset = '/loader-pack-phone.jpg'; document.getElementById('ldImg').src = '/loader-pack-desk.jpg'; }</script>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
