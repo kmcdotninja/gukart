@@ -564,7 +564,8 @@ function renderGarage(){
   const rows = [['SPEED', (st.top - .9) * 10], ['ACCEL', (st.acc - .8) * 3], ['GRIP', (st.turn - .8) * 4], ['OFF-ROAD', st.off], ['WEIGHT', st.mass / 2]];
   $('#gStats').innerHTML = rows.map(([a, x]) => { const pc = Math.round(clamp(x, .05, 1) * 100); return `<dt>${a}</dt><dd><div class="stripebar thin"><i style="width:${pc}%"></i></div></dd><span class="pc">${pc}%</span>`; }).join('');
   $('#gName').textContent = v.name.toUpperCase();
-  $('#garageBtn').setAttribute('aria-label', `Open the garage, ${v.name}`);   // (the tile's picture is a fixed one: the kart on its own, public/tile-garage.png) renderCustom(); $('#gWallet').textContent = store.get('wallet', 0).toLocaleString('en');
+  $('#garageBtn').setAttribute('aria-label', `Open the garage, ${v.name}`);   // (the tile's picture is a fixed one: the kart on its own, public/tile-garage.png)
+  renderCustom(); $('#gWallet').textContent = store.get('wallet', 0).toLocaleString('en');
 }
 // your vehicle's paint, wheels and tyres, bought with coins
 const custom = id => ({ ...DEFAULT_CUSTOM[id], plate: 'kano', ...store.get('custom.' + id, {}) });
@@ -874,7 +875,8 @@ function startRace(){
   race.ev = events; race.setMode(mode); race.reset(); Sound.quiet = false; $('#hud').dataset.mode = mode;
   TT.last = -1; TT.laps = []; TT.rec = []; TT.recT = 0; TT.newBest = false; FREE.top = 0;
   if (mode === 'tt') { TT.ghost = store.get('ghost.' + RID, null); race.makeGhost(vehicle, custom(vehicle)); }
-  $('#quitBtn').textContent = mode === 'free' ? 'END DRIVE' : 'QUIT';   // (quitting goes back to the chapters) $('#restartBtn').textContent = mode === 'free' ? 'START AGAIN' : 'RESTART RACE';
+  $('#quitBtn').textContent = mode === 'free' ? 'END DRIVE' : 'QUIT';   // (quitting goes back to the chapters)
+  $('#restartBtn').textContent = mode === 'free' ? 'START AGAIN' : 'RESTART RACE';
   $('#againBtn').textContent = mode === 'free' ? 'DRIVE AGAIN' : 'RACE AGAIN';
   hud.lap.textContent = mode === 'free' ? '1' : `1/${LAPS}`; hud.coins.textContent = '0'; hud.kos.textContent = '0'; hud.score.textContent = '0'; hud.combo.textContent = '';
   setWeapon(null, 0, false); events.nitro(0); hud.toasts.innerHTML = ''; hud.center.innerHTML = ''; lastPos = 0;

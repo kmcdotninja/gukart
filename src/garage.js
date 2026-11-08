@@ -123,7 +123,7 @@ export class Garage {
     const scrT = canvasTex(128, 160, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#ff4fb0'); g.addColorStop(1, '#4f6bff'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#ffffff'; for (let i = 0; i < 8; i++) x.fillRect(10 + R() * 100, 10 + R() * 140, 6, 6); });
     const arc = new THREE.Group(); arc.add(L(new THREE.BoxGeometry(1.6, 4, 1.4), '#2f5fe0', { roughness: .4 }));
     const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.3), new THREE.MeshBasicMaterial({ map: scrT })); scr.position.set(0, .8, .71); arc.add(scr);
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.68, .5, .26), new THREE.MeshBasicMaterial({ color: '#ff9a3c' })); top.position.set(0, 1.72, .66);   // the marquee overhangs a touch, so none of its faces sit on the cabinet's (they flickered) arc.add(top);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.68, .5, .26), new THREE.MeshBasicMaterial({ color: '#ff9a3c' })); top.position.set(0, 1.72, .66); arc.add(top);   // the marquee overhangs a touch, so none of its faces sit on the cabinet's (they flickered)
     arc.position.set(-6, 2, -10.3); S.add(arc);
     // cones, a fuel can, a jack
     const coneG = new THREE.ConeGeometry(.35, 1, 14);
