@@ -293,7 +293,7 @@
       }
     </script>
     <script>if (getComputedStyle(document.getElementById('loading')).display === 'flex') document.documentElement.classList.remove('booting');   // (the styles came with the page: no need to wait for the game)</script>
-    <div class="track"><div class="stripebar"><i id="loadFill"></i></div></div>
+    <div class="track"><div class="stripebar"><i id="loadFill"></i></div><p class="ld-step" id="ldStep"><span id="ldStepTxt"></span><b id="ldPct">0%</b></p></div>
   </div>
   <script>if (window.LOADER === 'classic') { const l = document.getElementById('loading'); l.classList.add('classic'); document.getElementById('ldSrc').srcset = '/loader-pack-phone.jpg'; document.getElementById('ldImg').src = '/loader-pack-desk.jpg'; }</script>
 

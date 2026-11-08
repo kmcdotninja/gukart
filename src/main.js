@@ -214,9 +214,36 @@ function frame(now) {
 }
 
 async function boot() {
-  const fill = $('#loadFill');
-  const step = async pct => {
+  const fill = $('#loadFill'),
+    stepEl = $('#ldStep'),
+    pctEl = $('#ldPct');
+  // under the bar: what's being built right now, and how far along. The number is set outright, not counted up: the
+  // heavier steps hold the page for seconds, and a count frozen halfway would disagree with the bar.
+  // Hidden until the race font is in, so it never flashes up in another one.
+  // The percentage is true to time: each step's share of the bar is how long it took on this device last time (stored
+  // after every boot, weighted 70% to the latest so a font download on the first visit soon drops out), or on a first visit the average of a desktop and a phone-speed
+  // run. The numbers the steps are called with (6, 18 ... 92, also from buildCircuit) only name the checkpoint
+  const ORDER = [6, 18, 32, 48, 66, 80, 92],
+    FIRST = { 6: 700, 18: 120, 32: 160, 48: 670, 66: 5200, 80: 820, 92: 1570 }, // ms: fonts, textures, road, city, racers, garage, warm-up
+    saved = store.get('bootTimes', null),
+    ms = ORDER.map(k => Math.max(1, +(saved && saved[k]) || FIRST[k])),
+    total = ms.reduce((a, b) => a + b, 0),
+    startAt = {},
+    began = {};
+  ORDER.reduce((acc, k, i) => ((startAt[k] = (acc / total) * 100), acc + ms[i]), 0);
+  const step = async (key, label) => {
+    began[key] = performance.now();
+    if (key >= 100 && !CAPTURE) {
+      const took = {};
+      ORDER.forEach((k, i) => (took[k] = Math.round((began[ORDER[i + 1]] ?? began[100]) - began[k])));
+      if (ORDER.every(k => took[k] >= 0))
+        store.set('bootTimes', Object.fromEntries(ORDER.map(k => [k, saved?.[k] ? Math.round(saved[k] * 0.3 + took[k] * 0.7) : took[k]])));
+    }
+    const pct = key >= 100 ? 100 : Math.round(startAt[key] ?? key);
     fill.style.width = pct + '%';
+    pctEl.textContent = pct + '%';
+    if (label) $('#ldStepTxt').textContent = label;
+    if (document.fonts?.check('800 italic 16px "Barlow Condensed"')) stepEl.classList.add('on');
     await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
   };
   await step(6, 'STARTING ENGINES');
