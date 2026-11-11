@@ -1,0 +1,9 @@
+# Vercel uploads only what the build needs (the CLI ignores .gitignore: without this it sends recordings/, half a GB)
+/*
+!index.html
+!src
+!public
+!package.json
+!package-lock.json
+!vite.config.js
+!vercel.json

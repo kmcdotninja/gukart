@@ -16,3 +16,5 @@ dist/
 
 # race videos (node tools/record.mjs makes them)
 recordings/
+.vercel
+.env*
