@@ -909,3 +909,21 @@ body.onfire #hud::before {
     height: 84px;
   }
 }
+
+/* nothing wraps: a button's words stay on one line, sized to fit (the settings toggles shrink a little on a small phone) */
+.btn,
+.seg button,
+.go span,
+.q-next,
+.tt-go,
+.big-tile > span,
+.ch-go {
+  white-space: nowrap;
+}
+.seg button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: clamp(14px, 4vw, 19px);
+  letter-spacing: 0;
+}

@@ -32,11 +32,51 @@ const camBack = {
   camAhead = { p: new THREE.Vector3(), t: new THREE.Vector3(), u: new THREE.Vector3(), l: new THREE.Vector3(), i: 0 };
 
 const W2C = 13;
+// first person: all of Buddy is hidden (his fur is ragged this close, and his paws let go of the wheel when he pops or
+// taunts), and two smooth gloved hands grip the wheel at ten to two instead, fixed to its rim so they turn with it
+function gloves(m) {
+  const g = new THREE.Group(),
+    R = m.wheelR,
+    skin = new THREE.MeshStandardMaterial({ color: '#8a5cff', roughness: 0.55 }),
+    cuff = new THREE.MeshStandardMaterial({ color: '#f4f7ff', roughness: 0.5 }),
+    palm = new THREE.CapsuleGeometry(R * 0.26, R * 0.5, 6, 14),
+    knuckle = new THREE.SphereGeometry(R * 0.22, 14, 10),
+    band = new THREE.CylinderGeometry(R * 0.27, R * 0.27, R * 0.22, 16);
+  for (const a of [Math.PI * 0.86, Math.PI * 0.14]) {
+    const h = new THREE.Group();
+    h.position.set(Math.cos(a) * R, Math.sin(a) * R, 0);
+    h.rotation.z = a; // the hand's length along the rim
+    const p = new THREE.Mesh(palm, skin);
+    h.add(p); // wrapped round the rim
+    const k = new THREE.Mesh(knuckle, skin);
+    k.position.set(R * 0.1, 0, R * 0.16); // the knuckles, over the top of the rim towards you
+    h.add(k);
+    const c = new THREE.Mesh(band, cuff);
+    c.rotation.x = Math.PI / 2;
+    c.position.set(R * 0.05, 0, R * 0.42); // the white cuff at the wrist, towards you
+    h.add(c);
+    g.add(h);
+  }
+  g.scale.setScalar(1.25); // (a touch bigger: they read better on a small screen)
+  m.wheelRing.add(g);
+  return g;
+}
+function fpBody(m, show) {
+  const r = m.robot;
+  if (r.fpShown === show) return;
+  r.fpShown = show;
+  r.root.visible = show;
+  (m.fpGloves ||= gloves(m)).visible = !show;
+}
 const director = { shot: 'drone', t0: -99, k: null, ev: null, anchor: null, cut: null };
 export function updateCamera(dt) {
   const k = game.race.player,
     kp = k.m.root.position;
   let rate;
+  // first person while racing (Settings > View): you see through Buddy's eyes, gloved hands on the wheel turning it as
+  // you steer (as in a racing game's cockpit view). All of him is back everywhere else
+  const fpOn = game.view === 'fp' && (game.state === 'race' || game.state === 'count');
+  fpBody(k.m, !fpOn);
   if (game.state === 'intro') {
     // a slow drone sweep down the starting grid, from high in front of the gate to low behind the pack
     game.introT += dt;
@@ -274,6 +314,23 @@ export function updateCamera(dt) {
     // after a time trial or a free drive your kart is still rolling on: keep pace with it (a slow follow let it drive
     // right into the camera, so you saw the inside of Buddy's fur)
     rate = game.state === 'results' ? 9 : 2;
+  } else if (fpOn) {
+    // FIRST PERSON: from Buddy's eyes (he's hidden, so it's the wheel and the kart's nose in front of you), looking down
+    // the road, the horizon tilting with the banking and turning right over in a loop-the-loop
+    game.race.frameOf(k, F);
+    fwd
+      .copy(F.t)
+      .multiplyScalar(Math.cos(k.rh + k.visYaw * 0.3))
+      .addScaledVector(F.l, Math.sin(k.rh + k.visYaw * 0.3));
+    // the eye sits on the seat, at head height: steady, whatever Buddy's head is doing (a pop, a backflip, a taunt)
+    k.m.robot.root.getWorldPosition(want);
+    // above and just ahead of his shoulders, so his arms and paws sit low on the wheel at the bottom of the view instead of
+    // filling it (a racing game's cockpit view: the hands on the wheel, the road ahead)
+    want.addScaledVector(F.u, 1.65).addScaledVector(fwd, -0.6); // behind the wheel, as in a cockpit view
+    wantLook.copy(want).addScaledVector(fwd, 30).addScaledVector(F.u, -6);
+    wantUp.copy(F.u);
+    rate = 600; // locked to the seat: no lag behind the kart, however fast
+    upRate = 30;
   } else {
     game.race.frameOf(k, F);
     camRh += (k.rh * 0.55 + k.visYaw * 0.3 - camRh) * Math.min(1, dt * 5);

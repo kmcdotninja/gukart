@@ -40,6 +40,7 @@ export const game = {
   night: 0, // 1 at night
 
   // ---- the race
+  view: store.get('view', 'chase'), // the race camera: 'chase' (behind the kart) or 'fp' (first person, Settings)
   mode: store.get('mode', 'gp'), // 'gp' (Race), 'tt' (Time Trial) or 'free' (Free Drive)
   cd: 0, // the countdown before the start, in seconds
   lastCd: 0, // the countdown number last shown

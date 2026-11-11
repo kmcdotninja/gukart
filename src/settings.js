@@ -56,6 +56,7 @@ export function initSettings() {
         .forEach(b => b.classList.toggle('on', (b.dataset.h === '1') === Haptics.on));
       document.querySelectorAll('#setSteer button').forEach(b => b.classList.toggle('on', b.dataset.s === Tilt.mode));
       $('#setSteerRow').hidden = !isTouch;
+      document.querySelectorAll('#setView button').forEach(b => b.classList.toggle('on', b.dataset.v === game.view));
     };
     const open = src => {
       Sound.init();
@@ -108,6 +109,14 @@ export function initSettings() {
       note.textContent = why;
       note.hidden = !why;
       if (why) await Tilt.set('buttons');
+      paint();
+    });
+    // the race camera: behind the kart, or first person from the driver's seat
+    $('#setView').addEventListener('click', e => {
+      const b = e.target.closest('[data-v]');
+      if (!b) return;
+      game.view = b.dataset.v;
+      store.set('view', game.view);
       paint();
     });
     $('#setHap').addEventListener('click', e => {
