@@ -1887,9 +1887,9 @@ export class Race {
       t: (this.clock || 0) + k.n * 1.7,
       steer: clamp(k.wheelA * 2, -1, 1),
       boost: k.boost > 0,
-      air: k.fly ? k.air + 0.3 : 0,
-      hit: k.spin > 0 && !k.move,
-      move: k.move,
+      air: k.fly && !(k === this.player && this.fpView) ? k.air + 0.3 : 0,
+      hit: k.spin > 0 && !k.move && !(k === this.player && this.fpView),
+      move: k === this.player && this.fpView ? null : k.move, // (in the cockpit view his paws stay on the wheel)
       u,
       side: k.moveSide,
       wheel: k.m.wheelRing,
