@@ -35,6 +35,7 @@ import { initGarageScreen } from './garage-screen.js';
 import { initModes } from './modes.js';
 import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
+import { inject } from '@vercel/analytics';
 import './style.css';
 import './screens.css';
 
@@ -52,6 +53,10 @@ initRaceFlow();
 // ---- the frame loop
 let last = performance.now();
 const CAPTURE = location.hash === '#capture';
+// Vercel Web Analytics: page views on the live site only (its script exists only there: not on this machine, in the
+// smoke test or in a recording)
+const LOCAL = /^(localhost|127\.|192\.168\.|10\.|\[::1\])/.test(location.hostname);
+if (!CAPTURE && !LOCAL) inject();
 const perfTick = perfHud(renderer, () => game.state); // ?perf=1: the stutter readout (src/perf.js)
 function frame(now) {
   if (!CAPTURE) requestAnimationFrame(frame);
@@ -237,7 +242,10 @@ async function boot() {
       const took = {};
       ORDER.forEach((k, i) => (took[k] = Math.round((began[ORDER[i + 1]] ?? began[100]) - began[k])));
       if (ORDER.every(k => took[k] >= 0))
-        store.set('bootTimes', Object.fromEntries(ORDER.map(k => [k, saved?.[k] ? Math.round(saved[k] * 0.3 + took[k] * 0.7) : took[k]])));
+        store.set(
+          'bootTimes',
+          Object.fromEntries(ORDER.map(k => [k, saved?.[k] ? Math.round(saved[k] * 0.3 + took[k] * 0.7) : took[k]])),
+        );
     }
     const pct = key >= 100 ? 100 : Math.round(startAt[key] ?? key);
     fill.style.width = pct + '%';

@@ -15,6 +15,7 @@
     "check": "npm run format:check && npm test"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "three": "0.170.0"
   },
   "devDependencies": {
