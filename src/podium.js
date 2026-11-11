@@ -18,6 +18,7 @@ const W = 2.5,
   D = 2.4;
 const BOT = 1.4; // the racers' size on the podium (1.3 in the karts)
 const FEET = -0.42; // from a figure's origin (its seat) down to its feet when it stands, at that size
+const SOLO_LIFT = 0.22; // the let-down pose stands a little lower than the cheer: lifted so his feet are on the road
 
 let P = null,
   P_plinth = null;
@@ -140,7 +141,7 @@ export function showPodium(karts, { cup = false, solo = null } = {}) {
   P.plinth.visible = !solo;
   if (solo) {
     const b = botFor(solo.def);
-    b.r.root.position.set(0, FEET, 1.2);
+    b.r.root.position.set(0, FEET + SOLO_LIFT, 1.2); // (standing, slumped: his feet sit lower than when he bounces)
     b.r.root.rotation.set(0, 0, 0);
     P.root.add(b.r.root);
     setFace(b.face, 'sad');

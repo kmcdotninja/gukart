@@ -1,9 +1,9 @@
 // Feature clips for social posts: one short clip per feature, each with a caption card at the bottom (the game's own
 // slanted orange button style) naming it. Same frame-by-frame capture as tools/record.mjs (a steady 60 fps, the game's
-// sound rendered in step), 4:5 for a phone feed. Run `npm run build` first.
+// sound rendered in step), at a laptop's screen size (1920x1200). Run `npm run build` first.
 //   node tools/clips.mjs                      (every clip, into recordings/clips/)
 //   node tools/clips.mjs fire podium          (just those)
-//   node tools/clips.mjs --size 1280x720 --scale 1.5    (16:9 instead)
+//   node tools/clips.mjs --size 864x1080 --scale 1.25   (4:5, a phone feed's shape, instead)
 // A clip can run the race on unrecorded first (preroll) to reach the part worth showing, then records. Needs ffmpeg.
 import { chromium } from 'playwright';
 import { preview } from 'vite';
@@ -14,8 +14,8 @@ const arg = (name, def) => {
   const i = process.argv.indexOf('--' + name);
   return i > 0 ? process.argv[i + 1] : def;
 };
-const [W, H] = arg('size', '864x1080').split('x').map(Number);
-const scale = +arg('scale', 1.25);
+const [W, H] = arg('size', '1440x900').split('x').map(Number); // a laptop screen (MacBook proportions)
+const scale = +arg('scale', 4 / 3); // 1920x1200
 const FPS = 60,
   DT = 1000 / FPS,
   RATE = 48000;
@@ -148,9 +148,9 @@ const CAPTION_CSS = `
   display: flex; flex-direction: column; align-items: center; gap: 4px; animation: capIn .5s cubic-bezier(.2,1.3,.4,1) both .25s; }
 #clipCap b { display: block; padding: 10px 30px 8px; background: linear-gradient(100deg, #ff6a00, #ff8a2a);
   clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); box-shadow: inset 0 -5px 0 rgba(0,0,0,.18);
-  font: italic 900 38px/1 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .02em; color: #fff; white-space: nowrap; }
+  font: italic 900 ${W > 1000 ? 46 : 38}px/1 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .02em; color: #fff; white-space: nowrap; }
 #clipCap span { display: block; padding: 6px 16px; background: rgba(11,19,48,.86); clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  font: italic 800 19px/1 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .04em; color: #fff; white-space: nowrap; }
+  font: italic 800 ${W > 1000 ? 23 : 19}px/1 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .04em; color: #fff; white-space: nowrap; }
 @keyframes capIn { from { translate: -50% 120px; opacity: 0; } }`;
 
 const server = await preview({ preview: { port: 4198, strictPort: true, host: '127.0.0.1' }, logLevel: 'silent' });
