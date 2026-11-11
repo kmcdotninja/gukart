@@ -3,6 +3,7 @@
 //   node tools/record.mjs                                   (Lusail, 60 seconds, recordings/lusail.mp4)
 //   node tools/record.mjs --circuit pearl --seconds 30 --out recordings/pearl.mp4
 //   node tools/record.mjs --frames 120                      (a quick check: a couple of seconds)
+//   node tools/record.mjs --launch                          (the launch video: Doha's garage, then a race on Msheireb, 45 s)
 // The window is a 14" MacBook Pro screen (1512x982 points, drawn at 2x: a 3024x1964 video). Change it with --size 1512x982
 // and --scale 2. Needs ffmpeg (brew install ffmpeg). --mute leaves the sound out.
 //
@@ -21,10 +22,33 @@ const arg = (name, def) => {
   const i = process.argv.indexOf('--' + name);
   return i > 0 ? process.argv[i + 1] : def;
 };
-const circuit = arg('circuit', 'lusail');
+const launch = process.argv.includes('--launch');
+const circuit = arg('circuit', launch ? 'msheireb' : 'lusail');
 const FPS = 60;
-const frames = +arg('frames', 0) || Math.round(+arg('seconds', 60) * FPS);
-const out = arg('out', `recordings/${circuit}.mp4`);
+const frames = +arg('frames', 0) || Math.round(+arg('seconds', launch ? 45 : 60) * FPS);
+const out = arg('out', launch ? 'recordings/launch.mp4' : `recordings/${circuit}.mp4`);
+// the launch video, one take with no titles: Doha's home, into the garage, through the vehicles, the muscle car dressed
+// in Buddy Orange with flames and turbo wheels, saved, then PLAY and a race on Msheireb. [second, what is clicked]
+const LAUNCH = [
+  [1.6, '#garageBtn'],
+  [4.2, '#gNext'], // buggy
+  [6.2, '#gNext'], // monster
+  [8.2, '#gNext'], // muscle
+  [10.4, '#custOpen'],
+  [11.6, '#custTabs [data-ct=paint]'],
+  [12.4, '#custList [data-part="#ff6a00"]'], // Buddy Orange
+  [13.8, '#custTabs [data-ct=decal]'],
+  [14.6, '#custList [data-part=flames]'],
+  [16.0, '#custTabs [data-ct=rim]'],
+  [16.8, '#custList [data-part=turbo]'],
+  [18.4, '#custSave'],
+  [19.8, '#gPlay'],
+  [21.0, '#mCards .mcard[data-mode="gp"]'], // RACE opens, then NEXT on it, then the setup (Doha, Msheireb, the time of
+  [22.0, '#mCards .mcard.on'], // day it's in): NEXT, NEXT, GO
+  [23.0, '#qNext'],
+  [24.0, '#qNext'],
+  [25.0, '#qNext'],
+];
 const [W, H] = arg('size', '1512x982').split('x').map(Number);
 const scale = +arg('scale', 2);
 const DT = 1000 / FPS;
@@ -38,13 +62,20 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: scale });
 page.on('pageerror', e => console.log('page error:', e.message));
-await page.addInitScript(c => {
-  const set = (k, v) => localStorage.setItem('gukart.' + k, JSON.stringify(v));
-  set('city', 'doha');
-  set('circuit.doha', c);
-  set('mode', 'gp');
-  set('coach', { steer: true, brake: true, drift: true, fire: true }); // no "how to steer" hints over the race
-}, circuit);
+await page.addInitScript(
+  ([c, launch]) => {
+    const set = (k, v) => localStorage.setItem('gukart.' + k, JSON.stringify(v));
+    set('city', 'doha');
+    set('circuit.doha', c);
+    set('mode', 'gp');
+    set('coach', { steer: true, brake: true, drift: true, fire: true }); // no "how to steer" hints over the race
+    if (launch) {
+      set('veh', 'kart'); // the garage opens on the kart
+      set('wallet', 2500); // enough for the paint, flames and wheels it buys
+    }
+  },
+  [circuit, launch],
+);
 // the game's sound goes into an offline context exactly as long as the video; the game's own resume() calls (it wakes the
 // sound on a key press or a new race) do nothing, only this script moves it on
 if (!mute)
@@ -139,13 +170,22 @@ const step = async () => {
   await page.evaluate(dt => window.__step(dt), DT);
 };
 
-// home > PLAY > RACE (the card is already picked); then a few frames so the screens settle
+// home > QUICK RACE > RACE > the setup (the card is already picked); then a few frames so the screens settle. The launch video starts on
+// the home screen instead and clicks its way along as it records
 for (let i = 0; i < 20; i++) await step();
-await page.evaluate(() => document.querySelector('#goBtn').click());
-for (let i = 0; i < 30; i++) await step();
+if (!launch) {
+  await page.evaluate(() => document.querySelector('#quickBtn').click());
+  for (let i = 0; i < 30; i++) await step();
+}
 // the sound starts with the video: its first sample is the first frame
 if (!mute) await page.evaluate(() => window.gukart.Sound.init());
-await page.evaluate(() => document.querySelector('#mCards .mcard.on').click());
+// RACE (open it, then its NEXT), then the QUICK RACE setup already on this circuit and time of day: NEXT (city), NEXT (circuit), GO
+if (!launch)
+  await page.evaluate(() => {
+    document.querySelector('#mCards .mcard[data-mode="gp"]').click(); // opens RACE
+    document.querySelector('#mCards .mcard.on').click(); // its NEXT
+    for (let i = 0; i < 3; i++) document.querySelector('#qNext').click();
+  });
 await page.mouse.move(W - 1, H - 1); // nothing hovered
 
 // ffmpeg takes the frames as JPEGs on its input (into a picture-only file first when the sound is added after)
@@ -174,7 +214,17 @@ const cdp = await page.context().newCDPSession(page);
 
 const t0 = Date.now();
 let auto = false;
+const clicks = launch ? LAUNCH.map(([t, sel]) => [Math.round(t * FPS), sel]) : [];
 for (let f = 0; f < frames; f++) {
+  for (const [at, sel] of clicks)
+    if (at === f) {
+      const ok = await page.evaluate(sel => {
+        const el = document.querySelector(sel);
+        el?.click();
+        return !!el;
+      }, sel);
+      if (!ok) console.log(`  (nothing to click at ${(f / FPS).toFixed(1)}s: ${sel})`);
+    }
   await step();
   if (!mute) await page.evaluate(n => window.__audioStep(n), RATE / FPS);
   if (!auto && (await page.evaluate(() => ['count', 'race'].includes(window.gukart.game.state)))) {

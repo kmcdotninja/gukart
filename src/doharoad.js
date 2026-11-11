@@ -17,6 +17,8 @@ export const SAND = '#d9b886',
   GRANITE = '#4b3f3b',
   GOLD = '#c9a24a',
   QA_BLUE = '#1c4a96';
+// (Qatar's signs are colour coded: blue for districts, brown for tourist places, sports grounds and public buildings)
+export const QA_BROWN = '#6b3d1c';
 
 function tex(w, h, draw, repeat = true) {
   const c = document.createElement('canvas');
@@ -51,6 +53,7 @@ export const AR = {
   STATION: 'محطة',
   'SKY BRIDGE': 'الجسر',
   SUBWAY: 'محطة المترو',
+  'AQUARIUM TUNNEL': 'نفق الأكواريوم',
 };
 export function arabicFor(en) {
   if (AR[en]) return AR[en];
@@ -66,12 +69,12 @@ export function arabicFor(en) {
 }
 
 // a Qatar road sign: blue, white border, Arabic on top, English under it, an arrow if it points a way
-export function qaSign(en, arrow = 0, ar = arabicFor(en)) {
+export function qaSign(en, arrow = 0, ar = arabicFor(en), bg = QA_BLUE) {
   return tex(
     1024,
     260,
     (x, w, h) => {
-      x.fillStyle = QA_BLUE;
+      x.fillStyle = bg;
       x.fillRect(0, 0, w, h);
       x.strokeStyle = '#ffffff';
       x.lineWidth = 8;

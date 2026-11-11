@@ -314,3 +314,598 @@
     font-size: 17px;
   }
 }
+
+/* ---- the cup (src/cup.js): the points table on the results card, the trophy prize, the retry link */
+.standings.cup .t em {
+  font-style: normal;
+  font-size: 14px;
+  color: var(--orange);
+  margin-left: 4px;
+}
+.pz.trophy span {
+  color: #ffc400;
+}
+.pz.trophy.t2 span {
+  color: #d9dee8;
+}
+.pz.trophy.t3 span {
+  color: #e8a066;
+}
+/* END TOUR in the quit question: one of the game's own slanted buttons, inside the card's margins like the others;
+   a red edge says it's the one that throws the tour away */
+#quitAsk .end-btn {
+  height: 52px;
+  border-color: rgba(255, 90, 70, 0.7);
+  color: #ffd9d2;
+}
+#quitAsk .end-btn[hidden] {
+  display: none;
+}
+
+/* ---- home: big tiles (src/home.js). The World Tour tile on top, QUICK RACE / GARAGE / MAP under it on a phone;
+   on a wide screen all four in one row along the bottom, the tour the widest. Big words, a picture each, nothing small */
+#menu .topbar {
+  position: relative;
+  z-index: 3; /* in front of the logo's sunburst */
+}
+#menu .topbar .sq-btn,
+#menu .topbar .wallet {
+  background: rgba(12, 21, 54, 0.92);
+}
+#menu .dock {
+  gap: 10px;
+}
+.tour-tile,
+.big-tile {
+  --cut: 14px;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  color: var(--white);
+  text-align: left;
+  background: #0d1226;
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+  transition: transform 140ms var(--ease-out, ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.tour-tile:active,
+.big-tile:active {
+  transform: scale(0.97);
+}
+.tour-tile > img,
+.big-tile > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tour-tile::before,
+.big-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.tour-tile::before {
+  background: linear-gradient(90deg, rgba(5, 9, 24, 0.92) 0%, rgba(5, 9, 24, 0.6) 48%, rgba(5, 9, 24, 0.05) 85%);
+}
+.big-tile::before {
+  background: linear-gradient(180deg, rgba(5, 9, 24, 0) 35%, rgba(5, 9, 24, 0.9) 100%);
+}
+.tour-tile::after,
+.big-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  clip-path: inherit;
+  pointer-events: none;
+  border: 1.5px solid var(--line-dim);
+}
+.tour-tile::after {
+  border: 3px solid var(--orange);
+}
+.tour-tile {
+  display: block;
+  width: 100%;
+  height: 150px;
+}
+.tt-body {
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  top: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+.tt-name {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 44px;
+  line-height: 0.88;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(5, 9, 24, 0.6);
+}
+.tt-sub {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--line);
+}
+.tt-marks {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+}
+.tt-marks li {
+  width: 30px;
+  height: 10px;
+  transform: skewX(-20deg);
+  background: rgba(255, 255, 255, 0.18);
+}
+.tt-marks li.done {
+  background: var(--orange);
+}
+.tt-marks li.next {
+  background: var(--white);
+}
+.tt-marks li.fin:not(.done):not(.next) {
+  background: #ffc400;
+}
+.tt-go {
+  position: absolute;
+  z-index: 2;
+  right: 14px;
+  bottom: 14px;
+  height: 48px;
+  padding: 0 26px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(100deg, var(--orange), var(--orange-2));
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18);
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 26px;
+}
+#menu .dock-row {
+  gap: 10px;
+}
+.big-tile {
+  flex: 1;
+  height: 108px;
+  display: block;
+}
+.big-tile > span {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  right: 8px;
+  bottom: 10px;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 21px;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 8px rgba(5, 9, 24, 0.7);
+}
+/* the garage tile keeps its kart on the orange glow (style.css .garage-tile) */
+.big-tile.garage-tile > img {
+  object-fit: contain;
+  padding: 8px 10px 30px;
+}
+@media (min-width: 820px) {
+  /* a wide screen: the same block as a phone (the tour on top, the three tiles under it), standing at the right side */
+  #menu .dock {
+    width: 560px;
+    gap: 12px;
+  }
+  #menu .tour-tile {
+    height: 216px;
+  }
+  #menu .dock-row {
+    gap: 12px;
+  }
+  #menu .big-tile {
+    height: 130px;
+  }
+  #menu .big-tile > span {
+    font-size: 24px;
+    left: 14px;
+    bottom: 12px;
+  }
+  .tt-name {
+    font-size: 56px;
+  }
+  .tt-sub {
+    font-size: 22px;
+  }
+  .tt-marks li {
+    width: 38px;
+    height: 11px;
+  }
+  .tt-go {
+    height: 54px;
+    font-size: 30px;
+  }
+}
+@media (min-width: 820px) {
+  #menu .big-tile.garage-tile {
+    width: auto; /* (style.css gave the old garage tile a fixed width) */
+  }
+}
+
+/* the results card's big button in a tour: NEXT RACE, the place under it, small */
+#againBtn {
+  white-space: nowrap;
+}
+#againBtn small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  opacity: 0.9;
+}
+
+/* ---- the results card, plain and big: the place and the coins side by side, one line, one big button, two small */
+#results .card {
+  gap: 14px;
+}
+.res-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+#results .place-big b {
+  font-size: 104px;
+}
+#results .place-big span {
+  font-size: 36px;
+}
+.res-head .prize .pz {
+  height: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.res-head .prize .pz span {
+  display: none; /* (it said PRIZE: the coins speak for themselves) */
+}
+.res-head .prize .pz.trophy span {
+  display: block;
+  font-size: 18px;
+}
+.res-head .prize .pz b {
+  font-size: 44px;
+}
+.res-head .prize .pz .coin-icon {
+  width: 34px;
+  height: 34px;
+}
+.res-line {
+  margin: 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: var(--white);
+}
+.res-line:empty {
+  display: none;
+}
+#results #standings:not(.laps) {
+  display: none !important; /* (the podium behind the card shows the top three) */
+}
+#results .res-go {
+  height: 58px;
+  font-size: 26px;
+  font-weight: 900;
+}
+#results .res-go small {
+  font-size: 14px;
+}
+/* the buttons under it: the same height and lettering as the big one; only the colour says which is the main way on */
+#results .card > .row .btn {
+  flex: 1;
+  height: 58px;
+  font-size: 26px;
+  font-weight: 900;
+}
+@media (max-width: 819px) {
+  #results .place-big b {
+    font-size: 88px;
+  }
+  .res-head .prize .pz b {
+    font-size: 38px;
+  }
+  .res-line {
+    font-size: 21px;
+  }
+}
+/* the results card is short now: its natural height, no scrolling inside it, nothing clipped */
+#results .card,
+#results .card[class] {
+  max-height: none;
+  overflow: visible;
+}
+#results .card > .row {
+  position: static;
+  margin: 0 16px; /* (the card's side margin, like everything else in it) */
+  padding: 0;
+  background: none;
+}
+
+/* the results card's top three (and you under them, if you weren't one): big rows, you lit in orange */
+#results #standings.standings.top {
+  display: flex !important;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#results #standings.top li {
+  height: 50px;
+}
+#results #standings.top li.apart {
+  margin-top: 6px;
+}
+#results #standings.top .nm {
+  font-size: 22px;
+}
+#results #standings.top .t {
+  font-size: 20px;
+}
+
+/* ---- fire mode on the race HUD: the HEAT meter under the score, and the screen's edges glowing while you're ON FIRE */
+.heat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+.heat > span {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: #ffb21f;
+}
+.heat-bar {
+  width: 110px;
+  height: 12px;
+  transform: skewX(-20deg);
+  background: rgba(12, 21, 54, 0.85);
+  border: 1.5px solid rgba(255, 178, 31, 0.5);
+  overflow: hidden;
+}
+.heat-bar i {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, #ffb21f, #ff3a12);
+  transition: transform 0.15s linear;
+}
+.heat.warm .heat-bar {
+  border-color: #ff3a12;
+  box-shadow: 0 0 10px rgba(255, 58, 18, 0.6);
+}
+body.onfire .heat-bar i {
+  transform: scaleX(1) !important;
+  animation: heatflick 0.18s steps(2) infinite;
+}
+body.onfire .heat > span::after {
+  content: ' · ON FIRE';
+  color: #ff3a12;
+}
+@keyframes heatflick {
+  50% {
+    filter: brightness(1.4);
+  }
+}
+body.onfire #hud::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  box-shadow: inset 0 0 90px 10px rgba(255, 70, 18, 0.45);
+  animation: firepulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes firepulse {
+  to {
+    box-shadow: inset 0 0 130px 20px rgba(255, 110, 18, 0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.onfire .heat-bar i,
+  body.onfire #hud::before {
+    animation: none;
+  }
+}
+
+/* ---- the chest (src/chest.js): a dark stage, the 3D item box in the middle, light rays behind, big white words */
+.chest {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 38%, #1d2a6b 0%, #0b1330 45%, #03050f 100%);
+  text-align: center;
+}
+.chest.in {
+  animation: chFade 0.25s ease-out;
+}
+.chest.out {
+  animation: chFade 0.3s ease-in reverse forwards;
+}
+@keyframes chFade {
+  from {
+    opacity: 0;
+  }
+}
+.ch-stage {
+  position: relative;
+  width: min(380px, 86vw);
+  aspect-ratio: 1;
+}
+#chestGL {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ch-rays {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 170%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(rgba(255, 196, 0, 0.55) 0 7deg, transparent 7deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 0 10%, transparent 58%);
+  mask: radial-gradient(circle, #000 0 10%, transparent 58%);
+  opacity: 0;
+  scale: 0.3;
+}
+.chest.open .ch-rays {
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity 0.3s,
+    scale 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: chSpin 14s linear infinite;
+}
+@keyframes chSpin {
+  to {
+    rotate: 360deg;
+  }
+}
+.ch-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 130px;
+}
+.ch-sub {
+  margin: 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  color: #ffc400;
+}
+.ch-title {
+  margin: 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 46px;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+/* the part's name and what it does: hidden until the box bursts, then big */
+.ch-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  opacity: 0;
+  transform: translateY(10px);
+}
+.chest.open .ch-item {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.3s 0.35s,
+    transform 0.4s 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.ch-item b {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 38px;
+  line-height: 1;
+  color: #fff;
+  padding: 4px 18px;
+  background: #ff6a00;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+.ch-item span {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 22px;
+  color: #fff;
+}
+.ch-go {
+  margin-top: 8px;
+  width: min(320px, 86vw);
+  height: 60px;
+  font-size: 30px;
+  font-weight: 900;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chest.open .ch-rays {
+    animation: none;
+  }
+}
+/* QUICK RACE's tile: the crew on the grid (one fixed picture), framed on the racers */
+#quickThumb {
+  object-position: 50% 40%;
+}
+
+/* the chest's title stays on one line on a phone (1,500 COINS EARNED) */
+.ch-title {
+  white-space: nowrap;
+  font-size: clamp(30px, 9.5vw, 46px);
+}
+
+/* phones: no brake button (you rarely need it in a kart racer); nitro takes its place, bottom right, a little bigger */
+@media (pointer: coarse) {
+  #hud .brake-btn {
+    display: none !important;
+  }
+  #hud .nitro-btn {
+    right: max(20px, var(--sr));
+    bottom: calc(var(--sb) + 136px);
+    width: 84px;
+    height: 84px;
+  }
+}

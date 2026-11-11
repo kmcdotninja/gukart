@@ -147,13 +147,15 @@ export function snapshots() {
     let i0 = 0;
     for (let i = 0; i < game.track.N; i++) if (game.track.P[i].y > game.track.P[i0].y) i0 = i;
     const q = game.track.P[i0];
-    places.push({
-      kind: 'place',
-      name: 'THE FLYOVER',
-      sub: chapter.id === 'kano' ? 'Over the start straight' : 'Up over the city',
-      img: shot(q.x, q.y, q.z, 60, 24),
-      ...uv(q.x, q.z),
-    });
+    // (only where the road really goes up and over: The Pearl goes under its marina mouth instead)
+    if (q.y > 10)
+      places.push({
+        kind: 'place',
+        name: 'THE FLYOVER',
+        sub: chapter.id === 'kano' ? 'Over the start straight' : 'Up over the city',
+        img: shot(q.x, q.y, q.z, 60, 24),
+        ...uv(q.x, q.z),
+      });
   }
   // the Time Trial card: a driver's-eye view down one of the underpass's lit bores
   let tunnelShot = null;

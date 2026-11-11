@@ -5,7 +5,9 @@ import { store, fmtTime, ordinal } from './util.js';
 import { $, whip, show } from './dom.js';
 import { chapter, game } from './game.js';
 import { TT, FREE } from './timetrial.js';
-import { MODES } from './modes.js';
+import { modeName } from './modes.js';
+import { afterCupRace } from './cup.js';
+import { earn } from './chest.js';
 
 // Free drive has no finish line: ending the drive banks the coins
 export function endDrive() {
@@ -15,7 +17,7 @@ export function endDrive() {
   const p = game.race.player,
     from = store.get('wallet', 0),
     total = p.coins;
-  store.set('wallet', from + total);
+  earn(total);
   $('#hud').hidden = true;
   whip(1);
   show($('#results'));
@@ -38,10 +40,10 @@ export function endDrive() {
   setTimeout(() => payOut(from, total), 900);
 }
 export function showResults() {
-  if (game.state !== 'finish') return;
+  if (game.state !== 'finish' && game.state !== 'podium') return;
   game.state = 'results';
-  $('#results .tag span').textContent = `${game.PLACE} · ${MODES.find(M => M.id === game.mode).name}`;
-  $('.place-big').hidden = game.mode !== 'gp';
+  $('#results .tag span').textContent = `${game.PLACE} · ${modeName(game.mode)}`;
+  $('.place-big').hidden = game.mode !== 'gp' && game.mode !== 'cup';
   $('#standings').className = game.mode === 'tt' ? 'standings laps' : 'standings';
   if (game.mode === 'tt') {
     // Time trial: your laps, the best one lit, a bonus for a new record
@@ -51,7 +53,7 @@ export function showResults() {
       from = store.get('wallet', 0),
       bonus = TT.newBest ? 150 : 0,
       pay = bonus + p.coins;
-    store.set('wallet', from + pay);
+    earn(pay);
     $('#hud').hidden = true;
     whip(1);
     show($('#results'));
@@ -90,7 +92,7 @@ export function showResults() {
     prize = PRIZE[p.rank - 1] ?? 30,
     from = store.get('wallet', 0),
     total = prize + p.coins;
-  store.set('wallet', from + total);
+  earn(total);
   $('#hud').hidden = true;
   whip(1);
   show($('#results'));
@@ -102,6 +104,7 @@ export function showResults() {
   $('#resWallet').textContent = from.toLocaleString('en');
   $('#prize').innerHTML = `<div class="pz"><span>PRIZE</span><b><i class="coin-icon"></i>+${total}</b></div>`; // the place prize and the coins picked up, as one
   setTimeout(() => payOut(from, total), 900);
+  if (game.mode === 'cup') afterCupRace();
 }
 // the coins fly from the prize lines into the bank in the corner: a stream of them on a curve, each one ticking the
 // total up with a chime and a buzz, the bank jumping as they land
@@ -154,13 +157,32 @@ function payOut(from, total) {
       };
     }, i * 70);
 }
-export function paintStandings() {
-  $('#standings').innerHTML = game.race
-    .rank()
+// the results card's list: the top three, big, and you under them if you weren't one of them (you're YOU, lit)
+// rows: [{ place, id, name, fur, right, me }]
+export function paintTop(rows) {
+  const me = rows.find(r => r.me),
+    list = me && me.place > 3 ? [...rows.slice(0, 3), me] : rows.slice(0, 3);
+  const html = list
     .map(
-      k => `
-    <li class="${k === game.race.player ? 'me' : ''}"><span class="place">${k.rank}</span><span class="face" style="--c:${k.color}"><img src="${game.FACES[k.def.id] || ''}" alt=""></span>
-    <span class="nm">${k.name.toUpperCase()}</span><span class="t">${k.finished ? fmtTime(k.finishTime) : 'RACING'}</span></li>`,
+      r =>
+        `<li class="${r.me ? 'me' : ''} ${r.place > 3 ? 'apart' : ''}"><span class="place">${r.place}</span><span class="face" style="--c:${r.fur}"><img src="${game.FACES[r.id] || ''}" alt=""></span><span class="nm">${r.me ? 'YOU' : r.name.toUpperCase()}</span><span class="t">${r.right}</span></li>`,
     )
     .join('');
+  // only when something changed: rewriting it every half second reloaded the faces, and they blinked
+  const el = $('#standings');
+  if (el.className === 'standings top' && el.firstChild && el._top === html) return;
+  el.className = 'standings top';
+  el.innerHTML = el._top = html;
+}
+export function paintStandings() {
+  paintTop(
+    game.race.rank().map(k => ({
+      place: k.rank,
+      id: k.def.id,
+      name: k.name,
+      fur: k.color,
+      right: k.finished ? fmtTime(k.finishTime) : 'RACING',
+      me: k === game.race.player,
+    })),
+  );
 }

@@ -1,79 +1,8 @@
-// Each chapter is an island. Kano is built; the rest wait on the horizon.
-// A track is drawn with a turtle: straights, banked arcs, a vertical loop, and features (gates, jumps, pads…) dropped
-// along the way at distances from the start. The two long straights are solved so the circuit closes on itself.
-const D = Math.PI / 180;
-
-function turtle() {
-  let x = 0,
-    y = 0,
-    z = 0,
-    h = 0,
-    len = 0;
-  const pts = [[0, 0, 0]],
-    feats = [],
-    loops = [];
-  const push = () => pts.push([x, y, z]);
-  const tag = (list = []) => {
-    for (const [off, type, data] of list) feats.push({ s: len + off, type, ...data });
-  };
-  return {
-    pts,
-    feats,
-    loops,
-    get len() {
-      return len;
-    },
-    straight(L, dy = 0, list) {
-      tag(list);
-      const n = Math.ceil(L / 6);
-      for (let i = 1; i <= n; i++) {
-        x += (Math.sin(h) * L) / n;
-        z += (Math.cos(h) * L) / n;
-        y += dy / n;
-        len += L / n;
-        push();
-      }
-    },
-    arc(R, deg, dy = 0, list) {
-      tag(list);
-      const n = Math.ceil((R * Math.abs(deg) * D) / 6),
-        s = Math.sign(deg);
-      for (let i = 1; i <= n; i++) {
-        const dh = (deg * D) / n,
-          cx = x + Math.cos(h) * R * s,
-          cz = z - Math.sin(h) * R * s;
-        h += dh;
-        x = cx - Math.cos(h) * R * s;
-        z = cz + Math.sin(h) * R * s;
-        y += dy / n;
-        len += R * Math.abs(dh);
-        push();
-      }
-    },
-    // a vertical loop-the-loop; it drifts sideways by `shift` so the road clears itself
-    loop(R, shift) {
-      const bx = x,
-        bz = z,
-        by = y,
-        dx = Math.sin(h),
-        dz = Math.cos(h),
-        sx = -Math.cos(h),
-        sz = Math.sin(h),
-        n = 44;
-      const s0 = len;
-      for (let i = 1; i <= n; i++) {
-        const t = (i / n) * 2 * Math.PI,
-          k = t / (2 * Math.PI);
-        x = bx + dx * R * Math.sin(t) + sx * shift * k;
-        z = bz + dz * R * Math.sin(t) + sz * shift * k;
-        y = by + R * (1 - Math.cos(t));
-        push();
-      }
-      len += Math.hypot(2 * Math.PI * R, shift);
-      loops.push([s0, len]);
-    },
-  };
-}
+// Each chapter is an island. Kano and Doha are built; the rest wait on the horizon.
+// A track is drawn with a turtle (src/turtle.js): straights, banked arcs, a vertical loop, and features (gates, jumps,
+// pads…) dropped along the way at distances from the start. The two long straights are solved so the circuit closes.
+import { turtle, closer } from './turtle.js';
+import { dalaTrack } from './kano2.js';
 
 // Kano is a figure of eight: the two lobes meet at one crossing, where the flyover leg rides 12 m over the start straight.
 // No spirals, no loops: straight ramps up and down, humps that throw you in the air, jumps over the canals.
@@ -152,16 +81,10 @@ function closedKano() {
 // Doha is three circuits, each its own part of the city. Features carry the scenery (doha.js) and the coast (world.js):
 // 'shore' puts water beyond d metres on one side ('in' = inside the loop) along a stretch; 'marina' floods the whole inside
 // of the loop beyond d; 'blob' raises a patch of land out in the water. The last two straights are solved so each closes.
-const closer = fn => () => {
-  const e = fn(1000, 1000).pts.at(-1),
-    t = fn(1000 + e[0], 1000 - e[2]);
-  t.pts.pop();
-  return { pts: t.pts, feats: t.feats, loops: t.loops, len: t.len };
-};
 
 // Msheireb: from Msheireb Downtown past the old Souq Waqif and the spiral Fanar, out onto the Corniche (the dhows, the
 // Pearl Monument, the Museum of Islamic Art on its islet, West Bay across the water), over the flyover and back down
-// past the Amiri Diwan
+// past the Amiri Diwan and through the airport's departures hall
 function msheirebTrack(La, Lb) {
   const t = turtle();
   // the downtown streets: tight right-left-right corners between the blocks
@@ -210,19 +133,25 @@ function msheirebTrack(La, Lb) {
   t.straight(60, 0, [[30, 'items']]);
   t.straight(70, -12);
   t.arc(90, 90, 0, [[30, 'kicker']]);
+  // straight through Hamad International: in at the departures doors, down the hall between the check-in desks and the
+  // travellers, and out the far end past the jets on the apron (a pad just inside the doors, so you burst out)
+  const A0 = 105,
+    AL = 200;
   t.straight(La, 0, [
     [20, 'diwan'],
+    [A0, 'airport', { len: AL }],
     [La * 0.45, 'items'],
     [La * 0.3, 'coins', { lat: 0, wave: 1 }],
+    [A0 + AL - 40, 'pad', { lat: 0 }],
     [La - 50, 'pad', { lat: 0 }],
-    [80, 'msheireb', { len: Math.max(0, La - 100) }],
+    [A0 + AL + 40, 'msheireb', { len: Math.max(0, La - A0 - AL - 60) }],
   ]);
   t.arc(90, 90, 0, [[40, 'coins', { lat: 4, wave: 1 }]]);
   t.straight(Lb, 0, [[0, 'msheireb', { len: Lb }]]);
   return t;
 }
 
-// The Pearl: round the Porto Arabia marina on La Croisette, over the bridge across the marina mouth, through the
+// The Pearl: round the Porto Arabia marina on La Croisette, under the marina mouth in the aquarium tunnel, through the
 // Qanat Quartier (jumps over its canals, the pastel houses close either side), the Medina Centrale piazza, and home
 // along the beach at Viva Bahriya
 function pearlTrack(La, Lb) {
@@ -244,27 +173,39 @@ function pearlTrack(La, Lb) {
     [150, 'items'],
   ]);
   t.straight(40, 0, [[0, 'portoarabia', { len: 40 }]]);
-  // across the marina mouth
-  t.straight(60, 12, [
+  // across the marina mouth by the aquarium tunnel: a deck on piles dips until it rides half a metre off the sea
+  // (spray off the tyres, the planks thumping), then the road dives in a glass tube to the sea bed, fish all round,
+  // and climbs out the far side
+  t.straight(30, 0, [
+    [0, 'lowbridge', { len: 480 }],
     [10, 'coins', { lat: 0, n: 7 }],
-    [-10, 'shore', { side: 'out', len: 210, d: 16 }],
-    [-10, 'shore', { side: 'in', len: 210, d: 16 }],
   ]);
-  t.straight(70, 0, [[35, 'items']]);
-  t.straight(60, -12);
-  t.arc(80, 90, 0, [[30, 'coins', { lat: -4, wave: 1 }]]);
+  t.straight(15, -0.9);
+  t.straight(20);
+  t.straight(100, -15.6);
+  t.straight(150, 0, [
+    [10, 'pad', { lat: 0 }],
+    [50, 'items'],
+    [90, 'coins', { lat: 0, wave: 1 }],
+  ]);
+  t.straight(100, 15.6);
+  t.straight(20);
+  t.straight(15, 0.9);
+  t.straight(30);
+  // a long open right-hander off the tunnel: you come out of it fast (it was an 80 m corner, too sharp for that speed)
+  t.arc(140, 90, 0, [[60, 'coins', { lat: -4, wave: 1 }]]);
   // the Qanat Quartier: a zig-zag between the canals, a jump over each
   t.straight(60, 0, [
     [0, 'qanat', { len: 60 }],
     [25, 'kicker'],
   ]);
-  t.arc(35, -90, 0, [[0, 'qanat', { len: 55 }]]);
+  t.arc(50, -90, 0, [[0, 'qanat', { len: 79 }]]);
   t.straight(60, 0, [
     [0, 'qanat', { len: 60 }],
     [25, 'kicker'],
     [50, 'items'],
   ]);
-  t.arc(35, 90, 0, [[0, 'qanat', { len: 55 }]]);
+  t.arc(50, 90, 0, [[0, 'qanat', { len: 79 }]]);
   t.straight(110, 0, [
     [0, 'medina', { len: 110 }],
     [40, 'pad', { lat: 0 }],
@@ -355,6 +296,12 @@ export const DOHA_CIRCUITS = [
   { id: 'lusail', name: 'Lusail', track: closer(lusailTrack), fn: lusailTrack },
 ];
 
+// Kano is two circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had) and Dala Hill
+export const KANO_CIRCUITS = [
+  { id: 'old', name: 'Old City', track: closedKano, fn: kanoTrack, rid: 'kano' },
+  { id: 'dala', name: 'Dala Hill', track: closer(dalaTrack), fn: dalaTrack },
+];
+
 export const CHAPTERS = [
   {
     id: 'kano',
@@ -366,6 +313,7 @@ export const CHAPTERS = [
     playable: true,
     desc: 'A figure of eight with a flyover: race under it, then over it. Fly the humps, jump the canals at Kofar Mata and fight through Kurmi market.',
     track: closedKano,
+    circuits: KANO_CIRCUITS,
   },
   {
     id: 'doha',

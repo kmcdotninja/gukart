@@ -4,8 +4,9 @@
 import * as THREE from 'three';
 import { W } from './track.js';
 import { makeKart, setFace, RACERS, ENV, nitroBottle } from './buddy.js';
-import { clamp, lerp, wrapA } from './util.js';
+import { clamp, lerp, wrapA, store } from './util.js';
 import { Sound } from './audio.js';
+const _spray = new THREE.Vector3();
 
 export const LAPS = 3;
 const MAX = 66,
@@ -20,7 +21,16 @@ export function shieldBubble(m) {
   const inv = new THREE.Matrix4().copy(m.root.matrixWorld).invert(),
     box = new THREE.Box3();
   m.root.traverse(o => {
-    if (o.isMesh && o.visible && o.geometry && !o.isSprite) {
+    // the solid vehicle only: see-through effects (flames, glows, light cones) made the bubble far too big
+    const mt = o.material;
+    if (
+      o.isMesh &&
+      o.visible &&
+      o.geometry &&
+      !o.isSprite &&
+      !mt?.transparent &&
+      mt?.blending !== THREE.AdditiveBlending
+    ) {
       o.geometry.computeBoundingBox?.();
       if (o.geometry.boundingBox)
         box.union(
@@ -54,18 +64,106 @@ export function shieldBubble(m) {
   });
   const b = new THREE.Mesh(SHIELD_GEO, mat);
   b.position.copy(c);
-  b.position.y += 0.15; // a true sphere, not stretched: one radius that clears every corner of the vehicle
-  b.scale.setScalar(Math.hypot(sz.x, sz.y, sz.z) * 0.5 + 0.2); // a little sits under the road, so it reads as a bubble on the ground
+  // a bubble shaped to the vehicle (longer than it is tall), just clear of the body: a sphere round the whole diagonal
+  // was far bigger than the kart inside it. A little sits under the road, so it reads as a bubble on the ground
+  b.scale.set(sz.x * 0.62 + 0.15, sz.y * 0.7 + 0.2, sz.z * 0.62 + 0.15);
   b.renderOrder = 3;
   m.root.add(b);
   return b;
 }
+// a weapon crate, as it stands on the road: a wooden supply crate with orange steel corners, a hazard band and a stencil
+// (also the chest that opens on the home screen, src/chest.js). The texture and materials are made once
+let CRATE = null;
+export function itemCrate() {
+  if (!CRATE) {
+    const crateT = (() => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 256;
+      const x = c.getContext('2d');
+      x.fillStyle = '#d9a466';
+      x.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 5; i++) {
+        x.fillStyle = i % 2 ? '#cf9a5c' : '#e3b277';
+        x.fillRect(0, i * 51, 256, 49);
+        x.fillStyle = 'rgba(40,20,5,.5)';
+        x.fillRect(0, i * 51 + 49, 256, 2);
+      }
+      for (let i = 0; i < 300; i++) {
+        x.fillStyle = `rgba(50,25,8,${Math.random() * 0.25})`;
+        x.fillRect(Math.random() * 256, Math.random() * 256, 8 + Math.random() * 30, 1);
+      }
+      x.save();
+      x.beginPath();
+      x.rect(0, 104, 256, 48);
+      x.clip();
+      x.fillStyle = '#ffc400';
+      x.fillRect(0, 104, 256, 48);
+      x.fillStyle = '#16181d';
+      for (let i = -48; i < 300; i += 36) {
+        x.beginPath();
+        x.moveTo(i, 152);
+        x.lineTo(i + 18, 152);
+        x.lineTo(i + 66, 104);
+        x.lineTo(i + 48, 104);
+        x.fill();
+      }
+      x.restore();
+      x.fillStyle = 'rgba(15,15,20,.85)';
+      x.font = '900 italic 64px "Barlow Condensed", Impact, sans-serif';
+      x.textAlign = 'center';
+      x.fillText('GK', 128, 86);
+      x.strokeStyle = 'rgba(40,20,5,.7)';
+      x.lineWidth = 10;
+      x.strokeRect(5, 5, 246, 246);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    })();
+    const crateBody = new THREE.BoxGeometry(2.1, 2.1, 2.1),
+      crateMat = new THREE.MeshStandardMaterial({
+        map: crateT,
+        roughness: 0.65,
+        envMap: ENV.tex,
+        envMapIntensity: 0.9,
+        emissive: '#5a3a18',
+        emissiveIntensity: 0.35,
+      });
+    const capGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5),
+      capMat = new THREE.MeshStandardMaterial({
+        color: '#ff6a00',
+        metalness: 0.5,
+        roughness: 0.3,
+        envMap: ENV.tex,
+        emissive: '#7a2a00',
+        emissiveIntensity: 0.4,
+      });
+    const makeCrate = () => {
+      const g = new THREE.Group(),
+        b = new THREE.Mesh(crateBody, crateMat);
+      b.castShadow = true;
+      g.add(b);
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1])
+          for (const sz of [-1, 1]) {
+            const c = new THREE.Mesh(capGeo, capMat);
+            c.position.set(sx * 0.95, sy * 0.95, sz * 0.95);
+            g.add(c);
+          }
+      return g;
+    };
+
+    CRATE = makeCrate;
+  }
+  return CRATE();
+}
+
 export const WEAPONS = {
   blaster: { name: 'Blaster', ammo: 16, color: '#6fd3ff' },
   rocket: { name: 'Rocket', ammo: 2, color: '#ff6a00' },
   shock: { name: 'Shockwave', ammo: 1, color: '#b18cff' },
   mines: { name: 'Mines', ammo: 3, color: '#ffc400' },
   yaji: { name: 'Yaji boost', ammo: 3, color: '#ff3b3b' },
+  fire: { name: 'Fire', ammo: 1, color: '#ff4d1f' }, // rare: sets you on fire the moment it lands (fire mode, below)
   shield: { name: 'Shield', ammo: 1, color: '#4fe3ff' }, // goes up the moment it lands: blocks everything for 10 s, or 3 big hits
 };
 // how each vehicle drives
@@ -334,82 +432,7 @@ export class Race {
     const pt = (s, lat, h) => tr.point(s, lat, h);
 
     // weapon crates in rows across the road, coins, boost pads
-    // weapon crates: wooden supply crates with orange steel corners, a hazard band, a stencil, a glow on the road under them
-    const crateT = (() => {
-      const c = document.createElement('canvas');
-      c.width = c.height = 256;
-      const x = c.getContext('2d');
-      x.fillStyle = '#d9a466';
-      x.fillRect(0, 0, 256, 256);
-      for (let i = 0; i < 5; i++) {
-        x.fillStyle = i % 2 ? '#cf9a5c' : '#e3b277';
-        x.fillRect(0, i * 51, 256, 49);
-        x.fillStyle = 'rgba(40,20,5,.5)';
-        x.fillRect(0, i * 51 + 49, 256, 2);
-      }
-      for (let i = 0; i < 300; i++) {
-        x.fillStyle = `rgba(50,25,8,${Math.random() * 0.25})`;
-        x.fillRect(Math.random() * 256, Math.random() * 256, 8 + Math.random() * 30, 1);
-      }
-      x.save();
-      x.beginPath();
-      x.rect(0, 104, 256, 48);
-      x.clip();
-      x.fillStyle = '#ffc400';
-      x.fillRect(0, 104, 256, 48);
-      x.fillStyle = '#16181d';
-      for (let i = -48; i < 300; i += 36) {
-        x.beginPath();
-        x.moveTo(i, 152);
-        x.lineTo(i + 18, 152);
-        x.lineTo(i + 66, 104);
-        x.lineTo(i + 48, 104);
-        x.fill();
-      }
-      x.restore();
-      x.fillStyle = 'rgba(15,15,20,.85)';
-      x.font = '900 italic 64px "Barlow Condensed", Impact, sans-serif';
-      x.textAlign = 'center';
-      x.fillText('GK', 128, 86);
-      x.strokeStyle = 'rgba(40,20,5,.7)';
-      x.lineWidth = 10;
-      x.strokeRect(5, 5, 246, 246);
-      const t = new THREE.CanvasTexture(c);
-      t.colorSpace = THREE.SRGBColorSpace;
-      return t;
-    })();
-    const crateBody = new THREE.BoxGeometry(2.1, 2.1, 2.1),
-      crateMat = new THREE.MeshStandardMaterial({
-        map: crateT,
-        roughness: 0.65,
-        envMap: ENV.tex,
-        envMapIntensity: 0.9,
-        emissive: '#5a3a18',
-        emissiveIntensity: 0.35,
-      });
-    const capGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5),
-      capMat = new THREE.MeshStandardMaterial({
-        color: '#ff6a00',
-        metalness: 0.5,
-        roughness: 0.3,
-        envMap: ENV.tex,
-        emissive: '#7a2a00',
-        emissiveIntensity: 0.4,
-      });
-    const makeCrate = () => {
-      const g = new THREE.Group(),
-        b = new THREE.Mesh(crateBody, crateMat);
-      b.castShadow = true;
-      g.add(b);
-      for (const sx of [-1, 1])
-        for (const sy of [-1, 1])
-          for (const sz of [-1, 1]) {
-            const c = new THREE.Mesh(capGeo, capMat);
-            c.position.set(sx * 0.95, sy * 0.95, sz * 0.95);
-            g.add(c);
-          }
-      return g;
-    };
+    const makeCrate = itemCrate; // (one crate, shared with the chests on the home screen: src/chest.js)
     const glowMat = new THREE.MeshBasicMaterial({
       map: tex.glow,
       color: '#ffb340',
@@ -699,6 +722,8 @@ export class Race {
         nitro: 0,
         shield: 0,
         shieldFlash: 0,
+        heat: 0, // fire mode: the HEAT meter, 0 to 1
+        fire: 0, // seconds left on fire
       });
       k.prog = k.lap * tr.len + k.s;
       k.Y = tr.point(k.s, k.lat).y;
@@ -727,6 +752,8 @@ export class Race {
       this.marks.instanceMatrix.needsUpdate = true;
     }
     this.time = 0;
+    // the upgrades won from chests (src/chest.js): they make your vehicle better, for good
+    this.upg = new Set(store.get('upgrades', []));
     this.score = 0;
     this.combo = 0;
     this.comboT = 0;
@@ -745,7 +772,14 @@ export class Race {
   addScore(pts, label) {
     this.combo = this.comboT > 0 ? Math.min(10, this.combo + 1) : 1;
     this.comboT = 3;
-    const got = pts * Math.min(this.combo, 8);
+    const P = this.player,
+      got = pts * Math.min(this.combo, 8) * (P.fire > 0 ? 2 : 1); // on fire, every point counts double
+    // FIRE MODE: everything you chain (drifts, overtakes, takedowns, jumps, coins) heats you up; a full HEAT meter sets
+    // you on fire. Bigger moves heat you more; a long chain gets there fastest
+    if (P.fire <= 0 && this.mode !== 'free') {
+      P.heat = Math.min(1, P.heat + Math.min(0.24, 0.06 + pts / 650) * (1 + Math.min(this.combo, 5) * 0.08));
+      if (P.heat >= 1) this.ignite(P);
+    }
     this.score += got;
     this.ev.score(this.score, this.combo, label, got);
   }
@@ -758,6 +792,7 @@ export class Race {
     const table =
       r <= 2
         ? [
+            ['fire', 0.04],
             ['mines', 0.3],
             ['blaster', 0.25],
             ['shield', 0.2],
@@ -767,6 +802,7 @@ export class Race {
           ] // leaders get shields: they're the ones being shot at
         : r >= 5
           ? [
+              ['fire', 0.08],
               ['rocket', 0.3],
               ['yaji', 0.26],
               ['blaster', 0.22],
@@ -774,6 +810,7 @@ export class Race {
               ['shield', 0.08],
             ]
           : [
+              ['fire', 0.05],
               ['blaster', 0.3],
               ['rocket', 0.18],
               ['shield', 0.14],
@@ -796,14 +833,30 @@ export class Race {
       this.ev.weapon(null, 0, true);
       Sound.item();
     } else if (pick === 'shield') this.raiseShield(k);
+    else if (pick === 'fire') this.ignite(k);
     else {
       k.weapon = pick;
       k.ammo = WEAPONS[pick].ammo;
       k.wT = 0.6 + Math.random() * 2.5;
     }
   }
+  // ON FIRE: red-hot tyres and a flame trail, about 15% faster, nothing slows you (no spin-outs, no slow ground),
+  // every point doubled. 8 seconds (11 with the Hot Tyres upgrade)
+  ignite(k) {
+    const P = k === this.player;
+    k.fire = 8 + (P && this.upg.has('hot') ? 3 : 0);
+    k.heat = 0;
+    k.boost = Math.max(k.boost, 0.8);
+    this.note('boost', k);
+    if (P) {
+      Sound.boost();
+      this.shake = 0.25;
+      this.ev.fire?.(true);
+      this.ev.heat?.(0);
+    }
+  }
   raiseShield(k) {
-    k.shield = 10;
+    k.shield = k === this.player && this.upg.has('armour') ? 14 : 10;
     k.shieldHits = 3;
     k.shieldFlash = 0.4;
     k.weapon = null;
@@ -908,6 +961,12 @@ export class Race {
   hit(k, type, by) {
     if (k.finished && k !== this.player) return;
     const pos = this.tr.point(k.s, k.lat, 1.5 + k.air);
+    if (k.fire > 0) {
+      // too hot to touch: it bursts off you in sparks
+      this.fx.spark(pos, '#ff7a1f', 8, 0.3);
+      if (k === this.player) this.ev.toast('Too hot to stop');
+      return;
+    }
     if (k.shield > 0) {
       // the shield takes it: a ripple of light, nothing gets through; big hits wear it down
       k.shieldFlash = 0.35;
@@ -949,6 +1008,7 @@ export class Race {
         k.spin = 0.9;
         k.speed *= 0.5;
       }
+      if (k === this.player && this.upg?.has('armour')) k.spin *= 0.7; // the Armour upgrade: back on it sooner
       k.drift = 0;
       k.charge = 0;
       k.boost = 0;
@@ -993,6 +1053,19 @@ export class Race {
     if (racing) this.time += dt;
     this.clock = (this.clock || 0) + dt;
     this.comboT -= dt;
+    // the HEAT meter cools: slowly while you keep the chain going, quickly once it's broken
+    if (P.fire <= 0 && P.heat > 0) {
+      P.heat = Math.max(0, P.heat - dt * (this.comboT > 0 ? 0.03 : 0.16));
+      if (Math.abs(P.heat - (this.heatShown ?? -1)) > 0.01 || P.heat === 0) {
+        if (this.heatShown !== P.heat) this.ev.heat?.(P.heat);
+        this.heatShown = P.heat;
+      }
+    }
+    for (const k of this.karts)
+      if (k.fire > 0) {
+        k.fire -= dt;
+        if (k.fire <= 0 && k === P) this.ev.fire?.(false);
+      }
     if (this.comboT <= 0 && this.combo) {
       this.combo = 0;
       this.ev.score(this.score, 0);
@@ -1012,7 +1085,7 @@ export class Race {
         if (inp.firePressed || (inp.fire && k.weapon === 'blaster')) this.fire(k);
         if (inp.nitroPressed && k.nitro >= 0.3 && k.spin <= 0) {
           k.nitro -= 0.33;
-          k.boost = Math.max(k.boost, 1.3);
+          k.boost = Math.max(k.boost, this.upg.has('nitro') ? 1.7 : 1.3); // (longer with the Big Nitro upgrade)
           k.boostLvl = 5;
           Sound.boost();
           this.shake = 0.15;
@@ -1033,6 +1106,7 @@ export class Race {
         k.rolling -= dt;
         if (k.rolling <= 0) {
           if (k.pending === 'shield') this.raiseShield(k);
+          else if (k.pending === 'fire') this.ignite(k);
           else {
             k.weapon = k.pending;
             k.ammo = WEAPONS[k.weapon].ammo;
@@ -1080,7 +1154,9 @@ export class Race {
       k.offroad = k.br ? Math.abs(k.lat) > 20 / 2 + 1.5 : !tr.elevated[i] && Math.abs(k.lat) > W / 2 + 1.5;
       const st = VSTATS[k.m.type];
       let top = MAX * st.top * (k.ai ? k.skill * k.rubber : 1) * (1 + 0.008 * Math.min(k.coins, 10));
-      if (k.offroad && k.boost <= 0) top *= st.off;
+      if (k === P && this.upg.has('turbo')) top *= 1.05; // the Turbo Kit upgrade
+      if (k.offroad && k.boost <= 0 && !(k.fire > 0)) top *= st.off;
+      if (k.fire > 0) top = Math.max(top, MAX * st.top) * 1.15;
       if (k.boost > 0) {
         top = Math.max(top, MAX) * (k.boostLvl === 4 ? 1.38 : 1.3);
         k.boost -= dt;
@@ -1104,7 +1180,7 @@ export class Race {
       const rh0 = k.rh;
       if (k.spin <= 0) {
         const grip = clamp(Math.abs(k.speed) / 16, 0, 1) * Math.sign(k.speed || 1) * (grounded ? 1 : 0.35);
-        k.rh += steer * TURN * st.turn * (k.drift ? 1.2 : 1) * grip * dt;
+        k.rh += steer * TURN * st.turn * (k.drift ? 1.2 : 1) * grip * (k === P && this.upg.has('grip') ? 1.08 : 1) * dt;
       }
       // how fast it's really turning: the front wheels, the steering wheel and the body's lean all follow this, not the raw input
       k.yawRate += ((k.rh - rh0) / Math.max(dt, 1e-3) - k.yawRate) * Math.min(1, dt * 10);
@@ -1249,6 +1325,25 @@ export class Race {
         if (k === P && into > 0.25) {
           this.shake = Math.max(this.shake, 0.2);
           if (Math.random() < 0.3) this.fx.spark(tr.point(k.s, k.lat, 1), '#ffd28a', 1.2, 0.25);
+        }
+      }
+      // the water bridge (the deck, not the tube under the sea): every few metres a plank thumps and the tyres throw
+      // spray up off the sea either side
+      if (tr.lowb[wi] && tr.P[wi].y > -1.2 && !k.fly && k.speed > 8) {
+        k.plankD = (k.plankD || 0) - k.speed * dt;
+        if (k.plankD <= 0) {
+          k.plankD = 6.5;
+          const v = clamp(k.speed / 45, 0, 1);
+          if (k === P || Math.abs(this.dS(k.s, P.s)) < 60)
+            for (const sd of [-1, 1])
+              this.fx.spark(
+                tr.point(k.s - 1.5, sd * (W / 2 + 1.4 + Math.random() * 1.5), -0.2),
+                Math.random() < 0.5 ? '#f2fbff' : '#bfe9f7',
+                1.6 + v * 2.2,
+                0.5,
+                _spray.set((Math.random() - 0.5) * 2, 5 + v * 5, (Math.random() - 0.5) * 2),
+              );
+          if (k === P) Sound.plank(v);
         }
       }
       // the central wall between the two bores of the underpass
@@ -1849,11 +1944,19 @@ export class Race {
       P = this.player;
     for (const k of this.karts) {
       const m = k.m;
-      const big = k.boost > 0,
+      const hot = k.fire > 0,
+        big = k.boost > 0 || hot,
         rev = clamp(Math.max(0, k.speed) / MAX, 0, 1);
+      // on fire: the tyres throw red-hot sparks, a flame trail along the road behind you
+      if (hot)
+        for (const w of m.wheels)
+          if (Math.random() < 0.65) {
+            w.spin.getWorldPosition(this.v3);
+            this.fx.spark(this.v3, Math.random() < 0.5 ? '#ff3a12' : '#ffb21f', 1.7, 0.32);
+          }
       m.flames.forEach((fl, j) => {
         fl.material.color.set(
-          big ? (k.boostLvl === 5 ? m.nitroCol : FLAME_COL[k.boostLvl] || FLAME_COL[0]) : '#ff8a2a',
+          hot ? '#ff3a12' : big ? (k.boostLvl === 5 ? m.nitroCol : FLAME_COL[k.boostLvl] || FLAME_COL[0]) : '#ff8a2a',
         );
         const len = big ? 1.1 + Math.random() * 0.7 : 0.12 + Math.random() * 0.12 + rev * 0.1,
           w = big ? 1.2 : 0.55;

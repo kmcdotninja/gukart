@@ -58,25 +58,21 @@
       <div class="logo-lockup"><span class="burst" aria-hidden="true"></span><svg class="logo-svg" viewBox="0 0 627 237" role="img" aria-label="Gukart"><use href="#gukartLogo"/></svg></div>
     </div>
 
+    <!-- the dock, as big tiles (Destruction AllStars' menu): the World Tour, then QUICK RACE, GARAGE, MAP -->
     <div class="dock">
-      <div class="panel chapter-panel">
-        <div class="tag"><span id="chNum">CHAPTER 1</span><i></i><i></i></div>
-        <div class="ch-title"><h2 id="chName">KANO</h2><span id="chTag">The Walled City</span></div>
-        <div class="ch-circ" id="chCirc" hidden></div>
-        <div class="ch-row">
-          <div class="stars" id="chStars" aria-label="Stars"></div>
-          <div class="reward" id="chReward"></div>
-        </div>
-        <div class="stepper">
-          <button class="arrow" id="prevCh" aria-label="Previous chapter"><svg class="ic flip" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
-          <ol id="dots"></ol>
-          <button class="arrow" id="nextCh" aria-label="Next chapter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
-        </div>
-      </div>
+      <button class="tour-tile" id="goBtn" aria-label="World Tour">
+        <img src="/loader-drift-desk-hero.webp" alt="">
+        <span class="tt-body">
+          <span class="tt-name">WORLD TOUR</span>
+          <span class="tt-sub" id="tourSub">5 RACES</span>
+          <ol class="tt-marks" id="tourMarks"></ol>
+        </span>
+        <span class="tt-go" id="tourGo"><span>START</span></span>
+      </button>
       <div class="dock-row">
-        <button class="map-tile" id="mapBtn" aria-label="Open the world map"><img id="mapThumb" src="/tile-map.jpg" alt=""><span>MAP</span></button>
-        <button class="map-tile garage-tile" id="garageBtn" aria-label="Open the garage"><img id="garageThumb" src="/tile-garage.png" alt=""><span>GARAGE</span></button>
-        <button class="go" id="goBtn"><span>GO!</span><small class="mono">RACE · KANO</small></button>
+        <button class="big-tile" id="quickBtn" aria-label="Quick race"><img id="quickThumb" src="/loader-pack-desk.jpg" alt=""><span>QUICK RACE</span></button>
+        <button class="big-tile garage-tile" id="garageBtn" aria-label="Open the garage"><img id="garageThumb" src="/tile-garage.png" alt=""><span>GARAGE</span></button>
+        <button class="big-tile" id="mapBtn" aria-label="Open the world map"><img id="mapThumb" src="/tile-map.jpg" alt=""><span>MAP</span></button>
       </div>
     </div>
   </section>
@@ -123,9 +119,16 @@
   <section id="modes" hidden>
     <header class="m-top">
       <button class="sq-btn" id="mBack" aria-label="Back"><svg class="ic flip" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
-      <div class="tag m-tag"><span>KANO</span><i></i><i></i></div>
+      <div class="tag m-tag"><span>QUICK RACE</span><i></i><i></i></div>
+      <ol class="q-dots" id="qDots" aria-hidden="true"><li></li><li></li><li></li><li></li></ol>
     </header>
-    <div class="m-cards" id="mCards"></div>
+    <div class="q-steps">
+      <div class="m-cards q-step" id="mCards" data-step="mode"></div>
+      <div class="q-step q-pick" id="qCity" data-step="city" hidden></div>
+      <div class="q-step q-pick" id="qCirc" data-step="circ" hidden></div>
+      <div class="q-step q-pick" id="qTime" data-step="time" hidden></div>
+    </div>
+    <footer class="q-foot" id="qFoot" hidden><button class="q-next" id="qNext"><span>NEXT</span></button></footer>
   </section>
 
   <!-- the map: Naija, each chapter a city -->
@@ -150,6 +153,8 @@
       </div>
       <div class="timetag mono" id="timer">0:00.00</div>
       <div class="scorebar"><span class="sc-l">SCORE</span><b id="score">0</b><em id="combo"></em></div>
+      <!-- fire mode: chain drifts, overtakes, takedowns, jumps and coins to fill it; full = ON FIRE (src/race.js ignite) -->
+      <div class="heat" id="heat"><span>HEAT</span><div class="heat-bar"><i id="heatFill"></i></div></div>
     </div>
     <div class="hud-tc">
       <div class="progress"><div class="stripebar thin"><i id="progFill"></i></div></div>
@@ -225,6 +230,7 @@
       <div class="tag"><span>QUIT RACE?</span><i></i><i></i></div>
       <p class="ask-text">You'll lose this race and go back to the chapters.</p>
       <div class="row"><button class="btn" id="quitNo">BACK</button><button class="btn primary" id="quitYes">QUIT</button></div>
+      <button class="btn end-btn" id="quitEnd" hidden>END TOUR</button>
     </div>
   </section>
 
@@ -251,18 +257,37 @@
     </div>
   </section>
 
+  <!-- a chest, earned by coin milestones (src/chest.js): it drops in, shakes, bursts open, and an upgrade rises out -->
+  <section id="chest" class="chest" hidden>
+    <!-- the game's own question-mark item box, in 3D; it bursts open and a real part rises out (src/chest.js) -->
+    <div class="ch-stage">
+      <div class="ch-rays" aria-hidden="true"></div>
+      <canvas id="chestGL" aria-hidden="true"></canvas>
+    </div>
+    <div class="ch-text">
+      <p class="ch-sub" id="chestSub">A CHEST FOR YOU</p>
+      <h2 class="ch-title" id="chestTitle">500 COINS EARNED</h2>
+      <div class="ch-item"><b id="chestName">TURBO KIT</b><span id="chestLine">+5% top speed</span></div>
+    </div>
+    <button class="btn primary ch-go" id="chestGo">OPEN</button>
+  </section>
+
   <section id="results" class="sheet" hidden>
     <div class="wallet res-wallet" id="resWalletChip"><i class="coin-icon"></i><span id="resWallet">0</span></div>
     <div class="panel card">
       <div class="tag"><span>KANO · RESULT</span><i></i><i></i></div>
-      <p class="mono eyebrow" id="resChapter"></p>
-      <h2 class="place-big"><b id="resPlace">1</b><span id="resSfx">ST</span></h2>
+      <!-- big and plain: your place and the coins, one line on what it means, one big button, two small ones -->
+      <div class="res-head">
+        <h2 class="place-big"><b id="resPlace">1</b><span id="resSfx">ST</span></h2>
+        <div class="prize" id="prize"></div>
+      </div>
+      <p class="res-line" id="resChapter"></p>
       <ol class="standings" id="standings"></ol>
       <dl class="res-stats" id="resStats"></dl>
-      <div class="prize" id="prize"></div>
+      <button class="btn primary res-go" id="againBtn">RACE AGAIN</button>
       <div class="row">
-        <button class="btn primary" id="againBtn">RACE AGAIN</button>
-        <button class="btn" id="menuBtn">CHAPTERS</button>
+        <button class="btn" id="menuBtn">HOME</button>
+        <button class="btn" id="retryBtn" hidden>RETRY</button>
       </div>
     </div>
   </section>

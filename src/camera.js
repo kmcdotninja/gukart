@@ -8,6 +8,7 @@ import { scene, cam, sun } from './scene.js';
 import { mapPan } from './worldmap.js';
 import { INTRO } from './race-flow.js';
 import { game } from './game.js';
+import { podium } from './podium.js';
 
 export const camPos = new THREE.Vector3(0, 400, 600),
   camLook = new THREE.Vector3(),
@@ -241,6 +242,22 @@ export function updateCamera(dt) {
       .addScaledVector(Fl.u, 1.2);
     wantUp.set(0, 1, 0);
     rate = t < 0.1 ? 60 : 5;
+  } else if (podium.on && (game.state === 'podium' || game.state === 'results')) {
+    // the podium: square on to the three steps, the finish arch behind them, drifting slowly side to side and in
+    const t = podium.t,
+      push = 1 - Math.min(1, t / 6) * 0.18,
+      side = new THREE.Vector3(podium.facing.z, 0, -podium.facing.x),
+      wide = cam.aspect < 1 ? 1.45 : 1;
+    // (you alone, let down: closer, and looking a little lower, so you stand in the top half above the card)
+    const solo = podium.solo;
+    want
+      .copy(podium.at)
+      .addScaledVector(podium.facing, (solo ? 6.5 : 9) * push * wide)
+      .addScaledVector(side, Math.sin(t * 0.35) * (solo ? 0.8 : 2.2))
+      .setY(podium.at.y + (solo ? 1.8 : 2.6));
+    wantLook.copy(podium.at).setY(podium.at.y + (solo ? (cam.aspect < 1 ? -0.6 : 0.9) : 2.1));
+    wantUp.set(0, 1, 0);
+    rate = t < 0.15 ? 60 : 3; // a cut to it, then the drift
   } else if (game.state === 'results' || game.state === 'garage') {
     game.race.frameOf(k, F);
     const a = k.rh + 0.5 * Math.sin(game.clock * 0.25);
@@ -254,7 +271,9 @@ export function updateCamera(dt) {
     wantLook.copy(kp).addScaledVector(F.u, 1.4 + lift * 0.6);
     if (game.state === 'garage') wantLook.addScaledVector(F.u, -2.2 - lift); // sit the vehicle above the garage panel
     wantUp.copy(F.u);
-    rate = 2;
+    // after a time trial or a free drive your kart is still rolling on: keep pace with it (a slow follow let it drive
+    // right into the camera, so you saw the inside of Buddy's fur)
+    rate = game.state === 'results' ? 9 : 2;
   } else {
     game.race.frameOf(k, F);
     camRh += (k.rh * 0.55 + k.visYaw * 0.3 - camRh) * Math.min(1, dt * 5);
@@ -364,7 +383,7 @@ export function updateCamera(dt) {
   const span = shadowSpan,
     sd = 160 + (span - 70) * 1.6,
     focus = new THREE.Vector3().lerpVectors(
-      kp,
+      podium.on ? podium.at : kp,
       game.track.center,
       clamp((span - 70) / (game.track.radius * 1.25 - 70), 0, 1),
     );

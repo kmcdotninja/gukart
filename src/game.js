@@ -13,12 +13,16 @@ export const CITY = chapter.name.toUpperCase();
 export const circuitOf = c =>
   c.circuits ? c.circuits.find(x => x.id === store.get('circuit.' + c.id, '')) || c.circuits[0] : null;
 
+// the key a circuit's records (stars, best times, ghosts) are kept under: 'doha.pearl'; a circuit can keep an older key
+// (Kano's Old City keeps plain 'kano', from before Kano had a second circuit)
+export const ridOf = (c, circ) => (circ ? circ.rid || c.id + '.' + circ.id : c.id);
+
 const circuit = circuitOf(chapter);
 let vehicle = store.get('veh', 'kart');
 if (!VEHICLES[vehicle]) vehicle = 'kart'; // (an old save may name a vehicle that's gone: the rally car became the muscle car)
 
 export const game = {
-  // ---- what's on screen: 'menu', 'garage', 'modes', 'tomap', 'map', 'intro', 'count', 'race', 'paused', 'finish', 'results'
+  // ---- what's on screen: 'menu', 'garage', 'modes', 'tomap', 'map', 'intro', 'count', 'race', 'paused', 'finish', 'podium', 'results'
   state: 'menu',
   prevState: 'race', // the state to go back to when the pause menu closes
   clock: 0, // seconds since the game started (stops while paused)
@@ -26,7 +30,7 @@ export const game = {
   // ---- the city and circuit that are built
   chIndex: CHAPTERS.indexOf(chapter), // the chapter on the home card (you can step to others before you go)
   circuit,
-  RID: chapter.id + (circuit ? '.' + circuit.id : ''), // the key records are kept under: one per circuit
+  RID: ridOf(chapter, circuit), // the key records are kept under: one per circuit
   PLACE: circuit ? `${CITY} · ${circuit.name.toUpperCase()}` : CITY, // what the headers say
   track: null, // the road (src/track.js)
   world: null, // the city round it (src/world.js)

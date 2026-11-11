@@ -2,7 +2,7 @@
 //   1. tr.blocked: buildings, walls and trees the placement guard (clearOfRoad in world.js) left out, with where they were
 //   2. a sweep of rays along every lane at kart height, listing big static things they hit (expected: jump ramps, the
 //      barriers where the road splits at a fork, tunnel mouths; anything else is a bug)
-// With the dev server running (npm run dev, port 5191):  node tools/road-check.mjs kano | doha msheireb | doha pearl | doha lusail
+// With the dev server running (npm run dev, port 5191):  node tools/road-check.mjs kano | kano dala | doha msheireb | doha pearl | doha lusail
 // Needs Playwright (npm i -D playwright, or point CHROME at a Chromium build).
 import { chromium } from 'playwright';
 const [city, circ] = process.argv.slice(2);
@@ -18,7 +18,7 @@ p.on('console', m => {
 await p.addInitScript(
   ([city, c]) => {
     localStorage.setItem('gukart.city', JSON.stringify(city));
-    if (c) localStorage.setItem('gukart.circuit.doha', JSON.stringify(c));
+    if (c) localStorage.setItem('gukart.circuit.' + city, JSON.stringify(c));
   },
   [city, circ],
 );

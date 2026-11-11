@@ -124,7 +124,7 @@ try {
   await booted(page, 'the game boots');
   console.log(`        (boot took ${((Date.now() - t0) / 1000).toFixed(0)}s headless)`);
   await expectVisible(page, '#menu', 'the home screen shows');
-  if ((await page.locator('#chName').textContent()) !== 'KANO') fail('the home card should start on Kano');
+  if (!(await visible(page, '#goBtn'))) fail('the World Tour tile should be on the home screen');
   else pass('the home card is on Kano');
 
   // garage: open it, change vehicle, the name and the wallet follow, back home
@@ -149,11 +149,45 @@ try {
   await click(page, '#setBack');
   await expectVisible(page, '#menu', 'back home from settings');
 
-  // a race: PLAY, pick Race, the intro, the countdown, then drive
-  await click(page, '#goBtn');
+  // a race: QUICK RACE, the modes (an accordion: one open at a time), then CITY, CIRCUIT, DAY OR NIGHT, GO
+  await click(page, '#quickBtn');
   await expectVisible(page, '#modes', 'the race modes open');
+  const open = () => page.$$eval('#mCards .mcard.on', l => l.map(c => c.dataset.mode));
+  if ((await page.locator('#mCards .mcard').count()) === 3) pass('three mode cards');
+  else fail('the modes screen should have three cards');
+  if (!(await open()).length) pass('no mode is open until you pick one');
+  else fail(`the modes should open all closed (open: ${await open()})`);
+  await click(page, '#mCards .mcard[data-mode="tt"]');
+  if ((await open()).join() === 'tt') pass('tapping Time Trial opens it and closes the others');
+  else fail(`tapping Time Trial should open only it (open: ${await open()})`);
+  await click(page, '#mCards .mcard[data-mode="gp"]');
+  if ((await open()).join() === 'gp') pass('tapping Race opens it again');
+  else fail(`tapping Race should open only it (open: ${await open()})`);
   await click(page, '#mCards .mcard.on');
+  await expectVisible(page, '#qCity', 'NEXT on Race goes to the city');
+  if ((await page.locator('#qCity .q-card').count()) >= 2 && (await page.locator('#qCity .q-card.on').count()) === 1)
+    pass('every city is offered, the one you are in already chosen');
+  else fail('the city step should show the cities with one chosen');
+  await click(page, '#qNext');
+  await expectVisible(page, '#qCirc', 'NEXT goes to the circuit');
+  if ((await page.locator('#qCirc .q-card').count()) >= 2 && (await page.locator('#qCirc .q-card.on').count()) === 1)
+    pass("the city's circuits are offered, the current one chosen");
+  else fail('the circuit step should show the circuits with one chosen');
+  await click(page, '#mBack');
+  await expectVisible(page, '#qCity', 'back steps back to the city');
+  await click(page, '#qNext');
+  await expectVisible(page, '#qCirc', 'and on to the circuit again');
+  await click(page, '#qNext');
+  await expectVisible(page, '#qTime', 'NEXT goes to day or night');
+  await click(page, '#qTime .q-card[data-night="1"]');
+  if ((await page.locator('#qTime .q-card.on').getAttribute('data-night')) === '1') pass('night is chosen');
+  else fail('tapping NIGHT should choose it');
+  if ((await page.locator('#qNext').textContent()).trim() === 'GO') pass('the last step says GO');
+  else fail('the last step should say GO');
+  await click(page, '#qNext');
   await expectVisible(page, '#hud', 'the race starts', 20000);
+  if (await page.locator('#nightBtn.on').count()) pass('the race is at night, as chosen');
+  else fail('night was chosen but the race is in the day');
   await inState(page, 'race', 'the countdown ends and the race is on', 90000);
   const time0 = await page.locator('#timer').textContent();
   await page.keyboard.down('ArrowLeft');
@@ -198,21 +232,21 @@ try {
 
   // ---- Doha: switching city reloads; then another circuit swaps in place
   console.log('Doha');
-  await click(page, '#nextCh');
-  if ((await page.locator('#chName').textContent()) === 'DOHA') pass('the home card steps to Doha');
-  else fail('next chapter is not Doha');
-  await click(page, '#goBtn');
+  await click(page, '#mapBtn');
+  await expectVisible(page, '#map', 'the map opens with its places');
+  const doha = page.locator('#map .isl', { hasText: 'DOHA' });
+  if (await doha.count()) pass('the map offers Doha');
+  else fail('the map has no Doha');
+  await doha.first().click();
   await booted(page, 'Doha loads');
-  await expectVisible(page, '#modes', 'Doha opens on the race modes');
-  await click(page, '#mBack');
-  await expectVisible(page, '#menu', 'back home in Doha');
-  const circuits = page.locator('#chCirc [data-circ]:not(.on)');
-  if (await circuits.count()) {
-    await circuits.first().click();
-    await click(page, '#goBtn');
-    await expectVisible(page, '#modes', 'another Doha circuit swaps in without a reload', 120000);
+  await expectVisible(page, '#map', 'Doha opens on its map');
+  const other = page.locator('#map .isl:not(.sel)', { hasText: 'DOHA' });
+  if (await other.count()) {
+    await other.first().click();
+    await expectVisible(page, '#map', 'another Doha circuit swaps in without a reload', 120000);
   } else fail('Doha has no other circuit to pick');
-  await click(page, '#mBack');
+  await click(page, '#mapBack');
+  await expectVisible(page, '#menu', 'back home in Doha');
   await click(page, '#garageBtn');
   await expectVisible(page, '#garage', "Doha's garage opens");
   if (await visible(page, '#gLights')) pass('the garage lights switch is there');

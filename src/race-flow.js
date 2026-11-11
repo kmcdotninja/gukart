@@ -10,8 +10,11 @@ import { chapter, CITY, game } from './game.js';
 import { renderChapter } from './home.js';
 import { custom } from './garage-screen.js';
 import { TT, FREE } from './timetrial.js';
-import { MODES } from './modes.js';
+import { modeName } from './modes.js';
 import { endDrive } from './results.js';
+import { hidePodium } from './podium.js';
+import { setNight } from './scene.js';
+import { introLines, cupNext, retryCupRace, newCup, cupOf, youIn, endTour } from './cup.js';
 
 // the loading card before a race (Asphalt): the chapter, the goal, pictures of its places, a filling diamond
 export const INTRO = location.hash === '#capture' ? 2.4 : 5.2; // seconds: long enough to read the card and see the grid
@@ -28,13 +31,14 @@ export function raceIntro(then) {
       bl ? 'RACE YOUR GHOST' : 'YOUR BEST LAP BECOMES YOUR GHOST',
     ],
     free: ['NO CLOCK · NO RIVALS', `CRUISE ${CITY}`, 'EVERY COIN YOU PICK UP IS YOURS'],
+    cup: game.mode === 'cup' ? introLines() : null,
   }[game.mode];
-  $('#rlCity').textContent = `${c.name.toUpperCase()} · ${MODES.find(M => M.id === game.mode).name}`;
+  $('#rlCity').textContent = `${c.name.toUpperCase()} · ${modeName(game.mode)}`;
   $('#rlLaps').textContent = T[0];
   $('#rlChip').textContent = T[1];
   $('#rlGoal').textContent = T[2];
   game.race.ev = events;
-  game.race.setMode(game.mode);
+  game.race.setMode(raceMode());
   game.race.reset();
   Sound.quiet = false;
   game.state = 'intro';
@@ -63,7 +67,10 @@ const standalone =
 const iOS =
   /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// a cup race is run as a Race (6 racers, 3 laps); the cup is kept round it (src/cup.js)
+const raceMode = () => (game.mode === 'cup' ? 'gp' : game.mode);
 export function startRace() {
+  hidePodium();
   Sound.init();
   if (isTouch) {
     document.documentElement.requestFullscreen?.().catch(() => {});
@@ -77,10 +84,10 @@ export function startRace() {
   $('#controls').hidden = true;
   show($('#hud'));
   game.race.ev = events;
-  game.race.setMode(game.mode);
+  game.race.setMode(raceMode());
   game.race.reset();
   Sound.quiet = false;
-  $('#hud').dataset.mode = game.mode;
+  $('#hud').dataset.mode = raceMode();
   TT.last = -1;
   TT.laps = [];
   TT.rec = [];
@@ -94,6 +101,8 @@ export function startRace() {
   $('#quitBtn').textContent = game.mode === 'free' ? 'END DRIVE' : 'QUIT'; // (quitting goes back to the chapters)
   $('#restartBtn').textContent = game.mode === 'free' ? 'START AGAIN' : 'RESTART RACE';
   $('#againBtn').textContent = game.mode === 'free' ? 'DRIVE AGAIN' : 'RACE AGAIN';
+  $('#menuBtn').textContent = 'HOME';
+  $('#retryBtn').hidden = true;
   hud.lap.textContent = game.mode === 'free' ? '1' : `1/${LAPS}`;
   hud.coins.textContent = '0';
   hud.kos.textContent = '0';
@@ -101,6 +110,8 @@ export function startRace() {
   hud.combo.textContent = '';
   setWeapon(null, 0, false);
   events.nitro(0);
+  events.heat(0);
+  document.body.classList.remove('onfire');
   hud.toasts.innerHTML = '';
   hud.center.innerHTML = '';
   game.lastPos = 0;
@@ -113,6 +124,7 @@ export function startRace() {
   coach.el.hidden = true;
 }
 export function attract() {
+  hidePodium();
   game.race.ev = QUIET;
   game.race.setMode('gp');
   game.race.reset();
@@ -120,7 +132,9 @@ export function attract() {
   Sound.quiet = true;
   for (let i = 0; i < 140; i++) game.race.update(0.05, 'race'); // run it on a few seconds so the pack has spread out
 }
-function toMenu() {
+// home again. After a race you finished, day turns to night (or night to day), so everyone gets to race both
+function toMenu(raced = false) {
+  if (raced === true) setNight(!game.night);
   game.state = 'menu';
   attract();
   renderChapter();
@@ -130,6 +144,19 @@ function toMenu() {
   $('#pause').hidden = true;
   $('#controls').hidden = true;
   show($('#menu'), -1);
+}
+// the quit question: a race asks to confirm; a World Tour race offers to save the tour and come back to this race
+// later (SAVE & EXIT), to drop it (END TOUR), or to carry on (KEEP RACING)
+function paintQuitAsk() {
+  const t = game.mode === 'cup' && cupOf(),
+    me = t && youIn(t);
+  $('#quitAsk .tag span').textContent = t ? 'LEAVE THE WORLD TOUR?' : 'QUIT RACE?';
+  $('#quitAsk .ask-text').textContent = t
+    ? `Race ${t.i + 1} of ${t.races.length} · ${me.pts} pts. Save the tour and carry on from this race later, or end it.`
+    : "You'll lose this race and go back to the chapters.";
+  $('#quitNo').textContent = t ? 'KEEP RACING' : 'BACK';
+  $('#quitYes').textContent = t ? 'SAVE & EXIT' : 'QUIT';
+  $('#quitEnd').hidden = !t;
 }
 export function togglePause() {
   if (game.state === 'race' || game.state === 'count') {
@@ -181,16 +208,32 @@ export function initRaceFlow() {
       $('#hud').style.visibility = '';
       $('#pause').hidden = true;
       endDrive();
-    } else swap($('#pause'), $('#quitAsk'), 1);
+    } else {
+      paintQuitAsk();
+      swap($('#pause'), $('#quitAsk'), 1);
+    }
   });
   $('#quitNo').addEventListener('click', () => swap($('#quitAsk'), $('#pause'), -1));
+  // END TOUR: the tour is dropped (the home tile goes back to START)
+  $('#quitEnd').addEventListener('click', () => {
+    endTour();
+    $('#hud').style.visibility = '';
+    $('#quitAsk').hidden = true;
+    toMenu();
+  });
   $('#quitYes').addEventListener('click', () => {
     $('#hud').style.visibility = '';
     $('#quitAsk').hidden = true;
     toMenu();
   });
-  $('#againBtn').addEventListener('click', startRace);
-  $('#menuBtn').addEventListener('click', toMenu);
+  // in a cup the results card's buttons go on through it: NEXT RACE, FINAL STANDINGS, NEW CUP; RETRY RACE runs it again
+  $('#againBtn').addEventListener('click', () => {
+    if (game.mode !== 'cup') return startRace();
+    if (game.cupFinal) newCup();
+    else cupNext();
+  });
+  $('#retryBtn').addEventListener('click', retryCupRace);
+  $('#menuBtn').addEventListener('click', () => toMenu(true));
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && (game.state === 'race' || game.state === 'count')) togglePause();
   });

@@ -10,19 +10,20 @@ import { $, show } from './dom.js';
 import { low, quality, renderer, scene, cam, setNight } from './scene.js';
 import { events } from './hud.js';
 import { updateCamera } from './camera.js';
-import { chapter, CITY, game } from './game.js';
+import { chapter, CITY, game, ridOf } from './game.js';
 import { renderChapter } from './home.js';
 import { custom } from './garage-screen.js';
-import { openModes } from './modes.js';
+import { openModes, quickGo } from './modes.js';
 import { openMap } from './worldmap.js';
 import { snapshots } from './snapshots.js';
 import { attract } from './race-flow.js';
+import { playCup } from './cup.js';
 
 // builds the chosen circuit into the scene: the road, the city round it, and the race on it (boot, and swapCircuit)
 
 export async function buildCircuit(tex, step = async () => {}) {
   game.track = buildTrack((game.circuit || chapter).track());
-  game.track.cityName = game.circuit ? game.circuit.name.toUpperCase() : CITY;
+  game.track.cityName = game.circuit && chapter.id !== 'kano' ? game.circuit.name.toUpperCase() : CITY; // (Kano's signs say KANO on either circuit)
   game.track.city = chapter.id;
   game.track.forks = buildForks(game.track);
   game.scHints = game.track.forks.map(f => {
@@ -107,7 +108,7 @@ export async function swapCircuit(id, then = '') {
   game.mapUI = null;
   game.mapShot = null;
   game.circuit = c;
-  game.RID = chapter.id + '.' + c.id;
+  game.RID = ridOf(chapter, c);
   game.PLACE = `${CITY} · ${c.name.toUpperCase()}`;
   store.set('circuit.' + chapter.id, c.id);
   try {
@@ -119,6 +120,7 @@ export async function swapCircuit(id, then = '') {
     try {
       updateCamera(1);
       snapshots();
+      renderChapter(); // (QUICK RACE's tile is the grid from this circuit, now it's pictured)
     } catch (e) {
       console.warn('snapshots', e);
     }
@@ -134,6 +136,12 @@ export async function swapCircuit(id, then = '') {
   if (then === 'modes') {
     $('#menu').hidden = true;
     openModes('menu');
+  } else if (then === 'quick') {
+    quickGo(); // a quick race set up on the QUICK RACE screen: its mode and time of day, then the race
+  } else if (then === 'cup') {
+    $('#menu').hidden = true;
+    $('#results').hidden = true;
+    playCup(); // the cup's next race, now its circuit is built
   } else if (then === 'map') {
     show($('#menu'));
     openMap();

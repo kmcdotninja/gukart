@@ -3384,42 +3384,6 @@ button:focus-visible {
   transform: none;
   transition-delay: 70ms;
 } /* PLAY slides in just after the card settles */
-@media (max-width: 819px) {
-  /* phone: a swipe carousel, one big card in the middle, its neighbours peeking in */
-  .m-cards {
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 14px 14vw calc(var(--sb) + 22px);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    overscroll-behavior-x: contain;
-  }
-  .m-cards::-webkit-scrollbar {
-    display: none;
-  }
-  /* the swipe drives each card's size and light from how near the middle it is (--k, --b, set per card as you scroll) */
-  .mcard,
-  .mcard.on {
-    width: 72vw;
-    height: min(72vh, 560px);
-    scroll-snap-align: center;
-    transform: scale(var(--k, 0.92));
-    transition: none;
-  }
-  .mcard.on:active {
-    transform: scale(calc(var(--k, 1) * 0.97));
-    transition: transform 120ms var(--ease-out);
-  }
-  .mcard img,
-  .mcard.on img {
-    filter: brightness(var(--b, 0.6)) saturate(var(--b, 0.8));
-    transition: transform 600ms var(--ease-out);
-  }
-  .mc-name {
-    font-size: 58px;
-  }
-}
 #hud[data-mode='tt'] #posBig,
 #hud[data-mode='tt'] #weapon,
 #hud[data-mode='tt'] #fireBtn,

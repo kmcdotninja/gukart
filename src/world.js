@@ -270,13 +270,14 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         60 * (fbm(Math.cos(th) * 2 + 9, Math.sin(th) * 2) - 0.45);
       const n = tr.nearest(x, z),
         dLand = Math.min(n.d, ...(tr.forks || []).filter(f => f.tunnel).map(f => f.dist(x, z) + (W / 2 - 20 / 2))),
-        onRoad = dLand < W / 2 + 22 && P[n.i].y < 3, // (a sky bridge keeps the sea under it; a subway needs land)
+        onRoad = dLand < W / 2 + 22 && P[n.i].y < 3 && !tr.lowb[n.i], // (a sky bridge keeps the sea under it, and so does the water bridge; a subway needs land)
         ins = tr.isInside(x, z),
         s = n.i * tr.seg;
       const wob = 14 * Math.sin(s * 0.02) + 22 * (fbm(x * 0.006, z * 0.006) - 0.45); // coasts that wander, not ruler lines
       let sea = r > Rs;
       for (const f of shores) if (inStretch(s, f) && (f.side === 'in') === ins && d > f.d + wob) sea = true;
       if (marina && ins && d > marina.d + wob) sea = true;
+      if (tr.lowb[n.i]) sea = true; // the water bridge: open sea under it and either side
       for (const b of blobs)
         if (Math.hypot(x - b.x, z - b.z) < b.r * (0.85 + 0.3 * fbm(x * 0.01, z * 0.01))) sea = false; // land out across the water (West Bay)
       let canal = false;
@@ -331,6 +332,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         d = roadGap(x, z),
         wv = wet[k] ? Math.max(m[k], 0.5) : m[k];
       gp.setY(k, d < W / 2 + 26 && !wet[k] ? -0.35 : lerp(0.15, -7, sstep(0.25, 0.75, wv)));
+      if (wet[k] && d < 90 && tr.lowb[tr.nearest(x, z).i]) gp.setY(k, -27); // deep water round the aquarium tunnel
       c.copy(cSand)
         .lerp(cGreen, sstep(0.6, 0.75, fbm(x * 0.02 + 3, z * 0.02)) * 0.5)
         .lerp(cPave, 1 - sstep(W / 2 + 3, W / 2 + 18, d))
@@ -1728,6 +1730,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     free: (x, z, r, mr) => isLand(x, z) && free(x, z, r, mr),
     land: (x, z) => isLand(x, z),
     reserve,
+    water,
     faceRoad,
     roadGap,
     clearOfRoad,
@@ -1810,7 +1813,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   for (let k = 0, alt = 1; k * LAMP < tr.len; k++, alt = -alt)
     for (const sd of doha ? [1, -1] : [alt]) {
       const i = tr.idx(k * LAMP + 12 + (doha && sd < 0 ? LAMP / 2 : 0));
-      if (tr.trench[i] || tr.elevated[i] || (tr.closed && tr.closed[i]) || Math.abs(tr.P[i].y) > 0.3) continue;
+      if (tr.trench[i] || tr.elevated[i] || (tr.closed && tr.closed[i]) || tr.lowb[i] || Math.abs(tr.P[i].y) > 0.3)
+        continue;
       const p = tr.beside(i, sd * (W / 2 + 3.5));
       if (!free(p.x, p.z, 0.6, W / 2 + 2)) continue;
       LM.compose(p, LQ.setFromAxisAngle(LY, Math.atan2(-tr.L[i].x * sd, -tr.L[i].z * sd)), L1);

@@ -58,7 +58,7 @@ export function coachUpdate(dt) {
     inp = game.race.input;
   if (!coach.step) {
     if (!coach.seen.steer && (game.state === 'count' || game.state === 'race')) coachShow('steer');
-    else if (!coach.seen.brake && game.state === 'race' && game.race.time > 4 && isTouch) coachShow('brake');
+    // (no brake hint: phones have no brake button any more; nitro took its place)
     else if (
       !coach.seen.drift &&
       game.state === 'race' &&

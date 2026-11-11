@@ -1,0 +1,482 @@
+/* QUICK RACE (src/modes.js): the three modes as an accordion (the open one is big, the others close up), then CITY,
+   CIRCUIT and DAY OR NIGHT as big cards, one step at a time, with one big NEXT / GO under them. Everything here is under
+   #modes so it wins over the older mode-card rules in style.css (which load after this file) */
+
+/* ---------- the header: back, the step's name, four marks for the four steps ---------- */
+#modes .m-top {
+  gap: 14px;
+}
+#mBack {
+  flex: none;
+}
+#modes .m-tag {
+  height: 54px;
+  font-size: 38px;
+  padding-right: 44px;
+  white-space: nowrap;
+}
+.q-dots {
+  flex: none;
+  display: flex;
+  gap: 7px;
+  margin: 0 0 0 auto;
+  padding: 0 6px 0 0;
+  list-style: none;
+}
+.q-dots li {
+  width: 26px;
+  height: 10px;
+  background: rgba(244, 247, 255, 0.22);
+  transform: skewX(-28deg);
+  transition:
+    background-color 200ms ease,
+    width 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.q-dots li.done {
+  background: var(--white);
+}
+.q-dots li.now {
+  width: 44px;
+  background: var(--orange);
+}
+
+/* ---------- the steps share one area; only the one you're on shows ---------- */
+.q-steps {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.q-step[hidden] {
+  display: none !important;
+}
+
+/* ---------- the modes: three equal cards, the open one grows ---------- */
+#modes .m-cards {
+  --open: 2.3;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 20px max(40px, var(--sr)) calc(var(--sb) + 40px) max(40px, var(--sl));
+  overflow: hidden;
+  touch-action: manipulation;
+}
+#modes .mcard {
+  --cut: 22px;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  max-height: 680px;
+  transform: none;
+  transition:
+    flex-grow 460ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+#modes .mcard.on {
+  flex-grow: var(--open);
+}
+#modes .mcard:active {
+  transform: scale(0.985);
+  transition-duration: 460ms, 120ms;
+}
+#modes .mcard img {
+  filter: brightness(0.7) saturate(0.85);
+}
+#modes .mcard.on img {
+  filter: none;
+}
+#modes .mcard::after {
+  border: 2px solid var(--line-dim);
+  opacity: 1;
+}
+#modes .mcard.on::after {
+  border: 4px solid var(--orange);
+}
+#modes .mc-body {
+  left: 26px;
+  right: 26px;
+  bottom: 26px;
+  gap: 0;
+}
+#modes .mc-name {
+  font-size: 58px;
+  line-height: 0.88;
+  transition: font-size 360ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+#modes .mcard.on .mc-name {
+  font-size: 96px;
+}
+/* the rest (what it is, a line, NEXT) unfolds under the name of the open card only */
+#modes .mc-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 420ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 200ms ease;
+}
+#modes .mcard.on .mc-more {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition-delay: 0ms, 120ms;
+}
+#modes .mc-in {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#modes .mc-en {
+  margin-top: 10px;
+  font-size: 34px;
+  line-height: 1;
+}
+#modes .mc-line {
+  font-size: 19px;
+}
+#modes .mc-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 70px;
+  margin-top: 16px;
+  font-size: 42px;
+  clip-path: polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
+}
+#modes .mc-play .ic {
+  width: 0.8em;
+  height: 0.8em;
+  vertical-align: 0;
+}
+
+/* ---------- the setup's choices: big cards, the chosen one framed in orange ---------- */
+.q-pick {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 20px max(40px, var(--sr)) 20px max(40px, var(--sl));
+}
+.q-card {
+  --cut: 22px;
+  position: relative;
+  flex: 0 1 400px;
+  height: min(480px, 100%);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  text-align: left;
+  color: var(--white);
+  background: #0d1226;
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.q-card:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .q-card:not(.on):hover > img {
+    filter: brightness(0.85) saturate(0.9);
+  }
+}
+/* a dark band under the words, then the frame on top */
+.q-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(5, 9, 24, 0) 35%, rgba(5, 9, 24, 0.92) 100%);
+}
+.q-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 2px solid var(--line-dim);
+  clip-path: inherit;
+  pointer-events: none;
+}
+.q-card.on::after {
+  border: 4px solid var(--orange);
+}
+.q-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 26px 26px;
+}
+.q-name {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 80px;
+  line-height: 0.88;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(5, 9, 24, 0.6);
+}
+.q-sub {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--line);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+.q-sub + .q-sub {
+  color: var(--white);
+}
+/* the picture fills the card (a real shot from the game, public/places/), the words over a dark band at its foot */
+.q-card > img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.6) saturate(0.8); /* only the picture dims when not chosen: the words stay full white */
+  transition:
+    filter 220ms ease,
+    transform 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.q-card.on > img {
+  filter: none;
+  transform: scale(1.04);
+}
+@media (prefers-reduced-motion: reduce) {
+  .q-card.on > img {
+    transform: none;
+  }
+}
+
+/* ---------- one big button under the choices: NEXT, then GO ---------- */
+.q-foot {
+  display: flex;
+  justify-content: center;
+  padding: 0 max(40px, var(--sr)) calc(var(--sb) + 34px) max(40px, var(--sl));
+}
+.q-foot[hidden] {
+  display: none;
+}
+.q-next {
+  position: relative;
+  width: min(460px, 100%);
+  height: 78px;
+  overflow: hidden;
+  background: linear-gradient(100deg, var(--orange), var(--orange-2));
+  color: var(--white);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.18);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 48px;
+  letter-spacing: 0.02em;
+  clip-path: polygon(20px 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.q-next:active {
+  transform: scale(0.97);
+}
+.q-next.go {
+  font-size: 66px;
+}
+.q-next::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  background: repeating-linear-gradient(-62deg, rgba(255, 255, 255, 0.22) 0 9px, transparent 9px 22px);
+  -webkit-mask: linear-gradient(90deg, transparent, #000 75%);
+  mask: linear-gradient(90deg, transparent, #000 75%);
+}
+.q-next span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- a phone: everything stacks; the open mode takes most of the height ---------- */
+@media (max-width: 819px) {
+  #modes .m-top {
+    gap: 12px;
+  }
+  #modes .m-tag {
+    height: 42px;
+    font-size: 27px;
+    padding-right: 30px;
+  }
+  .q-dots {
+    gap: 5px;
+  }
+  .q-dots li {
+    width: 13px;
+    height: 9px;
+  }
+  .q-dots li.now {
+    width: 26px;
+  }
+  #modes .m-cards {
+    --open: 5;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px max(16px, var(--sr)) calc(var(--sb) + 16px) max(16px, var(--sl));
+  }
+  #modes .mcard {
+    --cut: 16px;
+    height: auto;
+    min-height: 96px;
+    max-height: none;
+  }
+  #modes .mc-body {
+    left: 20px;
+    right: 20px;
+    bottom: 18px;
+  }
+  #modes .mc-name {
+    font-size: 50px;
+  }
+  #modes .mcard.on .mc-name {
+    font-size: 76px;
+  }
+  #modes .mc-en {
+    font-size: 30px;
+  }
+  #modes .mc-line {
+    font-size: 17px;
+  }
+  #modes .mc-play {
+    height: 66px;
+    font-size: 40px;
+  }
+  .q-pick {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px max(16px, var(--sr)) 14px max(16px, var(--sl));
+  }
+  .q-card {
+    --cut: 16px;
+    flex: 1 1 0;
+    height: auto;
+    max-height: 300px;
+  }
+  .q-body {
+    padding: 0 20px 18px;
+  }
+  .q-name {
+    font-size: 64px;
+  }
+  .q-sub {
+    font-size: 22px;
+  }
+  .q-foot {
+    padding: 0 max(16px, var(--sr)) calc(var(--sb) + 18px) max(16px, var(--sl));
+  }
+  .q-next {
+    width: 100%;
+    height: 76px;
+  }
+}
+/* a short landscape phone: less height, so the cards sit side by side again and the type comes down */
+@media (max-height: 520px) {
+  #modes .mc-name {
+    font-size: 40px;
+  }
+  #modes .mcard.on .mc-name {
+    font-size: 58px;
+  }
+  #modes .mc-en {
+    font-size: 24px;
+  }
+  #modes .mc-play {
+    height: 52px;
+    font-size: 32px;
+  }
+  .q-name {
+    font-size: 52px;
+  }
+  .q-next {
+    height: 60px;
+    font-size: 38px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #modes .mcard,
+  #modes .mc-name,
+  #modes .mc-more,
+  .q-dots li,
+  .q-card,
+  .q-card > img,
+  .q-next {
+    transition-property: opacity, filter, background-color;
+  }
+}
+
+/* brighter: the pictures at full strength (an unchosen one only a touch softer), and only a soft fade behind the
+   words instead of a solid black band, so you can see what's on every card */
+#modes .mcard img,
+.q-card > img {
+  filter: brightness(0.95) !important;
+}
+#modes .mcard.on img,
+.q-card.on > img {
+  filter: brightness(1.05) saturate(1.05) !important;
+}
+#modes .mcard::before {
+  background: linear-gradient(
+    180deg,
+    rgba(5, 9, 24, 0) 45%,
+    rgba(5, 9, 24, 0.55) 72%,
+    rgba(5, 9, 24, 0.85) 100%
+  ) !important;
+}
+.q-card::before {
+  background: linear-gradient(180deg, rgba(5, 9, 24, 0) 50%, rgba(5, 9, 24, 0.55) 78%, rgba(5, 9, 24, 0.82) 100%);
+}
+#modes .mc-name,
+.q-card b,
+.q-card .q-name {
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.45),
+    0 4px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* a phone: the open mode card is just its big name and NEXT (the line under it was a lot on a small screen) */
+@media (max-width: 819px) {
+  #modes .mcard .mc-en,
+  #modes .mcard .mc-line {
+    display: none;
+  }
+}

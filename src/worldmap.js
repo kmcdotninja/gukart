@@ -9,7 +9,7 @@ import { $, show, hide } from './dom.js';
 import { travelTo } from './home.js';
 import { openGarage } from './garage-screen.js';
 import { raceIntro, startRace } from './race-flow.js';
-import { game } from './game.js';
+import { game, chapter } from './game.js';
 
 // opening the map: the camera flies straight up out of the race until it's looking down on the whole island, and the map
 // fades in over exactly that view; closing dives back down to the racing
@@ -32,7 +32,21 @@ export function openMap() {
       mapPan.z = clamp(mapPan.z, -r, r);
     },
     title: game.PLACE,
-    islands: [], // one race's map: the circuit chosen on the home card (Map loads it first if it isn't the one built)
+    // the places to race, as chips along the map: every circuit in every city that's built. The lit one is this map;
+    // another flies you there (another circuit swaps in place, another city loads), and its map opens
+    islands: CHAPTERS.filter(c => c.playable).flatMap(c =>
+      (c.circuits || [{ id: null, name: c.name }]).map(x => ({
+        name: `${c.name} · ${x.name}`.toUpperCase(),
+        city: c.id,
+        circ: x.id,
+        ch: c.n,
+        open: c.id === chapter.id && (!x.id || x.id === game.circuit?.id),
+        built: true,
+      })),
+    ),
+    onIsland: is => {
+      if (!is.open) setTimeout(() => travelTo(is.city, 'map', is.circ), 500);
+    },
     onAction: p => {
       if (p.kind === 'race') {
         $('#map').hidden = true;

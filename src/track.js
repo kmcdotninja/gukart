@@ -130,16 +130,22 @@ export function buildTrack(def) {
   const trench = new Uint8Array(N),
     covered = new Uint8Array(N),
     divider = new Uint8Array(N);
+  // a water bridge (The Pearl): a deck that dips close to the sea, then a glass tube under it. Not a trench or an
+  // underpass, though it runs below street level: doha.js builds it
+  const lowb = new Uint8Array(N);
+  for (const f of def.feats)
+    if (f.type === 'lowbridge')
+      for (let s = sOf(f.s); s <= sOf(f.s + f.len); s += seg / 2) lowb[wrap(Math.floor(wrapS(s) / seg))] = 1;
   for (let i = 0; i < N; i++) {
-    if (P[i].y < -0.3) {
+    if (P[i].y < -0.3 && !lowb[i]) {
       trench[i] = 1;
       limit[i] = W / 2 - 0.8;
     }
-    if (P[i].y < -8.3) covered[i] = 1;
+    if (P[i].y < -8.3 && !lowb[i]) covered[i] = 1;
   } // the mouth's top sits flush with the street
   // where a solid wall stands beside the road (barriers, trench walls; the gates add theirs): vehicles stop at it by their own width
   const wall = new Float32Array(N);
-  for (let i = 0; i < N; i++) if (elevated[i] || trench[i]) wall[i] = W / 2 + 0.2;
+  for (let i = 0; i < N; i++) if (elevated[i] || trench[i] || lowb[i]) wall[i] = W / 2 + 0.2;
   // (no central wall: the underpass is one wide road)
   // the central wall's half width: full in the middle, tapering to a point at each end like the nose of a highway barrier
   const divW = new Float32Array(N);
@@ -154,6 +160,15 @@ export function buildTrack(def) {
 
   // features, now in road distance
   const feats = def.feats.map(f => ({ ...f, s: wrapS(sOf(f.s)), len: f.len ? sOf(f.len) : 0 }));
+  // a hall the road runs through (Doha's airport): a rail either side of the tarmac, the concourse beyond it
+  const hall = new Uint8Array(N); // (and no kerb or pavement there: the hall lays its own floor)
+  for (const f of feats)
+    if (f.type === 'airport')
+      for (let s = f.s; s <= f.s + f.len; s += seg / 2) {
+        const i = wrap(Math.floor(wrapS(s) / seg));
+        wall[i] = W / 2 + 0.2;
+        hall[i] = 1;
+      }
   const kickers = feats.filter(f => f.type === 'kicker').map(f => ({ s: f.s, gap: [f.s + 3, f.s + 24] }));
   const inGap = new Uint8Array(N);
   for (const k of kickers)
@@ -252,6 +267,8 @@ export function buildTrack(def) {
     inGap,
     kickers,
     trench,
+    lowb,
+    hall,
     covered,
     divider,
     divW,
@@ -373,7 +390,7 @@ export function buildRoad(scene, tr, tex) {
                 [(sg * W) / 2, 0.065],
                 [sg * (W / 2 - 2.6), 0.065],
               ],
-              k => elevated[k] || inGap[k] || tr.trench[k] || shut(k),
+              k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k),
             ),
             6,
           ),
@@ -395,7 +412,7 @@ export function buildRoad(scene, tr, tex) {
           [W / 2 + 0.6, 0.17],
           [W / 2, 0.07],
         ],
-        k => elevated[k] || inGap[k] || tr.trench[k] || shut(k),
+        k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k),
       ),
       4,
     ),
@@ -412,7 +429,7 @@ export function buildRoad(scene, tr, tex) {
           [-W / 2 - 1.7, 0.19],
           [-W / 2 - 2.4, 0.1],
         ],
-        k => elevated[k] || inGap[k] || tr.trench[k] || shut(k),
+        k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k),
       ),
       4,
     ),
@@ -437,7 +454,15 @@ export function buildRoad(scene, tr, tex) {
             [sg * (W / 2 + 11.5), 0.05],
             [i => sg * foot(i), drop],
           ],
-          k => elevated[k] || inGap[k] || tr.trench[k] || shut(k) || tr.inLoop[k] || tr.inLoop[(k + 1) % N],
+          k =>
+            elevated[k] ||
+            inGap[k] ||
+            tr.trench[k] ||
+            tr.lowb[k] ||
+            tr.hall[k] ||
+            shut(k) ||
+            tr.inLoop[k] ||
+            tr.inLoop[(k + 1) % N],
         ),
         10,
       ),
@@ -719,10 +744,11 @@ export function buildRoad(scene, tr, tex) {
     if (!elevated[i] || tr.inLoop[i] || p.y < 4) continue;
     for (const s of [-1, 1]) {
       const q = p.clone().addScaledVector(tr.L[i], (s * W) / 4);
-      // never on a road that runs underneath (the crossing under the flyover)
+      // never on a road that runs underneath (the crossing under the flyover; a deck crossing a lower deck)
       let clear = true;
       for (let j = 0; j < N && clear; j += 2)
-        if (!elevated[j] && Math.hypot(tr.P[j].x - q.x, tr.P[j].z - q.z) < W / 2 + 4) clear = false;
+        if ((!elevated[j] || tr.P[j].y < q.y - 6) && Math.hypot(tr.P[j].x - q.x, tr.P[j].z - q.z) < W / 2 + 4)
+          clear = false;
       if (clear) pil.push([q.x, q.z, q.y - 1.4]);
     }
   }
@@ -874,9 +900,16 @@ export function buildForks(tr) {
       BP = curve.getSpacedPoints(M);
     const bridge = side !== tunnelSign,
       deck = new Uint8Array(M + 1);
+    // the bridge's height: a smooth climb to 7 m over its first 40% and, mirroring it, a smooth ramp back down over its
+    // last 40%, at road level again before it rejoins the circuit. (It used to stop at 80% and drop straight from 9 m to
+    // the road: karts flew off the end, landed hard and went on into the barrier)
+    const ease = x => {
+      x = Math.min(1, Math.max(0, x));
+      return x * x * (3 - 2 * x);
+    };
     BP.forEach((q, i) => {
       const u = i / M;
-      q.y = bridge && u < 0.8 ? 9 * (x => x * x * (3 - 2 * x))(Math.min(1, Math.max(0, (u - 0.04) / 0.3))) : 0;
+      q.y = bridge ? 7 * ease((u - 0.03) / 0.42) * (1 - ease((u - 0.55) / 0.42)) : 0; // (long ramps: under 15% at their steepest)
       if (bridge && q.y > 0.4) deck[i] = 1;
     });
     const BT = BP.map((_, i) => new V3().subVectors(BP[Math.min(M, i + 1)], BP[Math.max(0, i - 1)]).normalize());

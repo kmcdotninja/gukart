@@ -13,7 +13,7 @@ import { vehicleThumbs, partThumbs, racerPortraits } from './garage.js';
 import { Sound } from './audio.js';
 import { clamp, isTouch, store, fmtTime, ordinal } from './util.js';
 import { $, whip, show } from './dom.js';
-import { renderer, scene, cam, setNight } from './scene.js';
+import { renderer, scene, cam, setNight, clockNight } from './scene.js';
 import { hud, ICONS, banner, events, gauge, drawMap } from './hud.js';
 import { readInput } from './input.js';
 import { coachUpdate } from './coach.js';
@@ -22,7 +22,7 @@ import { chapter, game } from './game.js';
 import { renderChapter } from './home.js';
 import { renderGarage, custom, makeGarage } from './garage-screen.js';
 import { TT, FREE, ghostStep } from './timetrial.js';
-import { openModes } from './modes.js';
+import { openModes, quickGo } from './modes.js';
 import { pv, openMap } from './worldmap.js';
 import { snapshots } from './snapshots.js';
 import { attract } from './race-flow.js';
@@ -36,6 +36,8 @@ import { initModes } from './modes.js';
 import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
 import { inject } from '@vercel/analytics';
+import { updatePodium, showPodium } from './podium.js';
+import { playCup } from './cup.js';
 import './style.css';
 import './screens.css';
 
@@ -53,6 +55,11 @@ initRaceFlow();
 // ---- the frame loop
 let last = performance.now();
 const CAPTURE = location.hash === '#capture';
+// on this machine only (npm run dev): /?fresh wipes the World Tour and its trophy, to see a tour from the very start
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('fresh')) {
+  for (const k of Object.keys(localStorage)) if (/^gukart\.(tour|trophy\.|cup\.)/.test(k)) localStorage.removeItem(k);
+  history.replaceState(null, '', location.pathname + location.hash);
+}
 // Vercel Web Analytics: page views on the live site only (its script exists only there: not on this machine, in the
 // smoke test or in a recording)
 const LOCAL = /^(localhost|127\.|192\.168\.|10\.|\[::1\])/.test(location.hostname);
@@ -114,7 +121,11 @@ function frame(now) {
     }
   }
   if (['menu', 'tomap', 'map'].includes(game.state) && game.race.karts.some(k => k.finished)) attract();
-  game.race.update(dt, ['race', 'finish', 'results', 'menu', 'tomap', 'map'].includes(game.state) ? 'race' : 'idle');
+  game.race.update(
+    dt,
+    ['race', 'finish', 'podium', 'results', 'menu', 'tomap', 'map'].includes(game.state) ? 'race' : 'idle',
+  );
+  updatePodium(dt);
   game.world.update(dt, game.clock, cam);
 
   updateCamera(dt);
@@ -138,7 +149,8 @@ function frame(now) {
     hud.speed.textContent = Math.round(Math.max(0, p.speed) * 3.2);
     hud.prog.style.width = (clamp(p.prog / (LAPS * game.track.len), 0, 1) * 100).toFixed(1) + '%';
     gauge(Math.max(0, p.speed) * 3.2, p.boost > 0);
-    hud.wrong.hidden = game.race.wrongT < 1;
+    const wrong = game.race.wrongT >= 1;
+    if (hud.wrong.hidden === wrong) hud.wrong.hidden = !wrong; // (only when it changes)
     hud.lines.style.opacity = clamp((p.speed - 60) / 30, 0, 1) * (p.boost > 0 ? 1 : 0.5);
     if (game.rollingIcon && (game.rollFlip += dt) > 0.08) {
       game.rollFlip = 0;
@@ -174,11 +186,22 @@ function frame(now) {
       {
         type: p.m.type,
         speed: Math.max(0, p.speed) / 66,
-        throttle: game.state === 'race' ? (game.race.input.brake ? 0 : 1) : 0.15,
+        // racing: on the gas unless braking. On the grid: blips of the throttle, revving at the line
+        throttle:
+          game.state === 'race'
+            ? game.race.input.brake
+              ? 0
+              : 1
+            : game.state === 'count'
+              ? Math.sin(game.clock * 4.3) + Math.sin(game.clock * 1.7) > 1.1
+                ? 0.9
+                : 0.08
+              : 0.15,
         brake: game.race.input.brake,
         air: p.fly && p.airT > 0.12,
         drift: !!p.drift,
         boost: p.boost > 0,
+        steer: Math.max(-1, Math.min(1, p.wheelA * 2)),
         running: true,
       },
       dt,
@@ -281,12 +304,15 @@ async function boot() {
   game.THUMBS = vehicleThumbs(tex, Object.keys(VEHICLES), custom);
   renderGarage();
   await step(92, 'WARMING THE TYRES');
-  setNight(store.get('night', false));
+  // the game opens in the time of day it is where you are (a recording keeps whatever it was set to, so it's the same
+  // every time); the sun/moon button still switches it, and after each race it swaps (src/race-flow.js)
+  setNight(CAPTURE ? store.get('night', false) : clockNight());
   attract();
   renderChapter();
   try {
     updateCamera(1);
     snapshots();
+    renderChapter(); // (QUICK RACE's tile is the grid from this circuit, now it's pictured)
   } catch (e) {
     console.warn('snapshots', e);
   }
@@ -300,10 +326,17 @@ async function boot() {
   $('#loading').classList.add('done');
   whip(1);
   store.set('travelTo', '');
-  if (store.get('afterBoot', '') === 'modes') {
+  if (store.get('afterBoot', '') === 'cup') {
+    store.set('afterBoot', '');
+    $('#menu').hidden = true;
+    playCup(); // carrying on with a cup in another city: straight to its race card
+  } else if (store.get('afterBoot', '') === 'modes') {
     store.set('afterBoot', '');
     $('#menu').hidden = true;
     openModes('menu');
+  } else if (store.get('afterBoot', '') === 'quick') {
+    store.set('afterBoot', '');
+    quickGo(); // a quick race set up in another city: straight into it, in the time of day it was set up with
   } else if (store.get('afterBoot', '') === 'map') {
     store.set('afterBoot', '');
     $('#menu').hidden = true;
@@ -335,8 +368,9 @@ async function boot() {
 }
 // A handle on the game from the browser console (window.gukart.game.race, ...), only while building it (npm run dev) or
 // capturing pictures (#capture): never in the game players get. tools/road-check.mjs uses it too.
-if (import.meta.env.DEV || CAPTURE)
-  window.gukart = { game, scene, cam, renderer, events, clearance, Sound, TT, frame, ready: false };
+// the game's insides, for the dev server, recordings, and test runs of the real build (?gktest)
+if (import.meta.env.DEV || CAPTURE || location.search.includes('gktest'))
+  window.gukart = { game, scene, cam, renderer, events, clearance, Sound, TT, frame, showPodium, ready: false };
 
 Sound.keepAlive(); // wake the sound after the phone sleeps or the tab comes back
 Feedback.init(); // every button's sound and buzz (src/feedback.js)

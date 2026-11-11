@@ -22,14 +22,18 @@ export const ENGINE_BASE = {
   turbo: 0.35, // whistle when the turbo spools
   bov: 0.5, // blow-off "pssh" on lift and shifts
   pops: 0.45, // crackles off throttle
-  gears: [0.17, 0.31, 0.46, 0.62, 0.8, 1], // each gear's top speed, as a share of top speed
+  // each gear's top speed, as a share of top speed. Top gear is tall (an overdrive): flat out it cruises at about three
+  // quarters of the revs instead of sitting on the limiter, which droned and rattled for the whole race
+  gears: [0.15, 0.28, 0.43, 0.6, 0.8, 1.32],
   vol: 1,
 };
 export const VEHICLE_SOUND = {
-  kart: { pitch: 1.22, half: 0.05, rumble: 0.3, rasp: 0.3, turbo: 0.25, load: 0.7, vol: 0.9 }, // small and eager, brighter
-  buggy: { pitch: 1.04, half: 0.08, rumble: 0.45, rasp: 0.35, turbo: 0.3 }, // closest to the Supra
-  monster: { pitch: 0.68, half: 0.17, rumble: 0.95, rasp: 0.25, turbo: 0.45, tone: 0.8, vol: 1.15 }, // a big, deep, slow engine
-  muscle: { pitch: 0.82, half: 0.13, rumble: 0.75, rasp: 0.3, turbo: 0.2, tone: 0.9, vol: 1.1 }, // a burbling V8 weight
+  // low: a shelf on the low end, in dB (the body of a big engine); top: where the sound rolls off, in Hz (a small engine
+  // is bright and buzzy, a big one deep and dark)
+  kart: { pitch: 1.22, half: 0.05, rumble: 0.3, rasp: 0.3, turbo: 0.25, load: 0.7, vol: 0.9, low: -2, top: 6400 }, // small and eager, brighter
+  buggy: { pitch: 1.04, half: 0.08, rumble: 0.45, rasp: 0.35, turbo: 0.3, low: 1, top: 5200 }, // closest to the Supra
+  monster: { pitch: 0.68, half: 0.17, rumble: 0.95, rasp: 0.25, turbo: 0.45, tone: 0.8, vol: 1.15, low: 6, top: 3300 }, // a big, deep, slow engine
+  muscle: { pitch: 0.82, half: 0.13, rumble: 0.75, rasp: 0.3, turbo: 0.2, tone: 0.9, vol: 1.1, low: 5, top: 3900 }, // a burbling V8 weight
 };
 export function engineParams(type) {
   const tune = store.get('engineTune.' + type, {}); // tweaks saved from the sound studio (sound.html)
@@ -66,6 +70,10 @@ export function loadSupra(c) {
 }
 export const engineMode = () => store.get('engineMode', 'supra');
 
+// the grains' fades: a quarter sine in, a quarter cosine out (equal power, so the level holds through each overlap)
+const FADE_IN = Float32Array.from({ length: 24 }, (_, i) => Math.sin(((i / 23) * Math.PI) / 2)),
+  FADE_OUT = FADE_IN.slice().reverse();
+
 let noiseBuf = null;
 const noise = c => {
   if (noiseBuf) return noiseBuf;
@@ -91,11 +99,23 @@ export class EngineVoice {
     this.p = params;
     this.out = c.createGain();
     this.out.gain.value = 0;
+    // a gentle top cut on everything the engine makes: the hiss and fizz above it is what tires the ear
+    this.tame = c.createBiquadFilter();
+    this.tame.type = 'lowpass';
+    this.tame.frequency.value = 5200;
+    this.tame.Q.value = 0.5;
+    this.out.connect(this.tame);
+    // the vehicle's weight: a low shelf, deep for the monster and the muscle car, lighter for the kart
+    this.shelf = c.createBiquadFilter();
+    this.shelf.type = 'lowshelf';
+    this.shelf.frequency.value = 180;
+    this.shelf.gain.value = params.low || 0;
+    this.tame.connect(this.shelf);
     this.pan = c.createStereoPanner ? c.createStereoPanner() : null;
     if (this.pan) {
-      this.out.connect(this.pan);
+      this.shelf.connect(this.pan);
       this.pan.connect(dest);
-    } else this.out.connect(dest);
+    } else this.shelf.connect(dest);
     // the note: two waves crossfaded by load (the measured overtones; the same, opened up)
     const wave = amps => {
       const re = new Float32Array(amps.length + 1),
@@ -151,7 +171,7 @@ export class EngineVoice {
     this.tb.connect(this.tbG);
     this.tbG.connect(this.out);
     for (const o of [this.oA, this.oB, this.oH, this.tb]) o.start();
-    // the Supra loops, all running, silent until chosen
+    // the Supra loops, played as overlapping grains (see grain()), silent until chosen
     this.synthG = c.createGain();
     this.gA.disconnect();
     this.gB.disconnect();
@@ -164,16 +184,29 @@ export class EngineVoice {
     this.sampBus.connect(this.out); // the recording goes straight out: it has its own tone
     if (supraBufs)
       for (const { buf, f } of supraBufs) {
-        const src = c.createBufferSource(),
-          g = c.createGain();
-        src.buffer = buf;
-        src.loop = true;
+        const g = c.createGain();
         g.gain.value = 0;
-        src.connect(g);
         g.connect(this.sampBus);
-        src.start(0, Math.random() * buf.duration);
-        this.samples.push({ src, g, f });
+        this.samples.push({ buf, g, f, grains: [], next: 0 });
       }
+    // combustion is never perfectly even: a slow, random wobble in the level (a few per cent, under 15 Hz), so the note
+    // breathes like a running engine instead of holding dead still
+    this.rough = loopNoise(c);
+    this.roughF = c.createBiquadFilter();
+    this.roughF.type = 'lowpass';
+    this.roughF.frequency.value = 14;
+    this.roughBody = c.createGain();
+    this.roughBody.gain.value = 2.6;
+    this.roughSamp = c.createGain();
+    this.roughSamp.gain.value = 10;
+    this.rough.connect(this.roughF);
+    this.roughF.connect(this.roughBody);
+    this.roughF.connect(this.roughSamp);
+    this.roughBody.connect(this.body.gain);
+    this.roughSamp.connect(this.sampBus.gain);
+    this.seed = Math.random() * 100;
+    this.wt = 0;
+    this.tbLevel = 0;
     this.rpm = params.idle;
     this.gear = 0;
     this.spool = 0;
@@ -185,6 +218,7 @@ export class EngineVoice {
   }
   set(params) {
     this.p = params;
+    this.shelf.gain.value = params.low || 0;
     this.gear = Math.min(this.gear, params.gears.length - 1);
     this.rpm = Math.max(params.idle, Math.min(params.redline, this.rpm));
   } // (keep the gear and revs inside the new engine's range)
@@ -205,7 +239,15 @@ export class EngineVoice {
       this.shift();
     } else if (!s.air && this.gear > 0 && s.speed < G[this.gear - 1] * 0.78) this.gear--;
     want = s.air ? want : p.idle + span * Math.min(1.04, s.speed / (G[this.gear] * (s.boost ? 1.12 : 1)));
-    if (s.speed < 0.02 && !s.air) want = p.idle * (1 + thr * 0.3);
+    if (s.speed < 0.02 && !s.air) want = p.idle + (p.redline - p.idle) * thr * 0.5; // standing: the throttle revs it (the countdown)
+    // what the driving does to the revs: a drift spins the wheels up, a hard turn scrubs them down, and they never sit
+    // perfectly still (a slow wander of a per cent or two), so a long flat-out stretch still moves
+    this.wt += dt;
+    if (!s.air && s.speed > 0.05) {
+      const wander = 0.012 * Math.sin(this.wt * 1.7 + this.seed) + 0.007 * Math.sin(this.wt * 4.3 + this.seed * 2),
+        flare = (s.drift ? 0.07 : 0) - 0.03 * Math.min(1, Math.abs(s.steer || 0)) + (s.boost ? 0.03 : 0);
+      want = Math.min(p.redline * 0.97, want * (1 + wander + flare));
+    }
     const up = want > this.rpm,
       rate = up ? (thr > 0.1 ? 9 : 4) : thr > 0.1 ? 6 : 3.2;
     this.rpm += (want - this.rpm) * Math.min(1, dt * rate);
@@ -229,6 +271,7 @@ export class EngineVoice {
     }
     this.cut = Math.max(0, this.cut - dt);
     // the turbo spools with load and revs
+    const spool0 = this.spool;
     this.spool +=
       ((thr > 0.3 ? Math.min(1, (this.rpm / p.redline) * 1.3) : 0) + (s.boost ? 0.4 : 0) - this.spool) *
       Math.min(1, dt * (thr > 0.3 ? 1.6 : 5));
@@ -244,28 +287,77 @@ export class EngineVoice {
     this.gB.gain.setTargetAtTime(load * p.load * 0.8, t, 0.06);
     const supra = (s.mode || engineMode()) === 'supra' && this.samples.length;
     this.synthG.gain.setTargetAtTime(supra ? 0 : 1, t, 0.05);
+    this.roughBody.gain.setTargetAtTime(supra ? 0 : 2.6, t, 0.1); // the wobble goes on whichever engine is playing
+    this.roughSamp.gain.setTargetAtTime(supra ? 10 : 0, t, 0.1);
     if (supra) {
       // the nearest loop carries the note, its neighbour fades in as the revs pass between them
       const fz = Math.max(60, f),
         ws = this.samples.map(sm => Math.exp(-Math.pow(Math.log(fz / sm.f) / 0.22, 2))),
         tot = ws.reduce((a, b) => a + b, 0) || 1;
       this.samples.forEach((sm, j) => {
-        sm.src.playbackRate.setTargetAtTime(Math.max(0.45, Math.min(2.2, fz / sm.f)), t, 0.05);
+        const rate = Math.max(0.45, Math.min(2.2, fz / sm.f));
+        for (const gr of sm.grains) gr.src.playbackRate.setTargetAtTime(rate, t, 0.05);
         sm.g.gain.setTargetAtTime(ws[j] / tot, t, 0.06);
+        if (ws[j] / tot > 0.02 && t >= sm.next - 0.03) this.grain(sm, rate, Math.max(t, sm.next));
       });
       this.sampBus.gain.setTargetAtTime(3.9 * (0.6 + load * 0.55) * (this.cut > 0 ? 0.55 : 1), t, 0.04); // as loud as our engine: louder on throttle, a dip on each shift
     } else this.sampBus.gain.setTargetAtTime(0, t, 0.05);
-    this.gH.gain.setTargetAtTime(p.half * 6 * (supra ? 0.4 : 1), t, 0.1);
+    // with the recording playing, the synthesised layers are only a trace: the recording has its own body and grit, and
+    // the noise on top of it was most of what sounded like hiss
+    this.gH.gain.setTargetAtTime(p.half * 6 * (supra ? 0.15 : 1), t, 0.1);
     this.lp.frequency.setTargetAtTime((500 + rn * 2600 + load * 1800) * p.tone, t, 0.08);
     this.body.gain.setTargetAtTime((0.42 + load * 0.5 + rn * 0.12) * (this.cut > 0 ? 0.55 : 1), t, 0.03);
-    this.rumG.gain.setTargetAtTime(p.rumble * (0.25 + load * 0.6) * (0.5 + rn * 0.5), t, 0.1);
+    this.rumG.gain.setTargetAtTime(p.rumble * (0.25 + load * 0.6) * (0.5 + rn * 0.5) * (supra ? 0.15 : 1), t, 0.1);
     this.rspF.frequency.setTargetAtTime(Math.max(200, f * 2), t, 0.05);
-    this.rspG.gain.setTargetAtTime(p.rasp * load * (0.2 + rn) * 0.5, t, 0.08);
-    this.tb.frequency.setTargetAtTime(1800 + this.spool * 2600, t, 0.1);
-    this.tbG.gain.setTargetAtTime(p.turbo * this.spool * this.spool * 0.035, t, 0.1);
-    this.out.gain.setTargetAtTime((s.gain ?? 1) * p.vol * 0.22, t, 0.08);
+    this.rspG.gain.setTargetAtTime(
+      p.rasp * load * (0.2 + rn) * 0.25 * (supra ? (s.drift ? 0.6 : 0) : s.drift ? 1.8 : 1),
+      t,
+      0.08,
+    );
+    // the top end: the vehicle's own roll-off, and duller still with distance (muffle, 0 near to 1 far) as real engines are
+    this.tame.frequency.setTargetAtTime(Math.max(600, (p.top || 5200) * (1 - (s.muffle || 0) * 0.85)), t, 0.1);
+    // the whistle is heard while the turbo spools up and under nitro, not as a steady tone: it used to sit at 4.4 kHz
+    // the whole race, right where the ear is most sensitive. Lower now, and it fades once the turbo is up to speed
+    const rising = Math.max(0, (this.spool - spool0) / Math.max(dt, 1e-3));
+    this.tbLevel += (Math.min(1, rising * 1.5 + (s.boost ? 0.5 : 0)) - this.tbLevel) * Math.min(1, dt * 4);
+    this.tb.frequency.setTargetAtTime(1000 + this.spool * 1100, t, 0.1);
+    this.tbG.gain.setTargetAtTime(p.turbo * this.tbLevel * 0.02, t, 0.1);
+    // the engine breathes in the mix: up front when something's happening (the revs moving, a shift, a drift, nitro),
+    // settling back when you just hold a speed, so a long flat-out run isn't one loud drone in your ear
+    const moving = Math.min(1, Math.abs(this.rpm - (this.rpm0 ?? this.rpm)) / Math.max(dt, 1e-3) / 2500);
+    this.rpm0 = this.rpm;
+    const busy = Math.min(1, moving + (s.drift ? 0.5 : 0) + (s.boost ? 0.6 : 0) + (this.cut > 0 ? 0.6 : 0));
+    this.act = (this.act ?? 1) + (busy - (this.act ?? 1)) * Math.min(1, dt * (busy > 0.3 ? 6 : 1.2));
+    this.out.gain.setTargetAtTime((s.gain ?? 1) * p.vol * 0.22 * (0.7 + 0.3 * this.act), t, 0.08);
     if (this.pan) this.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, s.pan || 0)), t, 0.08);
     this.lastF = f;
+  }
+  // a grain: a slice of a loop from a random point, a third to four fifths of a second long, faded in and out (equal
+  // power) over the next one. Played end to end a loop of a second or so repeats itself audibly, a mechanical drone;
+  // slices in a random order never line up the same way twice, so the recording sounds like a running engine
+  grain(sm, rate, at) {
+    const c = this.ctx,
+      src = c.createBufferSource(),
+      env = c.createGain(),
+      X = 0.09,
+      dur = 0.38 + Math.random() * 0.42;
+    src.buffer = sm.buf;
+    src.loop = true; // (the loops are seamless, so a slice can run over the end)
+    src.playbackRate.value = rate;
+    env.gain.value = 0;
+    env.gain.setValueCurveAtTime(FADE_IN, at, X);
+    env.gain.setValueCurveAtTime(FADE_OUT, at + dur - X, X);
+    src.connect(env);
+    env.connect(sm.g);
+    src.start(at, Math.random() * sm.buf.duration);
+    src.stop(at + dur + 0.01);
+    const gr = { src };
+    sm.grains.push(gr);
+    src.onended = () => {
+      env.disconnect();
+      sm.grains.splice(sm.grains.indexOf(gr), 1);
+    };
+    sm.next = at + dur - X;
   }
   shift() {
     this.onShift?.();
@@ -324,7 +416,16 @@ export class EngineVoice {
     this.dead = true;
     const t = this.ctx.currentTime;
     this.out.gain.setTargetAtTime(0, t, 0.05);
-    for (const o of [this.oA, this.oB, this.oH, this.tb, this.rum, this.rsp, ...this.samples.map(sm => sm.src)]) {
+    for (const o of [
+      this.oA,
+      this.oB,
+      this.oH,
+      this.tb,
+      this.rum,
+      this.rsp,
+      this.rough,
+      ...this.samples.flatMap(sm => sm.grains.map(gr => gr.src)),
+    ]) {
       try {
         o.stop(t + 0.3);
       } catch {
@@ -441,7 +542,7 @@ export const Sound = {
       r.v = null;
     });
   },
-  // the player's vehicle: o = { type, speed (share of top speed), throttle, brake, air, drift, boost, running }
+  // the player's vehicle: o = { type, speed (share of top speed), throttle, brake, air, drift, boost, steer (-1..1), running }
   drive(o, dt = 0.016) {
     if (!this.ctx) return;
     const c = this.ctx,
@@ -480,7 +581,11 @@ export const Sound = {
       } // a different rival is nearest: retune the same engine, don't build another
       const near = Math.max(0, 1 - Math.abs(r.dist) / 60),
         dop = Math.max(0.8, Math.min(1.25, 1 - (((r.dist > 0 ? 1 : -1) * r.rel) / 340) * 6));
-      slot.v.update({ speed: r.speed, throttle: 1, doppler: dop, gain: near * near * 0.8, pan: r.side * 0.8 }, dt);
+      // a rival far off is quiet and muffled; it gets clear and loud only as it comes past
+      slot.v.update(
+        { speed: r.speed, throttle: 1, doppler: dop, gain: near * near * 0.6, pan: r.side * 0.8, muffle: 1 - near },
+        dt,
+      );
       if (slot.d > 0 !== r.dist > 0 && Math.abs(r.dist) < 8 && Math.abs(r.rel) > 3) this.passBy(r.side); // they've just come past, or you've passed them
       slot.d = r.dist;
     });
@@ -551,6 +656,38 @@ export const Sound = {
     g2.connect(this.bus);
     s.start(t, Math.random());
     s.stop(t + 0.2);
+  },
+  // the water bridge: a plank thumping under the tyres and the slap of spray, louder the faster you go (0..1)
+  plank(v = 0.5) {
+    if (!this.ctx || !this.on || this.quiet) return;
+    const c = this.ctx,
+      t = c.currentTime,
+      o = c.createOscillator(),
+      g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(82 + Math.random() * 16, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.11);
+    g.gain.setValueAtTime(0.1 + v * 0.14, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.14);
+    o.connect(g);
+    g.connect(this.bus);
+    o.start(t);
+    o.stop(t + 0.16);
+    const s = c.createBufferSource(),
+      f = c.createBiquadFilter(),
+      g2 = c.createGain();
+    s.buffer = noise(c);
+    f.type = 'bandpass';
+    f.frequency.value = 1500 + v * 1400;
+    f.Q.value = 0.6;
+    g2.gain.setValueAtTime(0.0005, t);
+    g2.gain.exponentialRampToValueAtTime(0.03 + v * 0.07, t + 0.04);
+    g2.gain.exponentialRampToValueAtTime(0.0005, t + 0.3);
+    s.connect(f);
+    f.connect(g2);
+    g2.connect(this.bus);
+    s.start(t, Math.random());
+    s.stop(t + 0.32);
   },
   blip(freq, dur = 0.12, type = 'sine', vol = 0.18, slide = 1.5) {
     if (!this.ctx || !this.on || this.quiet) return;

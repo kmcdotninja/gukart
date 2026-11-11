@@ -1,7 +1,6 @@
-// The home screen: the chapter card (city, circuit, stars, prize), the chapter stepper, PLAY, and the sound and night
-// buttons. Also travelTo(): going to another city reloads the game; another circuit in the same city swaps in place.
+// The home screen: the World Tour tile, QUICK RACE, GARAGE, MAP, and the sound and night buttons. Also travelTo():
+// going to another city reloads the game; another circuit in the same city swaps in place.
 import { screenOut } from './motion.js';
-import { Feedback } from './feedback.js';
 import { CHAPTERS } from './chapters.js';
 import { Sound } from './audio.js';
 import { store } from './util.js';
@@ -10,11 +9,12 @@ import { setNight } from './scene.js';
 import { chapter, circuitOf, game } from './game.js';
 import { openModes } from './modes.js';
 import { swapCircuit } from './circuit.js';
+import { cupOf, playCup, trophyOf, TOUR, raceName, isFinal } from './cup.js';
+import { maybeChest } from './chest.js';
 
-const pickedCirc = {}; // the circuit chosen on the home card, per chapter, before you go
 export function travelTo(id, then = '', circ = null) {
   const c = CHAPTERS.find(x => x.id === id),
-    want = circ || (c.circuits ? pickedCirc[id] || circuitOf(c).id : null);
+    want = circ || (c.circuits ? circuitOf(c).id : null);
   if (id === chapter.id && (!want || want === game.circuit?.id)) return false;
   if (id === chapter.id) {
     swapCircuit(want, then);
@@ -28,49 +28,39 @@ export function travelTo(id, then = '', circ = null) {
   return true;
 }
 
+// The home screen is a few big things (Destruction AllStars' menu: a big picture, big tiles, almost no small print):
+// the World Tour tile (its name, which race is next, a mark per race), then QUICK RACE, GARAGE and MAP. Picking a city
+// and circuit for a quick race is on the QUICK RACE screen (src/modes.js); the tour picks its own
 export function renderChapter() {
   const c = CHAPTERS[game.chIndex],
-    rid = c.id + (c.circuits ? '.' + (pickedCirc[c.id] || circuitOf(c).id) : ''),
-    stars = store.get('stars.' + rid, 0);
-  $('#chNum').textContent = `CHAPTER ${c.n}`;
-  $('#chName').textContent = c.name.toUpperCase();
-  $('#chTag').textContent = c.tagline;
-  {
-    const box = $('#chCirc');
-    box.hidden = !c.circuits;
-    if (c.circuits) {
-      const on = pickedCirc[c.id] || circuitOf(c).id;
-      box.innerHTML = c.circuits
-        .map(
-          x =>
-            `<button data-circ="${x.id}" class="${x.id === on ? 'on' : ''}"><span>${x.name.toUpperCase()}</span></button>`,
-        )
-        .join('');
-    }
-  }
-  $('#chStars').innerHTML = [0, 1, 2]
+    t = cupOf(),
+    won = trophyOf(),
+    n = TOUR.races.length;
+  $('#tourSub').textContent = !t
+    ? won
+      ? `${['GOLD', 'SILVER', 'BRONZE'][won - 1]} WON · ${n} RACES`
+      : `${n} RACES · KANO · DOHA`
+    : isFinal(t)
+      ? 'THE FINAL'
+      : `RACE ${t.i + 1} OF ${n}`;
+  // a mark per race: done (orange), next (white), the Final (a gold flag)
+  $('#tourMarks').innerHTML = TOUR.races
     .map(
-      i =>
-        `<svg viewBox="0 0 24 24" class="${i < stars ? 'won' : ''}"><path d="M12 2l3 6.6 7 .8-5.2 4.8 1.4 7L12 17.8 5.8 21.2l1.4-7L2 9.4l7-.8z"/></svg>`,
+      (r, i) =>
+        `<li class="${t && i < t.i ? 'done' : ''} ${(t ? t.i : 0) === i ? 'next' : ''} ${i === n - 1 ? 'fin' : ''}"></li>`,
     )
     .join('');
-  $('#chReward').innerHTML = c.playable ? `<i class="coin-icon"></i><b>+${c.reward}</b>` : '<b>LOCKED</b>';
-  $('#dots').innerHTML = CHAPTERS.map(
-    (x, i) =>
-      `<li class="${i === game.chIndex ? 'on' : ''} ${x.playable ? '' : 'locked'}"><button data-ch="${i}" data-n="${x.n}" aria-label="Chapter ${x.n}">${x.n}</button></li>`,
-  ).join('');
-  const go = $('#goBtn');
-  go.disabled = !c.playable;
-  go.querySelector('span').textContent = c.playable ? 'PLAY' : 'SOON';
-  go.querySelector('small').textContent = c.playable
-    ? `RACE · ${c.circuits ? c.circuits.find(x => x.id === (pickedCirc[c.id] || circuitOf(c).id)).name.toUpperCase() : c.name.toUpperCase()}`
-    : 'CHAPTER LOCKED';
-  $('#menu').classList.toggle('locked', !c.playable);
+  $('#tourGo').firstChild.textContent = t ? 'CONTINUE' : 'START';
+  $('#goBtn').setAttribute(
+    'aria-label',
+    t ? `World Tour: continue, race ${t.i + 1} of ${n}, ${raceName(t.races[t.i])}` : `World Tour: start, ${n} races`,
+  );
   const gp = $('#gPlay');
   gp.disabled = !c.playable;
   gp.querySelector('span').textContent = c.playable ? 'PLAY' : 'SOON';
   gp.querySelector('small').textContent = c.playable ? c.name.toUpperCase() : 'CHAPTER LOCKED';
   $('#wallet').textContent = store.get('wallet', 0).toLocaleString('en');
+  maybeChest(); // a chest earned since you were last here drops in
 }
 const soundBtn = $('#soundBtn');
 export const paintSound = () => {
@@ -80,34 +70,17 @@ export const paintSound = () => {
 
 // wire up this screen's buttons and listeners (called once, from main.js)
 export function initHome() {
-  $('#chCirc').addEventListener('click', e => {
-    const b = e.target.closest('[data-circ]');
-    if (!b) return;
-    pickedCirc[CHAPTERS[game.chIndex].id] = b.dataset.circ;
-    renderChapter();
-  });
-  $('#dots').addEventListener('click', e => {
-    const b = e.target.closest('[data-ch]');
-    if (b) {
-      game.chIndex = +b.dataset.ch;
-      renderChapter();
-    }
-  });
-  $('#prevCh').addEventListener('click', () => {
-    game.chIndex = (game.chIndex + CHAPTERS.length - 1) % CHAPTERS.length;
-    renderChapter();
-  });
-  $('#nextCh').addEventListener('click', () => {
-    game.chIndex = (game.chIndex + 1) % CHAPTERS.length;
-    renderChapter();
-  });
+  // the World Tour: start it, or carry on (in another city, the game goes there first)
   $('#goBtn').addEventListener('click', () => {
-    if (CHAPTERS[game.chIndex].playable) {
-      if (travelTo(CHAPTERS[game.chIndex].id, 'modes')) return;
-      Sound.init();
-      screenOut($('#menu'));
-      openModes('menu');
-    } else Feedback.say('deny');
+    Sound.init();
+    screenOut($('#menu'));
+    playCup(); // (it goes to the race's city and circuit first, if they aren't the ones built)
+  });
+  // QUICK RACE: the modes, with the city and circuit to race on along the top
+  $('#quickBtn').addEventListener('click', () => {
+    Sound.init();
+    screenOut($('#menu'));
+    openModes('menu');
   });
   $('#nightBtn').addEventListener('click', () => setNight(!game.night));
   soundBtn.addEventListener('click', () => {

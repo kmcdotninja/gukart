@@ -38,6 +38,8 @@ scene.add(sun, sun.target);
 // day or night: the sun becomes moonlight, the light drops and cools, the city and the karts' headlights come on
 
 const hemi = scene.children.find(o => o.isHemisphereLight);
+// night on the player's own clock: from 7 in the evening to 6 in the morning
+export const clockNight = (h = new Date().getHours()) => h >= 19 || h < 6;
 export function setNight(on) {
   game.night = on ? 1 : 0;
   // Kano's night is dark: moonlight and lamplit windows. Doha's is a big city's: the sky glows, the streets are lit end to

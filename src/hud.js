@@ -9,6 +9,7 @@ import { $, show, hide } from './dom.js';
 import { cam } from './scene.js';
 import { TT } from './timetrial.js';
 import { showResults } from './results.js';
+import { showPodium } from './podium.js';
 import { game } from './game.js';
 
 export const hud = {
@@ -161,8 +162,28 @@ export const events = {
       }, t * 1000);
       t += Math.min(d, 1.2);
     }
-    setTimeout(() => hide(el, null, -1), 4600);
-    setTimeout(showResults, 5200);
+    // quick to the point: YOU CAME 1ST for under two seconds, the podium, and the results card in over the podium
+    // about two and a half seconds later (the podium keeps celebrating behind it). A tap skips ahead at any step
+    const toPodium = () => {
+      if (game.state !== 'finish') return;
+      hide(el, null, -1);
+      if (game.mode === 'tt') return showResults();
+      game.state = 'podium';
+      // top three: the podium, you in it wearing YOU; further back: just you, let down
+      const rk = game.race.rank(),
+        me = game.race.player;
+      showPodium(rk, me.rank <= 3 ? {} : { solo: me });
+      setTimeout(() => {
+        if (game.state === 'podium') showResults();
+      }, 2600);
+    };
+    const tap = () => {
+      if (game.state === 'finish') toPodium();
+      else if (game.state === 'podium') showResults();
+      if (game.state === 'finish' || game.state === 'podium') addEventListener('pointerdown', tap, { once: true });
+    };
+    setTimeout(() => addEventListener('pointerdown', tap, { once: true }), 300); // (not the tap that was still held)
+    setTimeout(toPodium, 1900);
   },
   takedown(name, n) {
     hud.kos.textContent = n;
@@ -177,6 +198,18 @@ export const events = {
   },
   shield() {
     Haptics.boost();
+  },
+  // fire mode: the HEAT meter fills as you chain moves; full, you're ON FIRE
+  heat(v) {
+    $('#heatFill').style.transform = `scaleX(${Math.max(0, Math.min(1, v)).toFixed(3)})`;
+    $('#heat').classList.toggle('warm', v > 0.6);
+  },
+  fire(on) {
+    document.body.classList.toggle('onfire', on);
+    if (on) {
+      banner('ON FIRE', 'ko', 1500);
+      Haptics.big();
+    } else toast('Cooled off');
   },
   nitro(v) {
     $('#nLiq').style.transform = `translateY(${(46 * (1 - Math.max(0, Math.min(1, v)))).toFixed(1)}px)`;
@@ -196,6 +229,8 @@ export const QUIET = {
   toast() {},
   hurt() {},
   shield() {},
+  heat() {},
+  fire() {},
   nitro() {},
 };
 // the round speed gauge: its arc fills with speed and glows orange on a boost

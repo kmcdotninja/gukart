@@ -742,6 +742,16 @@ export class Robot {
         c.head[2] += 0.1 * k;
         break;
       }
+      case 'mope': {
+        // standing, let down: shoulders dropped, arms hanging, head hung and slowly shaking, a scuff of the foot now and then
+        c.sit = 0.2;
+        setHs(c, HANG, 1);
+        c.head = [0.28, Math.sin(t * 1.3) * 0.35, 0.12]; // (low, but not so low the sad eyes are hidden)
+        c.body = [0.3, Math.sin(t * 0.6) * 0.05];
+        g.y = 0.15;
+        c.kickR = Math.max(0, Math.sin(t * 0.9)) * 0.45;
+        break;
+      }
       case 'sad': {
         // slumped in the seat, head down, arms limp, a slow shake of the head
         const k = pl(p, 0, 0.03, 0.98, 1) || 1;
