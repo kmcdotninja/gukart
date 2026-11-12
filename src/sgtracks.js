@@ -320,7 +320,7 @@ export function riverTrack(La, Lb) {
 // far side and along the runway as a jet takes off beside you, and home along the coast with the ships at anchor
 export function changiTrack(La, Lb) {
   const t = turtle(),
-    JR = 52, // the curve round the vortex
+    JR = 70, // the curve round the vortex (opened out from 52: it was a tight, endless turn high on the deck)
     JS = 70; // the straight in and out under the glass
   t.straight(240, 0, [
     [0, 'apron', { len: 240 }],
@@ -350,7 +350,7 @@ export function changiTrack(La, Lb) {
   // Jewel
   // up round the Rain Vortex: a turn and a quarter, climbing 32 m (so where it passes over its own start there's at least
   // 20 m of air between the two levels), then out through the glass and down a long ramp to the runway
-  const JRAMP = 25,
+  const JRAMP = 40, // (long ramps in and out of the turn, so it eases in rather than snapping)
     JM = ((450 - 2 * JRAMP) * Math.PI * JR) / 180,
     JT = 4 * ((JRAMP * Math.PI) / 180) * JR + JM;
   t.straight(JS, 0, [
@@ -370,7 +370,12 @@ export function changiTrack(La, Lb) {
     JRAMP,
   );
   t.straight(90, 0); // (level until it's clear of the turn below, then down)
-  t.straight(250, -32, [[190, 'pad', { lat: 0 }]]);
+  // the ramp down: eased in and out (its slope rises and falls smoothly, like a real flyover's), so a kart at full
+  // speed rolls over the top of it instead of launching off the crest and landing hard at the bottom
+  for (let q = 0; q < 10; q++) {
+    const sm = u => u * u * (3 - 2 * u);
+    t.straight(25, -32 * (sm((q + 1) / 10) - sm(q / 10)), q === 7 ? [[15, 'pad', { lat: 0 }]] : undefined);
+  }
   // the runway: a jet rolling and lifting off alongside
   t.straight(430, 0, [
     [0, 'runway', { len: 430 }],

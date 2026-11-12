@@ -858,9 +858,14 @@ export function dressSingapore(k) {
       E.add(mesh(new THREE.BoxGeometry(0.15, 11, D), paneM, sd * (X - 0.3), 5.5, (out * D) / 2));
       E.add(mesh(new THREE.BoxGeometry(0.12, 9, 4.2), paneM, sd * (W / 2 + 1.4), 4.5, out * 1.2));
     }
-    // the name, lit, over the road on the outer frame, both faces
+    // the name, lit, over the road on the outer frame: one board on each face of its beam, each turned to read the right
+    // way round from its own side (one double-sided board read backwards to everyone coming at it)
     const sign = mesh(new THREE.PlaneGeometry(X * 1.4, 2.6), signM(name), 0, 13.6, out * D);
+    sign.rotation.y = out < 0 ? Math.PI : 0;
     E.add(sign);
+    const back = mesh(new THREE.PlaneGeometry(X * 1.4, 2.6), signM(name), 0, 13.6, out * D - out * 0.5);
+    back.rotation.y = out < 0 ? 0 : Math.PI;
+    E.add(back);
     E.add(mesh(new THREE.BoxGeometry(X * 1.4 + 0.4, 3, 0.3), steelM, 0, 13.6, out * D - out * 0.25));
     scene.add(E);
     shade(E);

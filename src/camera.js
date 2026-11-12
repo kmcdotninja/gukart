@@ -21,6 +21,7 @@ const F = { p: new THREE.Vector3(), t: new THREE.Vector3(), u: new THREE.Vector3
 let camRh = 0,
   shadowSpan = 70,
   loopW = 0,
+  camBend = 0, // how far the chase cam is looking round a corner (eased)
   upRate = 6;
 const camBack = {
     p: new THREE.Vector3(),
@@ -313,6 +314,21 @@ export function updateCamera(dt) {
       .copy(kp)
       .addScaledVector(fwd, 6)
       .addScaledVector(F.u, 1.6 + lift * 0.6);
+    {
+      // in a corner the camera looks round it, at the road further on, not straight ahead into the barrier; the tighter
+      // the corner the more it does, and on a raised deck it sits a little higher, so you see where the road goes
+      const tr = game.track,
+        i = tr.idx(k.s + 12),
+        bend = Math.min(1, Math.max(0, (Math.abs(tr.K[i] || 0) - 0.004) / 0.01)) * (tr.inLoop[i] ? 0 : 1),
+        ah = tr.frame(k.s + 16 + Math.max(0, k.speed) * 0.12, camAhead);
+      camBend += (bend - camBend) * Math.min(1, dt * 3);
+      const p = ah.p
+        .clone()
+        .addScaledVector(ah.l, k.lat * 0.5)
+        .addScaledVector(ah.u, 1.2 + lift * 0.6);
+      wantLook.lerp(p, camBend * 0.65);
+      if (tr.elevated[tr.idx(k.s)]) want.addScaledVector(F.u, 1.1 * camBend);
+    }
     // follow the road's up (upside down in the loop), but only lean part-way into banked corners
     wantUp
       .set(0, 1, 0)
