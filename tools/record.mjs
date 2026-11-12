@@ -6,7 +6,8 @@
 //   node tools/record.mjs --launch                          (the launch video: Doha's garage, then a race on Msheireb, 45 s)
 //   node tools/record.mjs --showcase                        (home on The Pearl, its map, the garage: four cars, the Brute unlocked and
 //                                                            painted black, then a race on The Pearl at night through the
-//                                                            aquarium, 45 s, 1920x1080)
+//                                                            aquarium, 45 s, 1920x1080; --city singapore --circuit changi:
+//                                                            the same take on Changi, from Singapore's garage)
 // The window is a 14" MacBook Pro screen (1512x982 points, drawn at 2x: a 3024x1964 video). Change it with --size 1512x982
 // and --scale 2. Needs ffmpeg (brew install ffmpeg). --mute leaves the sound out.
 //
@@ -28,6 +29,8 @@ const arg = (name, def) => {
 const showcase = process.argv.includes('--showcase');
 const launch = process.argv.includes('--launch') || showcase;
 const circuit = arg('circuit', showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
+// the city the circuit is in (and whose garage it opens): Doha unless told otherwise (--city singapore --circuit changi)
+const city = arg('city', 'doha');
 const FPS = 60;
 const frames = +arg('frames', 0) || Math.round(+arg('seconds', launch ? 45 : 60) * FPS);
 const out = arg(
@@ -99,10 +102,10 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: scale });
 page.on('pageerror', e => console.log('page error:', e.message));
 await page.addInitScript(
-  ([c, launch, showcase]) => {
+  ([c, launch, showcase, city]) => {
     const set = (k, v) => localStorage.setItem('gukart.' + k, JSON.stringify(v));
-    set('city', 'doha');
-    set('circuit.doha', c);
+    set('city', city);
+    set('circuit.' + city, c);
     set('mode', 'gp');
     set('coach', { steer: true, brake: true, drift: true, fire: true }); // no "how to steer" hints over the race
     if (launch) {
@@ -116,7 +119,7 @@ await page.addInitScript(
       set('level', 'normal');
     }
   },
-  [circuit, launch, showcase],
+  [circuit, launch, showcase, city],
 );
 // the game's sound goes into an offline context exactly as long as the video; the game's own resume() calls (it wakes the
 // sound on a key press or a new race) do nothing, only this script moves it on
@@ -186,7 +189,7 @@ if (!mute)
   );
 await page.clock.install(); // the page's timers run on a clock this script moves (it ticks normally until paused)
 await page.goto('http://127.0.0.1:4198/#capture');
-console.log(`booting Doha · ${circuit} ...`);
+console.log(`booting ${city} · ${circuit} ...`);
 await page.waitForFunction(() => window.gukart?.ready, null, { timeout: 300000, polling: 200 });
 await page.clock.pauseAt(Date.now() + 1000);
 
