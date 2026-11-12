@@ -480,3 +480,66 @@
     display: none;
   }
 }
+
+/* DIFFICULTY: three cards like the others, each with its picture, and bars over it for how hard (one, two, three) */
+.lvl-bars {
+  position: absolute;
+  z-index: 3;
+  top: 22px;
+  left: 22px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(8, 12, 30, 0.72);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.lvl-bars i {
+  width: 14px;
+  background: var(--lc, #fff);
+  transform: skewX(-12deg);
+}
+.lvl-bars i:nth-child(1) {
+  height: 16px;
+}
+.lvl-bars i:nth-child(2) {
+  height: 26px;
+}
+.lvl-bars i:nth-child(3) {
+  height: 36px;
+}
+.lvl-bars i.off {
+  opacity: 0.22;
+}
+
+.q-card.lvl-easy {
+  --lc: #3ddc97;
+}
+.q-card.lvl-normal {
+  --lc: #ffc400;
+}
+.q-card.lvl-hard {
+  --lc: #ff4d3a;
+}
+@media (max-width: 819px) {
+  /* a phone: the cards are short, so the bars sit small in the top right, clear of the name */
+  .lvl-bars {
+    left: auto;
+    right: 18px;
+    top: 14px;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .lvl-bars i {
+    width: 10px;
+  }
+  .lvl-bars i:nth-child(1) {
+    height: 11px;
+  }
+  .lvl-bars i:nth-child(2) {
+    height: 18px;
+  }
+  .lvl-bars i:nth-child(3) {
+    height: 25px;
+  }
+}

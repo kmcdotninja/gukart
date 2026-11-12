@@ -1,6 +1,6 @@
 // Starting, pausing, restarting and leaving a race: the loading card before it, the countdown, the pause menu and the
 // quit question, and the attract race that runs behind the home screen.
-import { LAPS } from './race.js';
+import { LAPS, LEVELS } from './race.js';
 import { Sound } from './audio.js';
 import { isTouch, store, fmtTime } from './util.js';
 import { $, whip, show, swap, hide } from './dom.js';
@@ -14,7 +14,7 @@ import { modeName } from './modes.js';
 import { endDrive } from './results.js';
 import { hidePodium } from './podium.js';
 import { setNight } from './scene.js';
-import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal } from './cup.js';
+import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tourLevel } from './cup.js';
 import { rivalNames } from './buddy.js';
 
 // the loading card before a race (Asphalt): the chapter, the goal, pictures of its places, a filling diamond
@@ -42,6 +42,8 @@ export function raceIntro(then) {
   $('#rlGoal').textContent = T[2];
   game.race.ev = events;
   game.race.setMode(raceMode());
+  // how hard the rivals are: the World Tour's own (harder city by city), or what was picked in QUICK RACE
+  game.race.setLevel(game.mode === 'cup' ? tourLevel() : LEVELS[store.get('level', 'normal')]);
   game.race.reset();
   Sound.quiet = false;
   game.state = 'intro';
@@ -89,6 +91,8 @@ export function startRace() {
   show($('#hud'));
   game.race.ev = events;
   game.race.setMode(raceMode());
+  // how hard the rivals are: the World Tour's own (harder city by city), or what was picked in QUICK RACE
+  game.race.setLevel(game.mode === 'cup' ? tourLevel() : LEVELS[store.get('level', 'normal')]);
   game.race.reset();
   // the rivals' names: a World Tour keeps the ones it drew at its start; any other race draws new ones
   game.race.setNames(game.mode === 'cup' ? cupOf()?.names : rivalNames());

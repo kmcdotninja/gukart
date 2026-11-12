@@ -1,5 +1,5 @@
 // QUICK RACE: pick a mode (Race, Time Trial, Free Drive: three cards, an accordion where the one you tap opens and the
-// others close), then a short setup on the same screen (CITY, CIRCUIT, DAY or NIGHT) and GO. Each step starts on what's
+// others close), then a short setup on the same screen (DIFFICULTY for a race, CITY, CIRCUIT, DAY or NIGHT) and GO. Each step starts on what's
 // already set, so NEXT, NEXT, NEXT goes straight to the race. A new circuit or city is only built when you press GO.
 import { Haptics } from './haptics.js';
 import { screenIn, screenOut, stagger, leave, DUR } from './motion.js';
@@ -28,11 +28,20 @@ export const modeName = id => (id === 'cup' ? 'WORLD TOUR' : MODES.find(M => M.i
 // the game's own arrow icon (no text arrows)
 const ARROW =
   '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg>';
-const STEPS = ['mode', 'city', 'circ', 'time'];
-const TITLE = { mode: 'QUICK RACE', city: 'CITY', circ: 'CIRCUIT', time: 'DAY OR NIGHT' };
+// (a race against the crew also asks how hard they should be; a time trial and a free drive have nobody to beat)
+const ALL_STEPS = ['mode', 'level', 'city', 'circ', 'time'];
+let STEPS = ALL_STEPS;
+const stepsFor = mode => (mode === 'gp' ? ALL_STEPS : ALL_STEPS.filter(s => s !== 'level'));
+const TITLE = { mode: 'QUICK RACE', level: 'DIFFICULTY', city: 'CITY', circ: 'CIRCUIT', time: 'DAY OR NIGHT' };
+// each level a real shot from the game, like every other card: a sunny cruise, the pack on the grid, the Final at night
+const LEVEL_CARDS = [
+  ['easy', 'EASY', 'The crew takes it easy', '/places/kano-old.jpg'],
+  ['normal', 'NORMAL', 'A fair fight', '/modes/race.jpg'],
+  ['hard', 'HARD', 'They give no ground', '/places/singapore-marina-night.jpg'],
+];
 const cities = () => CHAPTERS.filter(c => c.playable);
 // what's being set up: starts on what the game is already on
-const pick = { city: '', circ: '', night: false };
+const pick = { city: '', circ: '', night: false, level: 'normal' };
 let step = 0;
 
 // each mode has one fixed picture, whatever circuit is built; each city, circuit and time of day has its own (real shots
@@ -49,6 +58,7 @@ export function openModes(from) {
   pick.city = chapter.id;
   pick.circ = game.circuit?.id || '';
   pick.night = !!game.night;
+  pick.level = store.get('level', 'normal');
   const box = $('#mCards');
   box.innerHTML = MODES.map(
     M =>
@@ -67,6 +77,11 @@ export function openModes(from) {
 // the setup's choices, drawn for the step you're on
 function render(name) {
   const on = x => (x ? 'on' : '');
+  if (name === 'level')
+    $('#qLevel').innerHTML = LEVEL_CARDS.map(
+      ([id, nm, sub, img], n) =>
+        `<button class="q-card lvl lvl-${id} ${on(id === pick.level)}" data-level="${id}"><img src="${img}" alt=""><span class="lvl-bars">${'<i></i>'.repeat(n + 1)}${'<i class="off"></i>'.repeat(2 - n)}</span><span class="q-body"><b class="q-name">${nm}</b><span class="q-sub">${sub}</span></span></button>`,
+    ).join('');
   if (name === 'city')
     $('#qCity').innerHTML = cities()
       .map(c => card(on(c.id === pick.city), `data-city="${c.id}"`, placePic(c.id), c.name.toUpperCase(), c.tagline))
@@ -94,10 +109,12 @@ function render(name) {
 // go to a step (dir: 1 forwards, -1 back, 0 just show it)
 function goStep(i, dir = 1) {
   step = i;
+  STEPS = stepsFor(game.mode);
   const name = STEPS[i],
     m = $('#modes');
   m.dataset.step = name;
   $('#modes .m-tag span').textContent = TITLE[name];
+  $('#qDots').innerHTML = '<li></li>'.repeat(STEPS.length);
   document.querySelectorAll('#qDots li').forEach((d, j) => {
     d.className = j < i ? 'done' : j === i ? 'now' : '';
   });
@@ -201,6 +218,14 @@ export function initModes() {
       pick.circ = ch.id === chapter.id ? game.circuit?.id || '' : circuitOf(ch)?.id || '';
     }
     choose($('#qCity'), '.q-card', 'city', pick.city);
+  });
+  $('#qLevel').addEventListener('click', e => {
+    const c = e.target.closest('.q-card');
+    if (!c) return;
+    if (c.classList.contains('on')) return next();
+    pick.level = c.dataset.level;
+    store.set('level', pick.level);
+    choose($('#qLevel'), '.q-card', 'level', pick.level);
   });
   $('#qCirc').addEventListener('click', e => {
     const c = e.target.closest('.q-card');

@@ -158,7 +158,7 @@ try {
   await click(page, '#setBack');
   await expectVisible(page, '#menu', 'back home from settings');
 
-  // a race: QUICK RACE, the modes (an accordion: one open at a time), then CITY, CIRCUIT, DAY OR NIGHT, GO
+  // a race: QUICK RACE, the modes (an accordion: one open at a time), then DIFFICULTY, CITY, CIRCUIT, DAY OR NIGHT, GO
   await click(page, '#quickBtn');
   await expectVisible(page, '#modes', 'the race modes open');
   const open = () => page.$$eval('#mCards .mcard.on', l => l.map(c => c.dataset.mode));
@@ -173,7 +173,12 @@ try {
   if ((await open()).join() === 'gp') pass('tapping Race opens it again');
   else fail(`tapping Race should open only it (open: ${await open()})`);
   await click(page, '#mCards .mcard.on');
-  await expectVisible(page, '#qCity', 'NEXT on Race goes to the city');
+  await expectVisible(page, '#qLevel', 'NEXT on Race asks how hard');
+  if ((await page.locator('#qLevel .q-card').count()) === 3 && (await page.locator('#qLevel .q-card.on').count()) === 1)
+    pass('easy, normal and hard are offered, one chosen');
+  else fail('the difficulty step should show three levels with one chosen');
+  await click(page, '#qNext');
+  await expectVisible(page, '#qCity', 'NEXT goes to the city');
   if ((await page.locator('#qCity .q-card').count()) >= 2 && (await page.locator('#qCity .q-card.on').count()) === 1)
     pass('every city is offered, the one you are in already chosen');
   else fail('the city step should show the cities with one chosen');

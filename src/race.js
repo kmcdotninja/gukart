@@ -14,6 +14,13 @@ const MAX = 66,
   TURN = 1.75,
   GRAV = 30;
 const SKILL = [1, 0.955, 0.94, 0.965, 0.925, 0.945];
+// how hard the rivals push: their pace (on top of each one's own skill), and how far the pack is let fall behind you or
+// pull ahead (the catch-up band). QUICK RACE lets you pick one; the World Tour sets its own, harder city by city (cup.js)
+export const LEVELS = {
+  easy: { pace: 0.93, lo: 0.85, hi: 1.04 },
+  normal: { pace: 1, lo: 0.9, hi: 1.12 },
+  hard: { pace: 1.06, lo: 0.95, hi: 1.16 },
+};
 // the shield: a round bubble over the whole vehicle, glowing at its rim (fresnel), a honeycomb of light sliding over it
 const SHIELD_GEO = new THREE.SphereGeometry(1, 48, 32);
 export function shieldBubble(m) {
@@ -416,6 +423,7 @@ function finishArch(tr) {
 
 export class Race {
   constructor(scene, tr, tex, quality, ev) {
+    this.level = LEVELS.normal;
     this.scene = scene;
     this.tr = tr;
     this.tex = tex;
@@ -655,6 +663,10 @@ export class Race {
   // the rivals' names for this race ({ id: name }); Buddy is always Buddy
   setNames(names = {}) {
     for (const k of this.all) k.name = names[k.def.id] || k.def.name;
+  }
+  // the rivals' difficulty for the next race: one of LEVELS, or the tour's own
+  setLevel(l) {
+    this.level = l || LEVELS.normal;
   }
   reset() {
     const tr = this.tr;
@@ -1163,7 +1175,7 @@ export class Race {
         Bq = k.br ? Fk[k.brI] : null;
       k.offroad = k.br ? Math.abs(k.lat) > 20 / 2 + 1.5 : !tr.elevated[i] && Math.abs(k.lat) > W / 2 + 1.5;
       const st = VSTATS[k.m.type];
-      let top = MAX * st.top * (k.ai ? k.skill * k.rubber : 1) * (1 + 0.008 * Math.min(k.coins, 10));
+      let top = MAX * st.top * (k.ai ? k.skill * k.rubber * this.level.pace : 1) * (1 + 0.008 * Math.min(k.coins, 10));
       if (k === P && this.upg.has('turbo')) top *= 1.05; // the Turbo Kit upgrade
       if (k.offroad && k.boost <= 0 && !(k.fire > 0)) top *= st.off;
       if (k.fire > 0) top = Math.max(top, MAX * st.top) * 1.15;
@@ -1787,7 +1799,7 @@ export class Race {
     }
     // keep the pack close to Buddy so the race stays a race
     const gap = (k.prog - this.player.prog) / tr.seg;
-    k.rubber = this.player.finished ? 1 : clamp(1 - gap * 0.00035, 0.9, 1.12);
+    k.rubber = this.player.finished ? 1 : clamp(1 - gap * 0.00035, this.level.lo, this.level.hi);
   }
 
   puff(k, color) {

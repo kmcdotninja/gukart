@@ -62,6 +62,13 @@ export const raceName = ([city, circ]) => {
   return c.circuits?.find(x => x.id === circ)?.name || c.name;
 };
 export const isFinal = t => t.i === t.races.length - 1;
+// the World Tour is hard, and it gets harder as it goes: from Kano's first race (already past QUICK RACE's NORMAL) to the
+// Final at Marina Bay (past HARD). Every racer is out to win a trophy; it can't be turned down
+export function tourLevel(t = cupOf()) {
+  const n = TOUR.races.length,
+    u = t ? Math.min(1, t.i / (n - 1)) : 0;
+  return { pace: 1.02 + 0.08 * u, lo: 0.93 + 0.05 * u, hi: 1.13 + 0.05 * u };
+}
 
 // your best trophy in a tour: 1 gold, 2 silver, 3 bronze, 0 none yet
 export const trophyOf = (id = TOUR.id) => store.get('trophy.' + id, 0);
