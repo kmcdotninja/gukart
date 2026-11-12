@@ -846,9 +846,30 @@ export function dressSingapore(k) {
     E.rotation.y = head(s);
     const X = W / 2 + 3.4,
       D = 10; // the canopy reaches 10 m out from the glass
+    // the posts stand on the ground: where the road is up on its deck they run all the way down past it (nothing over
+    // the drop is left hanging), on a concrete footing
+    const drop = Math.max(0, p.y);
     for (const z of [0, out * D]) {
-      for (const sd of [-1, 1])
-        E.add(mesh(new THREE.BoxGeometry(1.1, 11.5, 1.1).translate(0, 5.75, 0), steelM, sd * X, 0, z));
+      for (const sd of [-1, 1]) {
+        E.add(
+          mesh(new THREE.BoxGeometry(1.1, 11.5 + drop, 1.1).translate(0, (11.5 - drop) / 2, 0), steelM, sd * X, 0, z),
+        );
+        E.add(mesh(new THREE.BoxGeometry(1.8, 0.5, 1.8).translate(0, 0.25 - drop, 0), steelM, sd * X, 0, z)); // its footing
+        if (drop > 0.5)
+          E.add(
+            mesh(
+              new THREE.BoxGeometry(sd * 0 + (X - W / 2 - 0.3), 0.5, 0.6).translate(
+                -sd * ((X - W / 2 - 0.3) / 2 - 0.05),
+                -0.6,
+                0,
+              ),
+              steelM,
+              sd * X,
+              0,
+              z,
+            ),
+          ); // a bracket back to the deck's edge
+      }
       E.add(mesh(new THREE.BoxGeometry(X * 2 + 1.1, 1.1, 1.1), steelM, 0, 11.5, z));
     }
     for (const sd of [-1, 1]) E.add(mesh(new THREE.BoxGeometry(0.5, 0.5, D), steelM, sd * X, 11.5, (out * D) / 2));
