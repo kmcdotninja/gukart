@@ -319,7 +319,9 @@ export function updateCamera(dt) {
       // the corner the more it does, and on a raised deck it sits a little higher, so you see where the road goes
       const tr = game.track,
         i = tr.idx(k.s + 12),
-        bend = Math.min(1, Math.max(0, (Math.abs(tr.K[i] || 0) - 0.004) / 0.01)) * (tr.inLoop[i] ? 0 : 1),
+        bend = k.br
+          ? 0 // (on a fork's sky bridge or subway the kart isn't on the main road: looking along the main road swung the camera off it)
+          : Math.min(1, Math.max(0, (Math.abs(tr.K[i] || 0) - 0.004) / 0.01)) * (tr.inLoop[i] ? 0 : 1),
         ah = tr.frame(k.s + 16 + Math.max(0, k.speed) * 0.12, camAhead);
       camBend += (bend - camBend) * Math.min(1, dt * 3);
       const p = ah.p
