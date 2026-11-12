@@ -1344,6 +1344,7 @@ body.onfire #hud::before {
 .tr-route {
   overflow-x: auto;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 .tr-stop.city {
   flex: 1 0 220px;
@@ -1472,6 +1473,7 @@ body.onfire #hud::before {
   .tr-route {
     overflow-x: hidden;
     overflow-y: auto;
+    touch-action: pan-y;
   }
   .tr-stop.city,
   .tr-stop.city.fin {

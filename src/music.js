@@ -15,6 +15,13 @@ const RACE = new Set(['intro', 'count', 'race', 'finish', 'paused']);
 // how loud in each state of the game (of the MUSIC setting)
 const LEVEL = { race: 0.32, finish: 0.32, paused: 0.25, intro: 0, count: 0 };
 
+// the app minimised or the tab hidden: the tracks stop where they are (the music's tick plays them again when it's back)
+const hush = () => {
+  for (const d of Object.values(Music.decks || {})) d.el.pause();
+};
+document.addEventListener('visibilitychange', () => document.hidden && hush());
+addEventListener('pagehide', hush);
+
 export const Music = {
   vol: store.get('musicVolume', 0.7),
   setVolume(v) {
@@ -35,7 +42,7 @@ export const Music = {
     return { el, g, to: -1, level: 0 };
   },
   tick(state) {
-    if (!Sound.ctx || Sound.ctx.state !== 'running' || this.broken) return;
+    if (!Sound.ctx || Sound.ctx.state !== 'running' || this.broken || document.hidden) return;
     const want = Sound.on && this.vol > 0.005;
     if (!this.decks) {
       if (!want) return;

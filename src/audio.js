@@ -516,9 +516,13 @@ export const Sound = {
       if (this.ctx?.state === 'running') return;
       this.init();
     };
+    // the app minimised, the tab switched, the phone locked: everything stops (the race pauses itself, race-flow.js);
+    // back again, the sound picks up where it was
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) wake();
+      else if (this.ctx?.state === 'running') this.ctx.suspend().catch(() => {});
     });
+    addEventListener('pagehide', () => this.ctx?.suspend().catch(() => {}));
     for (const ev of ['touchend', 'pointerup', 'keydown']) addEventListener(ev, wake, { passive: true, capture: true });
   },
   toggle() {

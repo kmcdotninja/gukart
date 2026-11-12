@@ -152,9 +152,13 @@ export function initInput() {
   document.addEventListener(
     'touchmove',
     e => {
-      if (game.state !== 'menu' && !e.target.closest?.('.m-cards, .cust-grid, .sheet .card')) e.preventDefault();
+      if (
+        game.state !== 'menu' &&
+        !e.target.closest?.('.m-cards, .cust-grid, .sheet .card, .isl-list, .nfs-tabs, .tiles, .tr-route')
+      )
+        e.preventDefault();
     },
     { passive: false },
-  ); // scrollable lists keep their swipe
+  ); // scrollable lists keep their swipe (the map's circuit row and tabs, the garage's car row, the tour's cities)
   document.addEventListener('contextmenu', e => e.preventDefault());
 }

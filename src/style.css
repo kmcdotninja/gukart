@@ -1207,7 +1207,9 @@ body:has(#garage:not([hidden])) #menu {
 /* vehicle cards: the name top-left, the selected one gets a solid white outline; the picture is pinned to the space
    under the name and always fits inside it */
 .tiles {
-  /* one row, as many cards as there are vehicles: swipe it sideways (each card snaps into place) */
+  /* one row, as many cards as there are vehicles: swipe it sideways (each card snaps into place). (Set like the
+     QUICK RACE cards, the list that has always swiped on a phone: the page round it takes no touch gestures) */
+  touch-action: pan-x;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 104px;
@@ -1877,6 +1879,7 @@ body:has(#garage:not([hidden])) #menu {
 }
 /* in the house rule: the place card is a card (cut corners), the tabs and island chips are buttons (parallelograms) */
 .nfs-tabs {
+  touch-action: pan-x;
   display: flex;
   gap: 2px;
   padding-left: 4px;
