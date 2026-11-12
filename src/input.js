@@ -43,9 +43,10 @@ function holdButton(el, on, off) {
 }
 export function readInput(dt) {
   const kb = (keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0);
-  kbSteer += (kb - kbSteer) * Math.min(1, dt * (kb ? 9 : 14));
+  // (the steering eases in over about a third of a second and lets go quicker: a tap is a nudge, a hold is a turn)
+  kbSteer += (kb - kbSteer) * Math.min(1, dt * (kb ? 5 : 12));
   const inp = game.race.input;
-  btnSteer += (btnTarget - btnSteer) * Math.min(1, dt * (btnTarget ? 7 : 14));
+  btnSteer += (btnTarget - btnSteer) * Math.min(1, dt * (btnTarget ? 4.5 : 12));
   inp.steer = clamp(kbSteer + touchSteer + btnSteer + (Tilt.on ? Tilt.value() : 0), -1, 1);
   // on a phone, holding a turn at speed drifts by itself (let go of the turn to fire the boost)
   const hard = Math.abs(btnSteer + touchSteer + (Tilt.on ? Tilt.value() : 0)) > 0.85 && game.race.player.speed > 28;

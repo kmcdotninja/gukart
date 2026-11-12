@@ -19,7 +19,8 @@ const SKILL = [1, 0.955, 0.94, 0.965, 0.925, 0.945];
 export const LEVELS = {
   easy: { pace: 0.93, lo: 0.85, hi: 1.04 },
   normal: { pace: 1, lo: 0.9, hi: 1.12 },
-  hard: { pace: 1.06, lo: 0.95, hi: 1.16 },
+  hard: { pace: 1.13, lo: 1, hi: 1.2, match: true }, // (very nearly unbeatable: in cars as fast as yours, faster still,
+  // and never eased off when they lead)
 };
 // the shield: a round bubble over the whole vehicle, glowing at its rim (fresnel), a honeycomb of light sliding over it
 const SHIELD_GEO = new THREE.SphereGeometry(1, 48, 32);
@@ -424,6 +425,7 @@ function finishArch(tr) {
 export class Race {
   constructor(scene, tr, tex, quality, ev) {
     this.level = LEVELS.normal;
+    this.sens = store.get('steerSens', 1);
     this.scene = scene;
     this.tr = tr;
     this.tex = tex;
@@ -668,7 +670,12 @@ export class Race {
   setLevel(l) {
     this.level = l || LEVELS.normal;
   }
+  // how much the player's steering turns them (Settings: STEERING, 50% to 150%)
+  setSens(v) {
+    this.sens = v;
+  }
   reset() {
+    for (const k of this.karts || []) k.stHard = null; // (the crew's cars are matched to yours afresh each race)
     const tr = this.tr;
     const slots = [4, 0, 1, 2, 3, 5]; // Buddy starts 5th
     this.karts.forEach((k, n) => {
@@ -1174,7 +1181,19 @@ export class Race {
       const Fk = tr.forks || [],
         Bq = k.br ? Fk[k.brI] : null;
       k.offroad = k.br ? Math.abs(k.lat) > 20 / 2 + 1.5 : !tr.elevated[i] && Math.abs(k.lat) > W / 2 + 1.5;
-      const st = VSTATS[k.m.type];
+      // (on HARD the crew's cars are at least as good as yours, whatever you bought: as fast, as quick away, as sure off
+      // the road. A better car doesn't buy the win)
+      const st0 = VSTATS[k.m.type],
+        mine = VSTATS[P.m.type],
+        st =
+          this.level.match && k !== P
+            ? (k.stHard ||= {
+                ...st0,
+                top: Math.max(st0.top, mine.top),
+                acc: Math.max(st0.acc, mine.acc),
+                off: Math.max(st0.off, mine.off),
+              })
+            : st0;
       let top = MAX * st.top * (k.ai ? k.skill * k.rubber * this.level.pace : 1) * (1 + 0.008 * Math.min(k.coins, 10));
       if (k === P && this.upg.has('turbo')) top *= 1.05; // the Turbo Kit upgrade
       if (k.offroad && k.boost <= 0 && !(k.fire > 0)) top *= st.off;
@@ -1202,7 +1221,21 @@ export class Race {
       const rh0 = k.rh;
       if (k.spin <= 0) {
         const grip = clamp(Math.abs(k.speed) / 16, 0, 1) * Math.sign(k.speed || 1) * (grounded ? 1 : 0.35);
-        k.rh += steer * TURN * st.turn * (k.drift ? 1.2 : 1) * grip * (k === P && this.upg.has('grip') ? 1.08 : 1) * dt;
+        // the player's steering is calmer the faster they go (like a real car's): full lock at low speed, about two thirds
+        // of it flat out, so a touch at 200 km/h is a correction, not a swerve. A drift keeps its full bite
+        const calm =
+          k === P && !k.ai
+            ? this.sens * (k.drift ? 1 : 1 - 0.32 * clamp((Math.abs(k.speed) - 22) / 40, 0, 1)) // (and Settings: STEERING)
+            : 1;
+        k.rh +=
+          steer *
+          TURN *
+          st.turn *
+          calm *
+          (k.drift ? 1.2 : 1) *
+          grip *
+          (k === P && this.upg.has('grip') ? 1.08 : 1) *
+          dt;
       }
       // how fast it's really turning: the front wheels, the steering wheel and the body's lean all follow this, not the raw input
       k.yawRate += ((k.rh - rh0) / Math.max(dt, 1e-3) - k.yawRate) * Math.min(1, dt * 10);
