@@ -31,12 +31,8 @@ export function raceIntro(then) {
   $('#rlTitle').textContent = game.final ? 'THE FINAL' : c.tagline.toUpperCase();
   const bl = store.get('bestlap.' + game.RID, null);
   const T = {
-    gp: [`${LAPS} LAPS`, `FINISH 1ST TO WIN +${c.reward}`, `${c.reward} COINS`],
-    tt: [
-      `${LAPS} LAPS`,
-      bl ? `BEAT ${fmtTime(bl)}` : 'SET YOUR BEST LAP',
-      bl ? 'RACE YOUR GHOST' : 'YOUR BEST LAP BECOMES YOUR GHOST',
-    ],
+    gp: [`${LAPS} LAPS`, `WIN +${c.reward}`, `${c.reward} COINS`],
+    tt: [`${LAPS} LAPS`, bl ? `BEAT ${fmtTime(bl)}` : 'SET YOUR BEST LAP', bl ? 'RACE YOUR GHOST' : 'MAKE YOUR GHOST'],
     free: ['NO RIVALS', `CRUISE ${CITY}`, 'KEEP THE COINS'],
     cup: game.mode === 'cup' ? introLines() : null,
   }[game.mode];
@@ -60,6 +56,7 @@ export function raceIntro(then) {
   });
   whip(1);
   show(el);
+  fitTitle();
   setTimeout(() => {
     hide(el, null, -1);
     then();
@@ -244,5 +241,15 @@ export function initRaceFlow() {
   $('#menuBtn').addEventListener('click', () => toMenu(true));
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && (game.state === 'race' || game.state === 'count')) togglePause();
+  });
+}
+
+// the card's big title stays on one line: shrunk until it fits the card's width (a long name on a small phone)
+function fitTitle() {
+  const h = $('#rlTitle');
+  h.style.fontSize = '';
+  requestAnimationFrame(() => {
+    let px = parseFloat(getComputedStyle(h).fontSize);
+    while (h.scrollWidth > h.clientWidth + 1 && px > 24) h.style.fontSize = `${(px -= 2)}px`;
   });
 }

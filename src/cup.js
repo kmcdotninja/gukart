@@ -92,7 +92,7 @@ export function introLines() {
   return [
     isFinal(t) ? 'THE FINAL' : `RACE ${t.i + 1} OF ${n}`,
     t.i === 0
-      ? `${TOUR.gate} PTS FROM RACES 1-4 OPEN THE FINAL`
+      ? `${TOUR.gate} PTS OPEN THE FINAL`
       : isFinal(t)
         ? `YOU'RE ${me.place}${ordinal(me.place).toUpperCase()}`
         : `${toGatePts(t)} / ${TOUR.gate} PTS TO THE FINAL`,

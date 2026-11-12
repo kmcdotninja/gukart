@@ -1662,3 +1662,23 @@ body.onfire #hud::before {
     align-self: end;
   }
 }
+/* the race card's lines never wrap: one line each, cut short rather than broken */
+#raceLoad .rl-chip,
+#raceLoad .rl-laps,
+#raceLoad .rl-goal b,
+#raceLoad #rlTitle {
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* the top right of the race HUD lines up on the right edge: the speedo, the clock and HEAT end at the same line, and
+   nothing moves when the clock's digits or HEAT's label change width */
+#hud .hud-tr {
+  align-items: flex-end;
+}
+#hud #timer {
+  font-variant-numeric: tabular-nums;
+  min-width: 5.6em;
+  text-align: center;
+}
