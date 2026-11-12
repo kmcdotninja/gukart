@@ -4,6 +4,9 @@
 //   node tools/record.mjs --circuit pearl --seconds 30 --out recordings/pearl.mp4
 //   node tools/record.mjs --frames 120                      (a quick check: a couple of seconds)
 //   node tools/record.mjs --launch                          (the launch video: Doha's garage, then a race on Msheireb, 45 s)
+//   node tools/record.mjs --showcase                        (home on The Pearl, its map, the garage: four cars, the Brute unlocked and
+//                                                            painted black, then a race on The Pearl at night through the
+//                                                            aquarium, 45 s, 1920x1080)
 // The window is a 14" MacBook Pro screen (1512x982 points, drawn at 2x: a 3024x1964 video). Change it with --size 1512x982
 // and --scale 2. Needs ffmpeg (brew install ffmpeg). --mute leaves the sound out.
 //
@@ -22,11 +25,15 @@ const arg = (name, def) => {
   const i = process.argv.indexOf('--' + name);
   return i > 0 ? process.argv[i + 1] : def;
 };
-const launch = process.argv.includes('--launch');
-const circuit = arg('circuit', launch ? 'msheireb' : 'lusail');
+const showcase = process.argv.includes('--showcase');
+const launch = process.argv.includes('--launch') || showcase;
+const circuit = arg('circuit', showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
 const FPS = 60;
 const frames = +arg('frames', 0) || Math.round(+arg('seconds', launch ? 45 : 60) * FPS);
-const out = arg('out', launch ? 'recordings/launch.mp4' : `recordings/${circuit}.mp4`);
+const out = arg(
+  'out',
+  showcase ? 'recordings/showcase.mp4' : launch ? 'recordings/launch.mp4' : `recordings/${circuit}.mp4`,
+);
 // the launch video, one take with no titles: Doha's home, into the garage, through the vehicles, the muscle car dressed
 // in Buddy Orange with flames and turbo wheels, saved, then PLAY and a race on Msheireb. [second, what is clicked]
 const LAUNCH = [
@@ -49,8 +56,37 @@ const LAUNCH = [
   [24.0, '#qNext'],
   [25.0, '#qNext'],
 ];
-const [W, H] = arg('size', '1512x982').split('x').map(Number);
-const scale = +arg('scale', 2);
+// the showcase: home on The Pearl, its map, the GARAGE pin and into the garage, a turn of the stand, the Monster, the Raider, the Roadster, the Brute;
+// the Brute turned round, unlocked (it spins), painted black, saved (it spins again); then PLAY and a race on The Pearl
+// down into the aquarium tunnel. [second, what is clicked, or { spin: how hard the stand is turned }]
+const SHOWCASE = [
+  [1.6, '#mapBtn'], // The Pearl's map: the camera flies up over the island
+  [5.4, '.pin.garage'], // the GARAGE pin: its card comes up
+  [6.6, '#mapAct'], // OPEN: down into the garage
+  [8.8, '#gLights'], // the lights go down: from the bright room to its dark, glowing one
+  [9.8, { spin: 7 }],
+  [11.0, '#tiles .tile[data-veh="monster"]'],
+  [12.4, '#tiles .tile[data-veh="raider"]'],
+  [13.8, '#tiles .tile[data-veh="roadster"]'],
+  [15.2, '#tiles .tile[data-veh="brute"]'],
+  [16.4, { spin: 9 }],
+  [18.0, '#gPlay'], // UNLOCK
+  [20.4, '#custOpen'],
+  [21.4, '#custList [data-part="#16181d"]'], // Midnight: the black
+  [23.0, '#custSave'],
+  [25.0, '#gPlay'],
+  [26.0, '#mCards .mcard[data-mode="gp"]'], // RACE, then its NEXT; HARD (the crew right on you), then Doha, The Pearl, night: GO
+  [26.7, '#mCards .mcard.on'],
+  [27.5, '#qLevel [data-level="hard"]'],
+  [28.3, '#qNext'],
+  [29.0, '#qNext'],
+  [29.7, '#qNext'],
+  [30.4, '#qNext'],
+];
+const [W, H] = arg('size', showcase ? '1920x1080' : '1512x982') // (the showcase is plain 1080p)
+  .split('x')
+  .map(Number);
+const scale = +arg('scale', showcase ? 1 : 2);
 const DT = 1000 / FPS;
 const mute = process.argv.includes('--mute');
 const RATE = 48000; // 800 samples a frame
@@ -63,7 +99,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: scale });
 page.on('pageerror', e => console.log('page error:', e.message));
 await page.addInitScript(
-  ([c, launch]) => {
+  ([c, launch, showcase]) => {
     const set = (k, v) => localStorage.setItem('gukart.' + k, JSON.stringify(v));
     set('city', 'doha');
     set('circuit.doha', c);
@@ -73,8 +109,14 @@ await page.addInitScript(
       set('veh', 'kart'); // the garage opens on the kart
       set('wallet', 2500); // enough for the paint, flames and wheels it buys
     }
+    if (showcase) {
+      set('wallet', 10000); // enough to unlock the Brute and paint it
+      set('earned', 0); // (and no chest popping up over the home screen for those coins)
+      set('night', true); // The Pearl at night, the marina lit
+      set('level', 'normal');
+    }
   },
-  [circuit, launch],
+  [circuit, launch, showcase],
 );
 // the game's sound goes into an offline context exactly as long as the video; the game's own resume() calls (it wakes the
 // sound on a key press or a new race) do nothing, only this script moves it on
@@ -214,21 +256,53 @@ const cdp = await page.context().newCDPSession(page);
 
 const t0 = Date.now();
 let auto = false;
-const clicks = launch ? LAUNCH.map(([t, sel]) => [Math.round(t * FPS), sel]) : [];
+const clicks = (showcase ? SHOWCASE : launch ? LAUNCH : []).map(([t, sel]) => [Math.round(t * FPS), sel]);
+// when the race starts (its card, then GO): the music is laid in afterwards, the menus' track until then, the race's after
+let raceFrom = -1,
+  goFrom = -1;
 for (let f = 0; f < frames; f++) {
   for (const [at, sel] of clicks)
     if (at === f) {
       const ok = await page.evaluate(sel => {
+        if (sel.spin) {
+          window.gukart.game.garage.spin(sel.spin); // a turn of the stand, as a drag gives
+          return true;
+        }
         const el = document.querySelector(sel);
         el?.click();
         return !!el;
       }, sel);
       if (!ok) console.log(`  (nothing to click at ${(f / FPS).toFixed(1)}s: ${sel})`);
     }
+  if (showcase && auto)
+    // the showcase's race director: Buddy eases off when he gets clear, and a rival that drops behind him is pulled
+    // back up, so the race stays a fight all the way (positions change, the crew right there in every shot)
+    await page.evaluate(() => {
+      const R = window.gukart.game.race,
+        P = R.player,
+        rivals = R.karts.filter(k => k !== P),
+        lead = P.prog - Math.max(...rivals.map(k => k.prog));
+      P.skill = Math.min(1.03, Math.max(0.75, 0.97 - lead * 0.004));
+      for (const k of rivals) {
+        k._base ??= k.skill;
+        k.skill = Math.min(1.3, k._base + Math.max(0, P.prog - k.prog - 6) * 0.006);
+      }
+    });
   await step();
   if (!mute) await page.evaluate(n => window.__audioStep(n), RATE / FPS);
+  {
+    const st = await page.evaluate(() => window.gukart.game.state);
+    if (raceFrom < 0 && ['intro', 'count', 'race'].includes(st)) raceFrom = f;
+    if (goFrom < 0 && st === 'race') goFrom = f;
+  }
   if (!auto && (await page.evaluate(() => ['count', 'race'].includes(window.gukart.game.state)))) {
-    await page.evaluate(() => (window.gukart.game.race.player.ai = true)); // autopilot for Buddy
+    await page.evaluate(showcase => {
+      const P = window.gukart.game.race.player;
+      P.ai = true; // autopilot for Buddy
+      // (an autopilot drives with the rivals' level as well, and without a person's mistakes it runs away from the pack:
+      // in the showcase it starts at the crew's own pace, and a race director, below, keeps the pack on its bumper)
+      if (showcase) P.skill = 0.97;
+    }, showcase);
     auto = true;
   }
   const { data } = await cdp.send('Page.captureScreenshot', {
@@ -247,12 +321,35 @@ for (let f = 0; f < frames; f++) {
 }
 ff.stdin.end();
 let code = await ffDone;
+// the music, mixed under the game's own sound the way the game plays it (src/music.js): the menus' track from the start,
+// faded out as the race card comes up; the race's track from GO, lower, under the engines. (The game plays it through
+// a media element, which a recording's offline sound can't take, so it's laid in here.)
+function music() {
+  const end = frames / FPS,
+    r = raceFrom < 0 ? end : raceFrom / FPS,
+    g = goFrom < 0 ? end : goFrom / FPS,
+    lvl = 0.7 * 0.44 * 0.75; // MUSIC setting x the music's own level x the game's master
+  return [
+    '-i',
+    'public/music/track-1.mp3',
+    '-i',
+    'public/music/track-2.mp3',
+    '-filter_complex',
+    `[2:a]atrim=0:${r + 0.4},afade=t=out:st=${Math.max(0, r - 0.1)}:d=0.5,volume=${lvl}[m];` +
+      `[3:a]atrim=0:${Math.max(0.1, end - g)},afade=t=in:d=1.2,volume=${lvl * 0.32},adelay=${Math.round(g * 1000)}|${Math.round(g * 1000)}[r];` +
+      `[1:a][m][r]amix=inputs=3:normalize=0:duration=first[a]`,
+    '-map',
+    '0:v',
+    '-map',
+    '[a]',
+  ];
+}
 if (!mute && !code) {
   writeFileSync(wavOut, Buffer.from(await page.evaluate(() => window.__wav()), 'base64'));
   code = await new Promise(r =>
     spawn(
       'ffmpeg',
-      ['-y', '-loglevel', 'error', '-i', vidOut, '-i', wavOut].concat([
+      ['-y', '-loglevel', 'error', '-i', vidOut, '-i', wavOut].concat(music(), [
         '-c:v',
         'copy',
         '-c:a',

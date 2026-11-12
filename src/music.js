@@ -46,6 +46,7 @@ export const Music = {
     const want = Sound.on && this.vol > 0.005;
     if (!this.decks) {
       if (!want) return;
+      if (!Sound.ctx.createMediaElementSource) return void (this.broken = true); // (a recording's offline sound: tools/record.mjs adds the music itself)
       this.decks = { menus: this.deck(MENUS), racing: this.deck(RACING) };
     }
     const which = RACE.has(state) ? 'racing' : 'menus',
