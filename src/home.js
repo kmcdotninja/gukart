@@ -58,7 +58,12 @@ export function renderChapter() {
   const gp = $('#gPlay');
   gp.disabled = !c.playable;
   gp.querySelector('span').textContent = c.playable ? 'PLAY' : 'SOON';
-  gp.querySelector('small').textContent = c.playable ? c.name.toUpperCase() : 'CHAPTER LOCKED';
+  {
+    // (no city under PLAY: the line only shows to say why the button is off)
+    const sub = gp.querySelector('small');
+    sub.textContent = c.playable ? '' : 'CHAPTER LOCKED';
+    sub.hidden = c.playable;
+  }
   $('#wallet').textContent = store.get('wallet', 0).toLocaleString('en');
   maybeChest(); // a chest earned since you were last here drops in
 }

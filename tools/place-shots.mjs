@@ -4,6 +4,7 @@
 //   node tools/place-shots.mjs              (everything)
 //   node tools/place-shots.mjs --all        (also every candidate shot of every circuit, in recordings/place-candidates/,
 //                                            to choose from: the names are what PICK below takes)
+//   node tools/place-shots.mjs --only singapore   (one city's pictures; the others and the mode pictures are left alone)
 // How: each circuit boots in #capture mode (city, circuit and day/night set in localStorage first, main.js honours them),
 // the game's own snapshots (src/snapshots.js: the start, the landmarks, the pack on the grid, the underpass, the cruise)
 // are taken from the live 3D scene with no menu over it, and the chosen one is scaled to 800x600 and saved.
@@ -11,7 +12,8 @@ import { chromium } from 'playwright';
 import { preview } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const all = process.argv.includes('--all');
+const all = process.argv.includes('--all'),
+  only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 const W = 800,
   H = 600;
 // which shot pictures each circuit (a landmark's name, or start / pack / tunnel / cruise: see --all)
@@ -21,9 +23,17 @@ const PICK = {
   'doha.msheireb': 'start', // the start arch down a Msheireb street
   'doha.pearl': 'THE AQUARIUM TUNNEL', // the glass tube under the marina mouth, fish all round
   'doha.lusail': 'LUSAIL STADIUM',
+  'singapore.marina': 'THE SKYLINE', // from up on the viaduct, across the bay to Marina Bay Sands
+  'singapore.gardens': 'THE FLYOVER', // over the Supertree crowns
+  'singapore.river': 'BOAT QUAY',
+  'singapore.changi': 'JEWEL',
 };
 // each city's own card: its best-known sight [circuit, shot]
-const CITY_PIC = { kano: ['kano.old', 'KOFAR NASSARAWA'], doha: ['doha.msheireb', 'THE CORNICHE'] };
+const CITY_PIC = {
+  kano: ['kano.old', 'KOFAR NASSARAWA'],
+  doha: ['doha.msheireb', 'THE CORNICHE'],
+  singapore: ['singapore.marina', 'THE SKYLINE'],
+};
 // one fixed picture per mode, whatever circuit is built [circuit, shot]
 const MODE_PIC = {
   race: ['kano.old', 'pack'], // the crew bunched up on the grid
@@ -90,6 +100,7 @@ if (all) mkdirSync('recordings/place-candidates', { recursive: true });
 const day = {};
 for (const key of Object.keys(PICK)) {
   const [city, circ] = key.split('.');
+  if (only && city !== only && key !== only) continue;
   for (const night of [false, true]) {
     console.log(`${city} · ${circ} · ${night ? 'night' : 'day'}`);
     const s = await shots(city, circ, night);
@@ -105,7 +116,7 @@ for (const key of Object.keys(PICK)) {
       save(`public/places/${city}${night ? '-night' : ''}.jpg`, s[CITY_PIC[city][1]] || s.start);
   }
 }
-for (const [name, [key, shot]] of Object.entries(MODE_PIC)) save(`public/modes/${name}.jpg`, day[key][shot]);
+if (!only) for (const [name, [key, shot]] of Object.entries(MODE_PIC)) save(`public/modes/${name}.jpg`, day[key][shot]);
 
 await browser.close();
 await server.close();

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { clamp } from './util.js';
 import { signTex } from './textures.js';
 import * as DQ from './doharoad.js';
+import * as SG from './sgroad.js';
 
 export const W = 26;
 const V = () => new THREE.Vector3();
@@ -133,9 +134,16 @@ export function buildTrack(def) {
   // a water bridge (The Pearl): a deck that dips close to the sea, then a glass tube under it. Not a trench or an
   // underpass, though it runs below street level: doha.js builds it
   const lowb = new Uint8Array(N);
+  // a water lane (Singapore's river): the road runs on the water itself, the river on one side ('in' or 'out' of the
+  // loop), the bank on the other; it counts as a water bridge for everything else
+  const wway = new Int8Array(N);
   for (const f of def.feats)
-    if (f.type === 'lowbridge')
-      for (let s = sOf(f.s); s <= sOf(f.s + f.len); s += seg / 2) lowb[wrap(Math.floor(wrapS(s) / seg))] = 1;
+    if (f.type === 'lowbridge' || f.type === 'waterway')
+      for (let s = sOf(f.s); s <= sOf(f.s + f.len); s += seg / 2) {
+        const k = wrap(Math.floor(wrapS(s) / seg));
+        lowb[k] = 1;
+        if (f.type === 'waterway') wway[k] = f.side === 'in' ? -1 : 1;
+      }
   for (let i = 0; i < N; i++) {
     if (P[i].y < -0.3 && !lowb[i]) {
       trench[i] = 1;
@@ -163,7 +171,7 @@ export function buildTrack(def) {
   // a hall the road runs through (Doha's airport): a rail either side of the tarmac, the concourse beyond it
   const hall = new Uint8Array(N); // (and no kerb or pavement there: the hall lays its own floor)
   for (const f of feats)
-    if (f.type === 'airport')
+    if (f.type === 'airport' || f.type === 'hall')
       for (let s = f.s; s <= f.s + f.len; s += seg / 2) {
         const i = wrap(Math.floor(wrapS(s) / seg));
         wall[i] = W / 2 + 0.2;
@@ -268,6 +276,7 @@ export function buildTrack(def) {
     kickers,
     trench,
     lowb,
+    wway,
     hall,
     covered,
     divider,
@@ -380,7 +389,7 @@ export function buildRoad(scene, tr, tex) {
       polygonOffset: true,
       polygonOffsetFactor: -2,
     });
-    if (tr.city !== 'doha')
+    if (tr.city !== 'doha' && tr.city !== 'singapore')
       for (const sg of [1, -1])
         add(
           vscale(
@@ -441,7 +450,9 @@ export function buildRoad(scene, tr, tex) {
   const dirt =
     tr.city === 'doha'
       ? new THREE.MeshLambertMaterial({ map: DQ.paverTex(), side: THREE.DoubleSide })
-      : new THREE.MeshLambertMaterial({ color: '#d9c7a2', map: tex.dirt, side: THREE.DoubleSide });
+      : tr.city === 'singapore'
+        ? new THREE.MeshLambertMaterial({ map: SG.paverTex(), side: THREE.DoubleSide }) // (Singapore: slabs and a verge)
+        : new THREE.MeshLambertMaterial({ color: '#d9c7a2', map: tex.dirt, side: THREE.DoubleSide });
   const foot = i => W / 2 + 12.5 + tr.P[i].y * 1.8,
     drop = i => -tr.P[i].y - 0.4;
   for (const sg of [1, -1]) {
@@ -703,7 +714,12 @@ export function buildRoad(scene, tr, tex) {
     }
   }
   const rail = new THREE.MeshLambertMaterial({ map: tex.barrier, side: THREE.DoubleSide });
-  const deck = new THREE.MeshLambertMaterial({ color: '#c9ccd6', side: THREE.DoubleSide });
+  // (Singapore's decks are pale concrete lit from below, not left dark brown by the night's ground light)
+  const deck = new THREE.MeshLambertMaterial({
+    color: '#c9ccd6',
+    side: THREE.DoubleSide,
+    emissive: tr.city === 'singapore' ? '#5a5e68' : '#000000',
+  });
   const off = k => !elevated[k];
   for (const s of [1, -1]) {
     const e = s * (W / 2 + 0.2),
@@ -836,6 +852,33 @@ export function buildForks(tr) {
         'lusailmarina',
         'beach',
         'medina',
+        'mbs',
+        'cbd',
+        'boatquay',
+        'clarkequay',
+        'padang',
+        'supertrees',
+        'lowbridge',
+        'hall',
+        'apron',
+        'terminal',
+        'runway',
+        'taxiway',
+        'jewel',
+        'skyway',
+        'cloudforest',
+        'flowerdome',
+        'dragonfly',
+        'padang',
+        'helix',
+        'float',
+        'esplanade',
+        'merlion',
+        'fullerton',
+        'clarkequay',
+        'laupasat',
+        'erp',
+        'gantry',
       ].includes(f.type)
     )
       for (let s = f.s - 30; s < f.s + (f.len || 0) + 30; s += seg) blocked[tr.wrap(Math.floor(tr.wrapS(s) / seg))] = 1; // no fork through a city's set pieces
@@ -961,7 +1004,9 @@ export function buildForks(tr) {
       frame,
       dist,
       limit,
-      name: tunnel ? (tr.cityName || 'KANO') + (tr.city === 'doha' ? ' STATION' : ' SUBWAY') : 'SKY BRIDGE',
+      name: tunnel
+        ? (tr.cityName || 'KANO') + (tr.city === 'doha' ? ' STATION' : tr.city === 'singapore' ? ' MRT' : ' SUBWAY')
+        : 'SKY BRIDGE',
     });
   }
   // the closed straight between the ends
@@ -1249,7 +1294,9 @@ export function buildForkRoads(scene, tr, tex) {
         new THREE.MeshLambertMaterial({ color: '#d9c49a', map: tex.dirt, side: THREE.DoubleSide }),
         true,
       );
-      const sign = dq ? DQ.qaSign(stn + ' STATION') : signTex((tr.cityName || 'KANO') + ' SUBWAY', 0, tr.city),
+      const sign = dq
+          ? DQ.qaSign(stn + ' STATION')
+          : signTex((tr.cityName || 'KANO') + (tr.city === 'singapore' ? ' MRT' : ' SUBWAY'), 0, tr.city),
         conc = dq
           ? new THREE.MeshLambertMaterial({ color: DQ.SAND })
           : new THREE.MeshLambertMaterial({ map: tex.tunnel });

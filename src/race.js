@@ -167,11 +167,17 @@ export const WEAPONS = {
   shield: { name: 'Shield', ammo: 1, color: '#4fe3ff' }, // goes up the moment it lands: blocks everything for 10 s, or 3 big hits
 };
 // how each vehicle drives
+// (in the garage's order, which is also the price ladder: the further down, the faster and the stronger, and the more
+// it costs. Each keeps its own character too: the Kart still corners best, the heavy ones still turn the slowest)
 export const VSTATS = {
-  kart: { top: 1, acc: 1, turn: 1, off: 0.55, mass: 1 },
-  buggy: { top: 0.975, acc: 1.1, turn: 0.97, off: 0.85, mass: 1.2 },
-  monster: { top: 0.955, acc: 0.92, turn: 0.9, off: 0.95, mass: 1.8 },
-  muscle: { top: 1.02, acc: 0.97, turn: 0.92, off: 0.6, mass: 1.4 },
+  kart: { top: 1, acc: 1, turn: 1, off: 0.55, mass: 1 }, // the best grip, the lightest
+  buggy: { top: 1, acc: 1.06, turn: 0.98, off: 0.85, mass: 1.2 }, // quick off the line, happy off the road
+  rail: { top: 1.012, acc: 1.12, turn: 0.97, off: 0.9, mass: 1.1 }, // the fastest away so far, light
+  muscle: { top: 1.028, acc: 1.06, turn: 0.95, off: 0.7, mass: 1.4 }, // straight-line speed
+  monster: { top: 1.036, acc: 1.04, turn: 0.93, off: 0.97, mass: 1.8 }, // the heavy hitter
+  raider: { top: 1.046, acc: 1.1, turn: 0.96, off: 1, mass: 1.5 }, // goes anywhere at full speed
+  roadster: { top: 1.06, acc: 1.14, turn: 0.98, off: 0.8, mass: 1.3 }, // the fastest on tarmac yet
+  brute: { top: 1.07, acc: 1.12, turn: 0.95, off: 1, mass: 1.9 }, // the fastest and the heaviest of all
 };
 const DRIFT_COL = ['#ffffff', '#6fd3ff', '#ff9a1f', '#d65cff'];
 const FLAME_COL = ['#ff9a1f', '#6fd3ff', '#ff9a1f', '#d65cff', '#ff3b1f', '#9fe4ff', '#ffd23a'];
@@ -1342,21 +1348,29 @@ export class Race {
       }
       // the water bridge (the deck, not the tube under the sea): every few metres a plank thumps and the tyres throw
       // spray up off the sea either side
-      if (tr.lowb[wi] && tr.P[wi].y > -1.2 && !k.fly && k.speed > 8) {
+      if (tr.lowb[wi] && (tr.city === 'doha' ? tr.P[wi].y > -1.2 : tr.wway[wi]) && !k.fly && k.speed > 8) {
+        // (on Singapore's river there are no planks: the spray comes off the wheels themselves, a wake behind each)
+        const onWater = !!tr.wway[wi];
         k.plankD = (k.plankD || 0) - k.speed * dt;
         if (k.plankD <= 0) {
-          k.plankD = 6.5;
+          k.plankD = onWater ? 2.5 : 6.5;
           const v = clamp(k.speed / 45, 0, 1);
           if (k === P || Math.abs(this.dS(k.s, P.s)) < 60)
             for (const sd of [-1, 1])
               this.fx.spark(
-                tr.point(k.s - 1.5, sd * (W / 2 + 1.4 + Math.random() * 1.5), -0.2),
+                onWater
+                  ? tr.point(k.s - 1.2, k.lat + sd * (1.3 + Math.random() * 0.6), -0.1)
+                  : tr.point(k.s - 1.5, sd * (W / 2 + 1.4 + Math.random() * 1.5), -0.2),
                 Math.random() < 0.5 ? '#f2fbff' : '#bfe9f7',
-                1.6 + v * 2.2,
+                (onWater ? 1.2 : 1.6) + v * 2.2,
                 0.5,
-                _spray.set((Math.random() - 0.5) * 2, 5 + v * 5, (Math.random() - 0.5) * 2),
+                _spray.set(
+                  sd * (onWater ? 2.5 : 0) + (Math.random() - 0.5) * 2,
+                  (onWater ? 3 : 5) + v * 5,
+                  (Math.random() - 0.5) * 2,
+                ),
               );
-          if (k === P) Sound.plank(v);
+          if (k === P && !onWater) Sound.plank(v);
         }
       }
       // the central wall between the two bores of the underpass

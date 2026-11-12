@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { W } from './track.js';
+import { buildGantry, pitStraight } from './gantry.js';
 import { clamp, lerp, sstep, fbm, rng } from './util.js';
 import { canvasTex, loopKnot, starKnot, diamondBand } from './textures.js';
 
@@ -80,7 +81,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const { N, P, out, center: C } = tr;
   const R0 = tr.radius + 150; // island radius
   const city = opts.city || 'kano',
-    doha = city === 'doha';
+    doha = city === 'doha',
+    coast = doha || city === 'singapore'; // (a big modern city on the water: its sea comes from the circuit's features, its own scenery)
   let isLand = () => true;
   const occ = [];
   // the canals under the jumps: the ground drops away there
@@ -186,10 +188,11 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       // a harmattan sky: deep blue overhead, dusty gold at the horizon
       uniforms: {
         uNight: { value: 0 },
-        uCity: { value: doha ? 1 : 0 },
+        uCity: { value: coast ? 1 : 0 },
+        uNeon: { value: city === 'singapore' ? 1 : 0 },
         uMoon: { value: new THREE.Vector3(0.5, 0.45, -0.74).normalize() },
       },
-      fragmentShader: `uniform float uNight; uniform float uCity; uniform vec3 uMoon; varying vec3 vP;
+      fragmentShader: `uniform float uNight; uniform float uCity; uniform float uNeon; uniform vec3 uMoon; varying vec3 vP;
       float h3(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
       void main(){ float h = vP.y;
       vec3 top = vec3(.2,.47,.82), mid = vec3(.55,.76,.93), hz = vec3(.99,.84,.62);
@@ -202,6 +205,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       // stars mostly washed out
       vec3 cg = mix(vec3(.62,.32,.3), vec3(.24,.16,.4), smoothstep(0., .3, h)); cg = mix(cg, vec3(.07,.08,.22), smoothstep(.3, .9, h));
       n = mix(n, cg, uCity); st *= 1. - uCity * .8;
+      // a neon city (Singapore): a dark night sky, deep navy overhead, the city's magenta glow only low on the horizon
+      vec3 ng = mix(vec3(.62,.16,.42), vec3(.2,.08,.32), smoothstep(0., .1, h)); ng = mix(ng, vec3(.02,.025,.09), smoothstep(.1, .5, h));
+      n = mix(n, ng * 1.25, uNeon); st *= 1. - uNeon * .6; // (a quarter brighter than a true dark sky, still night)
       n += st + moon * vec3(1., .97, .88) + halo * vec3(.6, .7, 1.);
       gl_FragColor = vec4(mix(c, n, uNight), 1.); }`,
     }),
@@ -217,7 +223,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     new THREE.MeshPhongMaterial({ color: '#2aa9c0', specular: '#bfefff', shininess: 70, map: waterTex }),
   ); // solid: see-through water showed the square edge of the ground plane under the sea
   water.position.set(C.x, -1.4, C.z);
-  if (!doha) scene.add(water);
+  if (!coast) scene.add(water);
 
   // Dala Hill: the rocky hill at the heart of old Kano, set in the widest open spot inside the loop
   let hill = { x: C.x, z: C.z, d: 0 };
@@ -237,7 +243,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     cols = new Float32Array(gp.count * 3),
     cut = new Uint8Array(gp.count);
   const c = new THREE.Color();
-  if (doha) {
+  if (coast) {
     // Doha: flat ground; Doha Bay fills the inside of the loop, open water under the two bridges out to The Pearl, the
     // Gulf to the south of the causeway and all round the coast
     // the coast comes from the circuit's own features: 'shore' (water beyond d on one side along a stretch), 'marina'
@@ -249,9 +255,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       return o <= f.len;
     };
     const blobs = tr.feats
-      .filter(f => f.type === 'westbay')
+      .filter(f => f.type === 'westbay' || f.type === 'mbsfar')
       .map(f => {
-        const s = f.s + f.len * 0.5,
+        const s = f.s + (f.len || 0) * 0.5,
           i = tr.idx(s);
         return { ...tr.beside(i, tr.out[i] * (W / 2 + 330)), r: 180 };
       });
@@ -277,7 +283,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       let sea = r > Rs;
       for (const f of shores) if (inStretch(s, f) && (f.side === 'in') === ins && d > f.d + wob) sea = true;
       if (marina && ins && d > marina.d + wob) sea = true;
-      if (tr.lowb[n.i]) sea = true; // the water bridge: open sea under it and either side
+      if (tr.lowb[n.i] && !tr.wway[n.i]) sea = true; // the water bridge: open sea under it and either side
+      // the water lane: the river under the road and out on its own side, the bank on the other
+      if (tr.wway[n.i] && (n.d < W / 2 + 3 || tr.wway[n.i] > 0 !== ins)) sea = true;
       for (const b of blobs)
         if (Math.hypot(x - b.x, z - b.z) < b.r * (0.85 + 0.3 * fbm(x * 0.01, z * 0.01))) sea = false; // land out across the water (West Bay)
       let canal = false;
@@ -322,17 +330,19 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         return m[a * n1 + b] < 0.2;
       };
     }
-    const cSand = new THREE.Color('#efe0bd'),
-      cPave = new THREE.Color('#d9d2c4'),
-      cGreen = new THREE.Color('#8fb35a'),
-      cBeach = new THREE.Color('#f8ecd0');
+    // Doha's ground is sand with a little green; Singapore's is lawn and garden between grey paving, a stone sea wall
+    const sg = city === 'singapore',
+      cSand = new THREE.Color(sg ? '#6f9e46' : '#efe0bd'),
+      cPave = new THREE.Color(sg ? '#b9b8b4' : '#d9d2c4'),
+      cGreen = new THREE.Color(sg ? '#4f8a3a' : '#8fb35a'),
+      cBeach = new THREE.Color(sg ? '#c9c4b8' : '#f8ecd0');
     for (let k = 0; k < gp.count; k++) {
       const x = gp.getX(k),
         z = gp.getZ(k),
         d = roadGap(x, z),
         wv = wet[k] ? Math.max(m[k], 0.5) : m[k];
       gp.setY(k, d < W / 2 + 26 && !wet[k] ? -0.35 : lerp(0.15, -7, sstep(0.25, 0.75, wv)));
-      if (wet[k] && d < 90 && tr.lowb[tr.nearest(x, z).i]) gp.setY(k, -27); // deep water round the aquarium tunnel
+      if (doha && wet[k] && d < 90 && tr.lowb[tr.nearest(x, z).i]) gp.setY(k, -27); // deep water round the aquarium tunnel
       c.copy(cSand)
         .lerp(cGreen, sstep(0.6, 0.75, fbm(x * 0.02 + 3, z * 0.02)) * 0.5)
         .lerp(cPave, 1 - sstep(W / 2 + 3, W / 2 + 18, d))
@@ -397,7 +407,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const ground = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ vertexColors: true, map: tex.ground }));
   ground.receiveShadow = true;
   scene.add(ground);
-  if (doha) {
+  if (coast) {
     // one sheet of sea, with a hole wherever the road runs below ground (so no water shows in the underpass)
     const S = size * 2.6,
       ws = 160,
@@ -445,8 +455,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     m.position.set(hill.x, -2, hill.z);
     m.castShadow = m.receiveShadow = true;
-    if (!doha) scene.add(m);
-    if (!doha) reserve(hill.x, hill.z, hr + 6);
+    if (!coast) scene.add(m);
+    if (!coast) reserve(hill.x, hill.z, hr + 6);
   }
 
   /* ---------- builders ---------- */
@@ -1408,273 +1418,48 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     }
   }
 
-  /* ---------- the start: a toll-plaza gantry over the grid ----------
-     A flat canopy over the road on four pillars, a toll booth under each end with its barrier arm raised, a deep fascia
-     carrying the race name between checkered bands and the diamond-band relief, and five pairs of start lights hung
-     facing the grid: they come on red one by one through the countdown and all go green on GO */
+  /* ---------- the start: a Formula 1 gantry over the grid ----------
+     The banner across the track, five pairs of start lights hung facing the grid (they come on red one by one through the
+     countdown and all go green on GO), the timing board, the position tower: a different one on every circuit */
   const startLamps = [],
-    gateGlow = []; // (gateGlow: Doha's gantry lights up at night: [material, strength])
+    gateGlow = []; // (gateGlow: the gantry's lit faces at night: [material, strength])
   function startGate() {
+    // (src/gantry.js: each circuit's own, after a Formula 1 start gantry)
     const i = 0,
-      g = new THREE.Group(),
-      x0 = W / 2 + 4,
-      span = W / 2 + 10.5,
-      top = 7.6,
-      D = 9;
-    const lam = c => new THREE.MeshLambertMaterial({ color: c });
-    const box = (w, ht, d, m, x, y, z) => {
-      const o = new THREE.Mesh(unitBox(), m);
-      o.scale.set(w, ht, d);
-      o.position.set(x, y, z);
-      o.castShadow = o.receiveShadow = true;
-      g.add(o);
-      return o;
-    };
-    // Kano's is a toll plaza in the game's own colours; Doha's is a gateway in its own: cream limestone, Qatar maroon, gold
-    const dq = doha,
-      MAROON = '#7a1430',
-      gold = new THREE.MeshPhongMaterial({ color: '#c9a24a', specular: '#fff1c4', shininess: 70 });
-    const white = lam(dq ? '#f3ede0' : '#eef1f6'),
-      navy = dq ? lam('#e8dcc4') : lam('#16246b'),
-      orange = dq ? gold : lam('#ff6a00'),
-      dark = lam(dq ? '#2a1a20' : '#1b1f2a'),
-      glass = new THREE.MeshPhongMaterial({
-        color: dq ? '#3a4a5a' : '#2a5a9a',
-        specular: '#cfe8ff',
-        shininess: 90,
-        transparent: true,
-        opacity: 0.75,
-      });
-    // the canopy: a white slab with a lip (orange in Kano, gold in Doha), light strips underneath
-    box(span * 2, 1.2, D, white, 0, top, 0);
-    box(span * 2 + 0.1, 0.3, D + 0.1, orange, 0, top + 1.2, 0);
-    for (const x of [-12, -4, 4, 12])
-      box(5.5, 0.06, D * 0.8, new THREE.MeshBasicMaterial({ color: '#fff6dc' }), x, top - 0.03, 0);
-    // the fascia on both faces: navy, the race name in white, checkered bands, the relief at each end
-    // Doha's fascia: maroon, the white serrated edge of the Qatari flag at each end, gold rules, gold eight-point stars
-    const star8 = (x, cx, cy, r) => {
-      x.beginPath();
-      for (let k = 0; k < 16; k++) {
-        const a = (k * Math.PI) / 8 - Math.PI / 2,
-          rr2 = k % 2 ? r * 0.62 : r;
-        x.lineTo(cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2);
-      }
-      x.closePath();
-      x.fill();
-    };
-    const fas = dq
-      ? canvasTex(2048, 220, (x, w, h) => {
-          x.fillStyle = '#7a1430';
-          x.fillRect(0, 0, w, h);
-          for (const [x0s, dir] of [
-            [0, 1],
-            [w, -1],
-          ]) {
-            x.fillStyle = '#f6f2ea';
-            x.beginPath();
-            x.moveTo(x0s, 0);
-            x.lineTo(x0s + dir * 150, 0); // the nine-point serration
-            for (let k = 0; k < 9; k++) {
-              const y0 = (k * h) / 9;
-              x.lineTo(x0s + dir * 210, y0 + h / 18);
-              x.lineTo(x0s + dir * 150, y0 + h / 9);
-            }
-            x.lineTo(x0s, h);
-            x.closePath();
-            x.fill();
-          }
-          x.fillStyle = '#d9b25a';
-          x.fillRect(0, 14, w, 6);
-          x.fillRect(0, h - 20, w, 6);
-          x.fillRect(0, 26, w, 2);
-          x.fillRect(0, h - 28, w, 2);
-          x.fillStyle = '#ffffff';
-          x.font = `italic 800 112px "Barlow Condensed", sans-serif`;
-          x.textAlign = 'center';
-          x.textBaseline = 'middle';
-          x.fillText(opts.title || 'DOHA GRAND PRIX', w / 2, h / 2 + 4);
-          const tw = x.measureText(opts.title || 'DOHA GRAND PRIX').width;
-          x.fillStyle = '#d9b25a';
-          for (const sd of [-1, 1]) {
-            star8(x, w / 2 + sd * (tw / 2 + 80), h / 2, 38);
-            for (let k = 1; k <= 3; k++) star8(x, w / 2 + sd * (tw / 2 + 80 + k * 120), h / 2, 22);
-          }
-        })
-      : canvasTex(2048, 220, (x, w, h) => {
-          x.fillStyle = '#16246b';
-          x.fillRect(0, 0, w, h);
-          for (const yy of [0, h - 26])
-            for (let k = 0; k < w / 26; k++)
-              for (let r = 0; r < 2; r++) {
-                x.fillStyle = (k + r) % 2 ? '#0b1330' : '#f4f7ff';
-                x.fillRect(k * 26, yy + r * 13, 26, 13);
-              }
-          x.fillStyle = '#ff6a00';
-          x.fillRect(0, 26, w, 8);
-          x.fillRect(0, h - 34, w, 8);
-          x.fillStyle = '#ffffff';
-          x.font = `italic 800 112px "Barlow Condensed", sans-serif`;
-          x.textAlign = 'center';
-          x.textBaseline = 'middle';
-          x.fillText(opts.title || 'KANO GRAND PRIX', w / 2, h / 2 + 4);
-          const pal = ['rgba(0,0,0,.35)', 'rgba(255,255,255,.25)', '#f6e7c8'];
-          diamondBand(x, 40, 520, h / 2, 70, pal);
-          diamondBand(x, w - 520, w - 40, h / 2, 70, pal);
-        });
-    const fasM = new THREE.MeshLambertMaterial({
-      map: fas,
-      ...(dq ? { emissive: '#ffffff', emissiveMap: fas, emissiveIntensity: 0 } : {}),
-    });
-    if (dq) {
-      gateGlow.push([fasM, 0.75]);
-      gold.emissive.set('#c9a24a');
-      gold.emissiveIntensity = 0;
-      gateGlow.push([gold, 0.55]);
-      navy.emissive.set('#5a4a34');
-      navy.emissiveIntensity = 0;
-      gateGlow.push([navy, 1]);
-    } // the sign lit, the gold catching the light, the stone floodlit
-    for (const sz of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(span * 2, 2.2), fasM);
-      p.position.set(0, top + 0.25, sz * (D / 2 + 0.02));
-      if (sz < 0) p.rotation.y = Math.PI;
-      g.add(p);
-    }
-    // pillars: navy with an orange collar, on a white plinth
-    for (const sx of [-1, 1])
-      for (const sz of [-1, 1]) {
-        box(1.3, top, 1.3, navy, sx * x0, 0, sz * (D / 2 - 1));
-        box(1.36, 0.5, 1.36, orange, sx * x0, top - 1.4, sz * (D / 2 - 1));
-        box(1.9, 0.5, 1.9, white, sx * x0, 0, sz * (D / 2 - 1));
-      }
-    if (dq) {
-      // Doha: the pylons rise above the canopy as slim towers, banded in gold, a gold dome and finial on each
-      for (const sx of [-1, 1])
-        for (const sz of [-1, 1]) {
-          const px = sx * x0,
-            pz = sz * (D / 2 - 1);
-          box(1.5, 3.4, 1.5, navy, px, top + 1.5, pz);
-          box(1.6, 0.22, 1.6, gold, px, top + 2.9, pz);
-          box(1.6, 0.22, 1.6, gold, px, top + 4.7, pz);
-          box(1.95, 0.25, 1.95, gold, px, 0.5, pz);
-          const dm = new THREE.Mesh(new THREE.SphereGeometry(0.78, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), gold);
-          dm.position.set(px, top + 4.9, pz);
-          g.add(dm);
-          const fin = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.3, 8), gold);
-          fin.position.set(px, top + 6.2, pz);
-          g.add(fin);
-        }
-      // a pointed arch on each face between the pylons: the spandrels in a cream lattice screen, edged in gold
-      const lat = canvasTex(
-        128,
-        128,
-        (x, w, h) => {
-          x.fillStyle = '#efe5d0';
-          x.fillRect(0, 0, w, h);
-          x.strokeStyle = '#b89a6a';
-          x.lineWidth = 3;
-          for (let k = -2; k < 3; k++) {
-            x.beginPath();
-            x.moveTo((k * w) / 2, 0);
-            x.lineTo((k * w) / 2 + w, h);
-            x.stroke();
-            x.beginPath();
-            x.moveTo((k * w) / 2 + w, 0);
-            x.lineTo((k * w) / 2, h);
-            x.stroke();
-          }
-          x.fillStyle = '#b89a6a';
-          for (const [cx, cy] of [
-            [0, 0],
-            [w, 0],
-            [0, h],
-            [w, h],
-            [w / 2, h / 2],
-          ])
-            star8(x, cx, cy, 12);
-        },
-        { repeat: true },
-      );
-      const ax = x0 - 0.65,
-        spring = 3.6,
-        apex = top - 0.35;
-      const arch = new THREE.Shape();
-      arch.moveTo(-ax, spring);
-      arch.lineTo(-ax, top);
-      arch.lineTo(ax, top);
-      arch.lineTo(ax, spring);
-      arch.bezierCurveTo(ax, spring + (apex - spring) * 0.75, ax * 0.32, apex - 0.25, 0, apex);
-      arch.bezierCurveTo(-ax * 0.32, apex - 0.25, -ax, spring + (apex - spring) * 0.75, -ax, spring);
-      const ag = new THREE.ExtrudeGeometry(arch, { depth: 0.5, bevelEnabled: false }),
-        auv = ag.attributes.uv;
-      for (let n = 0; n < auv.count; n++) auv.setXY(n, auv.getX(n) / 2.2, auv.getY(n) / 2.2);
-      const arM = new THREE.MeshLambertMaterial({ map: lat });
-      for (const sz of [-1, 1]) {
-        const m = new THREE.Mesh(ag, arM);
-        m.position.set(0, 0, sz * (D / 2 - 1) - 0.25);
-        m.castShadow = true;
-        g.add(m);
-        // the gold edge along the arch itself
-        const pts = arch
-          .getSpacedPoints(160)
-          .filter(q => q.y < top - 0.05 && Math.abs(q.x) < ax - 0.05)
-          .map(q => new THREE.Vector3(q.x, q.y, sz * (D / 2 - 1) + sz * 0.28));
-        if (pts.length > 2)
-          g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.09, 6), gold));
-      }
-    }
-    // a toll booth under each end: a raised island with a hazard nose, a white kiosk with blue glass and an orange band,
-    // its barrier arm (red and white) raised for the race
-    const stripe = canvasTex(256, 32, (x, w, h) => {
-      for (let k = 0; k < 8; k++) {
-        x.fillStyle = k % 2 ? '#f4f7ff' : dq ? MAROON : '#e02a2a';
-        x.fillRect(k * 32, 0, 32, h);
-      }
-    });
-    const armM = new THREE.MeshLambertMaterial({ map: stripe });
+      G = buildGantry(opts.gantry || `${city}.`, opts.title || '', W);
+    G.group.position.copy(P[i]);
+    G.group.rotation.y = tr.heading(i);
+    scene.add(G.group);
+    startLamps.push(...G.pods);
+    gateGlow.push(...G.glow);
+    for (let o = -3; o <= 3; o++) tr.wall[tr.wrap(i + o)] = Math.min(tr.wall[tr.wrap(i + o)] || 99, G.wallX); // the posts are solid
     for (const sx of [-1, 1]) {
-      const bx = sx * (W / 2 + 7.3);
-      box(4.2, 0.3, D + 3, lam('#c9ccd4'), bx, 0, 0); // the island
-      box(4.2, 0.32, 0.8, dq ? lam('#3a2a2e') : lam('#ffc400'), bx, 0, -(D / 2 + 1.1)); // its nose, facing the grid (hazard yellow in Kano, dark granite in Doha)
-      box(3, 3.2, 3.6, white, bx, 0.3, 0); // the kiosk
-      box(3.06, 0.3, 3.66, orange, bx, 2.1, 0); // its band
-      for (const sz of [-1, 1]) box(2.2, 1.1, 0.05, glass, bx, 2.4 - 1.1 + 0.55, sz * 1.82); // windows front and back
-      box(0.05, 1.1, 2.4, glass, bx - sx * 1.52, 1.85, 0); // the window onto the road
-      box(3.4, 0.25, 4, dq ? lam(MAROON) : navy, bx, 3.5, 0); // its roof
-      if (dq) box(3.5, 0.12, 4.1, gold, bx, 3.75, 0); // (Doha: a gold edge)
-      // the barrier: a post, then the arm pivoted on it, swung up
-      const post = box(0.5, 1.1, 0.5, dark, bx - sx * 1.9, 0.3, -2.6);
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.22, 0.22).translate(-sx * 2.75, 0, 0), armM);
-      arm.position.set(bx - sx * 1.9, 1.35, -2.6);
-      arm.rotation.z = sx * 1.25;
-      arm.castShadow = true;
-      g.add(arm);
-      void post;
+      const p = tr.beside(i, sx * (G.wallX + 2));
+      reserve(p.x, p.z, 5);
     }
-    // the start lights: a dark beam hung under the fascia on the grid side, five pods of two lamps
-    const beamZ = -(D / 2 - 0.4);
-    box(9, 1.4, 0.6, dark, 0, top - 1.8, beamZ);
-    for (const sx of [-1, 1]) box(0.12, 0.6, 0.12, dark, sx * 4, top - 0.4, beamZ);
-    const lampG = new THREE.CircleGeometry(0.42, 24);
-    for (let k = 0; k < 5; k++) {
-      const pod = [];
-      for (const yy of [0.3, -0.3]) {
-        const m = new THREE.Mesh(lampG, new THREE.MeshBasicMaterial({ color: '#3a0c10' }));
-        m.position.set((k - 2) * 1.7, top - 1.1 + yy, beamZ - 0.4);
-        m.rotation.y = Math.PI;
-        g.add(m);
-        pod.push(m);
+    // the pit straight round it: the pit wall, the name on the run-off, the pit building (gantry.js)
+    const parts = new Map(),
+      M4 = new THREE.Matrix4(),
+      Q = new THREE.Quaternion(),
+      Y = new THREE.Vector3(0, 1, 0),
+      ONE = new THREE.Vector3(1, 1, 1);
+    const put = (geo, mat, x, y, z, a) => {
+      M4.compose(new THREE.Vector3(x, y, z), Q.setFromAxisAngle(Y, a), ONE);
+      (parts.get(mat) || parts.set(mat, []).get(mat)).push(geo.clone().applyMatrix4(M4));
+    };
+    const pit = pitStraight(opts.gantry || `${city}.`, opts.title || '', W, tr, put);
+    for (const [mat, geos] of parts) {
+      const m = new THREE.Mesh(mergeGeometries(geos.map(x => (x.index ? x.toNonIndexed() : x))), mat);
+      m.receiveShadow = true;
+      scene.add(m);
+    }
+    gateGlow.push(...pit.glow);
+    if (pit.building) {
+      scene.add(pit.building);
+      for (let d = -pit.r; d <= pit.r; d += 12) {
+        const t = pit.building.rotation.y;
+        reserve(pit.mid.x + Math.sin(t) * d, pit.mid.z + Math.cos(t) * d, 24);
       }
-      box(1.2, 1.25, 0.1, lam('#0b0d14'), (k - 2) * 1.7, top - 1.73, beamZ - 0.3);
-      startLamps.push(pod);
-    }
-    g.position.copy(P[i]);
-    g.rotation.y = tr.heading(i);
-    scene.add(g);
-    for (let o = -3; o <= 3; o++) tr.wall[tr.wrap(i + o)] = Math.min(tr.wall[tr.wrap(i + o)] || 99, x0 - 0.7); // the pillars are solid
-    for (const sx of [-1, 1]) {
-      const p = tr.beside(i, sx * (W / 2 + 7.3));
-      reserve(p.x, p.z, 9);
     }
   }
   startGate();
@@ -1683,7 +1468,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const flagMeshes = [];
   // everything is placed where the chapter's track says (features carry road distances)
   const fr = s => tr.wrapS(s) / tr.len;
-  if (!doha)
+  if (!coast)
     for (const f of tr.feats) {
       if (f.type === 'gate') gate(fr(f.s), f.name);
       else if (f.type === 'walls') wall(fr(f.s), fr(f.s + f.len));
@@ -1694,12 +1479,12 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         bunting(fr(f.s + f.len * 0.6));
       }
     }
-  if (!doha) {
+  if (!coast) {
     bunting(fr(60));
     palace();
   }
   // houses: the dense old city along the middle of the lap, scattered compounds elsewhere
-  if (!doha)
+  if (!coast)
     for (let k = 0; k < 900; k++) {
       const f = rand(),
         i = Math.floor(f * N),
@@ -1708,7 +1493,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       if (!dense && rand() < 0.55) continue;
       tryHouse(i, s, W / 2 + rr(16, dense ? 60 : 90), rand() < 0.25);
     }
-  if (!doha)
+  if (!coast)
     for (let k = 0; k < 500; k++) {
       const a = rand() * Math.PI * 2,
         r = Math.sqrt(rand()) * (R0 - 45),
@@ -1745,8 +1530,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     R0,
     C,
   };
-  if (doha) opts.dress?.(dk); // the city itself (doha.js): it may hand back night(n), update(t) and its places
-  if (!doha)
+  if (coast) opts.dress?.(dk); // the city itself (doha.js): it may hand back night(n), update(t) and its places
+  if (!coast)
     for (let k = 0; k < 90; k++) {
       const a = rand() * Math.PI * 2,
         r = R0 - rr(50, 75),
@@ -1757,17 +1542,29 @@ export function buildWorld(scene, tr, tex, opts = {}) {
 
   // street lights: a lamp post every 32 m along the road, alternating sides; at night each throws a pool of light
   // (Doha: white poles, both sides of the road every 18 m, a cooler, brighter light; Kano: dark poles, one side every 32 m)
-  const poleM = new THREE.MeshLambertMaterial({ color: doha ? '#e9ecf1' : '#3a3f4a' });
+  // (Singapore: a tall slim grey pole, its arm sweeping up and out over the road to a long flat LED head, cool white)
+  const sgLamp = city === 'singapore';
+  const poleM = new THREE.MeshLambertMaterial({ color: sgLamp ? '#626b76' : coast ? '#e9ecf1' : '#3a3f4a' });
   // one lamp's parts, in its own space (the post at the origin, the arm reaching out along +z over the road)
   const postG = mergeGeometries(
-    [
-      new THREE.CylinderGeometry(0.14, 0.2, 8, 8).translate(0, 4, 0),
-      new THREE.BoxGeometry(0.18, 0.18, 3).translate(0, 8, 1.4),
-      new THREE.BoxGeometry(0.7, 0.22, 1.2).translate(0, 7.9, 2.8),
-    ].map(g => g.toNonIndexed()),
+    (sgLamp
+      ? [
+          new THREE.CylinderGeometry(0.12, 0.22, 10, 10).translate(0, 5, 0),
+          new THREE.CylinderGeometry(0.09, 0.09, 2.2, 6).rotateX(Math.PI / 3).translate(0, 10.5, 0.95),
+          new THREE.BoxGeometry(0.16, 0.16, 2.4).translate(0, 11, 3),
+          new THREE.BoxGeometry(0.5, 0.16, 1.8).translate(0, 10.92, 4.2),
+        ]
+      : [
+          new THREE.CylinderGeometry(0.14, 0.2, 8, 8).translate(0, 4, 0),
+          new THREE.BoxGeometry(0.18, 0.18, 3).translate(0, 8, 1.4),
+          new THREE.BoxGeometry(0.7, 0.22, 1.2).translate(0, 7.9, 2.8),
+        ]
+    ).map(g => g.toNonIndexed()),
   );
   const bulbM = new THREE.MeshBasicMaterial({ color: '#5a5040' }),
-    bulbG = new THREE.PlaneGeometry(0.55, 1).rotateX(Math.PI / 2).translate(0, 7.78, 2.8);
+    bulbG = sgLamp
+      ? new THREE.PlaneGeometry(0.4, 1.6).rotateX(Math.PI / 2).translate(0, 10.83, 4.2)
+      : new THREE.PlaneGeometry(0.55, 1).rotateX(Math.PI / 2).translate(0, 7.78, 2.8);
   const poolT = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
@@ -1793,7 +1590,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   // the glow round each bulb: one cloud of points for every lamp, so all the lamps are a handful of draw calls
   const glowM = new THREE.PointsMaterial({
     map: poolT,
-    color: doha ? '#fff0d8' : '#ffd29a',
+    color: sgLamp ? '#eaf4ff' : coast ? '#fff0d8' : '#ffd29a',
     size: 5,
     sizeAttenuation: true,
     transparent: true,
@@ -1809,18 +1606,25 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     LQ = new THREE.Quaternion(),
     LY = new THREE.Vector3(0, 1, 0),
     L1 = new THREE.Vector3(1, 1, 1);
-  const LAMP = doha ? 18 : 32;
+  const LAMP = sgLamp ? 14 : coast ? 18 : 32; // (Singapore's streets are lit end to end)
   for (let k = 0, alt = 1; k * LAMP < tr.len; k++, alt = -alt)
-    for (const sd of doha ? [1, -1] : [alt]) {
-      const i = tr.idx(k * LAMP + 12 + (doha && sd < 0 ? LAMP / 2 : 0));
-      if (tr.trench[i] || tr.elevated[i] || (tr.closed && tr.closed[i]) || tr.lowb[i] || Math.abs(tr.P[i].y) > 0.3)
+    for (const sd of coast ? [1, -1] : [alt]) {
+      const i = tr.idx(k * LAMP + 12 + (coast && sd < 0 ? LAMP / 2 : 0));
+      if (
+        tr.trench[i] ||
+        tr.elevated[i] ||
+        (tr.closed && tr.closed[i]) ||
+        tr.lowb[i] ||
+        tr.hall[i] ||
+        Math.abs(tr.P[i].y) > 0.3
+      )
         continue;
-      const p = tr.beside(i, sd * (W / 2 + 3.5));
+      const p = tr.beside(i, sd * (W / 2 + (sgLamp ? 9.5 : 3.5))); // (Singapore's stand on the verge, clear of the path)
       if (!free(p.x, p.z, 0.6, W / 2 + 2)) continue;
       LM.compose(p, LQ.setFromAxisAngle(LY, Math.atan2(-tr.L[i].x * sd, -tr.L[i].z * sd)), L1);
       lampPosts.push(postG.clone().applyMatrix4(LM));
       lampBulbs.push(bulbG.clone().applyMatrix4(LM));
-      lampGlows.push(new THREE.Vector3(0, 7.7, 2.8).applyMatrix4(LM));
+      lampGlows.push((sgLamp ? new THREE.Vector3(0, 10.75, 4.2) : new THREE.Vector3(0, 7.7, 2.8)).applyMatrix4(LM));
       const q = tr.beside(i, sd * (W / 2 - 5));
       lampPools.push(poolG.clone().translate(q.x, 0.1, q.z));
     }

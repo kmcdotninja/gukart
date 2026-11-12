@@ -5,6 +5,7 @@ import { buildTrack, buildRoad, buildForks, buildForkRoads } from './track.js';
 import { buildWorld } from './world.js';
 import { Race } from './race.js';
 import { dressDoha } from './doha.js';
+import { dressSingapore } from './singapore.js';
 import { store } from './util.js';
 import { $, show } from './dom.js';
 import { low, quality, renderer, scene, cam, setNight } from './scene.js';
@@ -76,7 +77,8 @@ export async function buildCircuit(tex, step = async () => {}) {
     low,
     city: chapter.id,
     title: (game.circuit ? game.circuit.name.toUpperCase() : CITY) + ' GRAND PRIX',
-    dress: chapter.id === 'doha' ? dressDoha : null,
+    gantry: `${chapter.id}.${game.circuit?.id || ''}`,
+    dress: chapter.id === 'doha' ? dressDoha : chapter.id === 'singapore' ? dressSingapore : null,
   });
   await step(66, 'WAKING UP BUDDY');
   game.race = new Race(scene, game.track, tex, quality, events);

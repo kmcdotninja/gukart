@@ -1,4 +1,5 @@
 // The settings card (volume, engine sound, steering, vibration) and the controls card.
+import { Music } from './music.js';
 import { ICON } from './icons.js';
 import { Haptics } from './haptics.js';
 import { Tilt } from './tilt.js';
@@ -42,7 +43,11 @@ export function initSettings() {
       fill = el => el.style.setProperty('--v', ((el.value - el.min) / (el.max - el.min)) * 100 + '%');
     const paint = () => {
       const v = $('#setVol'),
-        e = $('#setEng');
+        e = $('#setEng'),
+        mu = $('#setMus');
+      mu.value = Music.vol;
+      fill(mu);
+      $('#setMusO').textContent = pct(Music.vol);
       v.value = Sound.vol;
       e.value = Sound.engVol;
       fill(v);
@@ -84,6 +89,10 @@ export function initSettings() {
         Sound.toggle();
         paintSound();
       }
+      paint();
+    });
+    $('#setMus').addEventListener('input', e => {
+      Music.setVolume(+e.target.value);
       paint();
     });
     $('#setEng').addEventListener('input', e => {

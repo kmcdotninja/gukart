@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { buildTextures } from './textures.js';
 import { LAPS, WEAPONS } from './race.js';
 import { VEHICLES, clearance } from './buddy.js';
+import { Music } from './music.js';
 import { vehicleThumbs, partThumbs, racerPortraits } from './garage.js';
 import { Sound } from './audio.js';
 import { clamp, isTouch, store, fmtTime, ordinal } from './util.js';
@@ -56,6 +57,11 @@ initRaceFlow();
 // ---- the frame loop
 let last = performance.now();
 const CAPTURE = location.hash === '#capture';
+// on this machine only (npm run dev): /?coins=10000 puts that many coins in the wallet, to try the garage's prices
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('coins')) {
+  localStorage.setItem('gukart.wallet', JSON.stringify(+new URLSearchParams(location.search).get('coins') || 10000));
+  history.replaceState(null, '', location.pathname + location.hash); // (once: a reload doesn't top it up again)
+}
 // on this machine only (npm run dev): /?fresh wipes the World Tour and its trophy, to see a tour from the very start
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('fresh')) {
   for (const k of Object.keys(localStorage)) if (/^gukart\.(tour|trophy\.|cup\.)/.test(k)) localStorage.removeItem(k);
@@ -72,6 +78,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (document.body.dataset.state !== game.state) document.body.dataset.state = game.state; // what's on screen, for the smoke test (tools/smoke.mjs)
+  Music.tick(game.state); // the music follows the game, whatever is on screen (src/music.js)
   if (game.state === 'paused') {
     renderer.render(scene, cam);
     return;
@@ -231,7 +238,24 @@ function frame(now) {
       dt,
     );
   } else {
-    Sound.drive({ type: Sound.voiceType || 'kart', speed: 0, throttle: 0, running: false }, dt);
+    // the home screen: the race going on behind it is heard a little, its engine (the Supra) mixed in under the music.
+    // Everywhere else off the track is silent
+    const a = game.state === 'menu' && !$('#menu').hidden ? game.race.player : null;
+    if (a)
+      Sound.drive(
+        {
+          type: a.m.type,
+          speed: Math.max(0, a.speed) / 66,
+          throttle: 0.85,
+          drift: !!a.drift,
+          boost: a.boost > 0,
+          steer: 0,
+          running: true,
+          level: 0.1,
+        },
+        dt,
+      );
+    else Sound.drive({ type: Sound.voiceType || 'kart', speed: 0, throttle: 0, running: false }, dt);
     Sound.rivals([], dt);
   }
   if (game.state === 'map' && game.mapUI && !$('#map').hidden)
@@ -379,7 +403,7 @@ async function boot() {
 // capturing pictures (#capture): never in the game players get. tools/road-check.mjs uses it too.
 // the game's insides, for the dev server, recordings, and test runs of the real build (?gktest)
 if (import.meta.env.DEV || CAPTURE || location.search.includes('gktest'))
-  window.gukart = { game, scene, cam, renderer, events, clearance, Sound, TT, frame, showPodium, ready: false };
+  window.gukart = { game, scene, cam, renderer, events, clearance, Sound, Music, TT, frame, showPodium, ready: false };
 
 Sound.keepAlive(); // wake the sound after the phone sleeps or the tab comes back
 Feedback.init(); // every button's sound and buzz (src/feedback.js)

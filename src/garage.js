@@ -46,7 +46,8 @@ export class Garage {
   constructor(tex, { room = 'navy' } = {}) {
     this.tex = tex;
     this.room = room;
-    const navy = room === 'navy';
+    const navy = room === 'navy',
+      studio = room === 'studio'; // Singapore's: a dark photo studio, the stand ringed in neon
     const S = (this.scene = new THREE.Scene());
     S.background = new THREE.Color('#070c22');
     S.fog = new THREE.Fog('#070c22', 34, 80);
@@ -62,11 +63,601 @@ export class Garage {
     };
 
     this.walls = [];
-    if (!navy) {
+    if (!navy && !studio) {
       this.ws = buildWorkshop(S, { reflect: !REFLECT_OFF });
       this.door = this.ws.door;
       this.hemi = this.ws.hemi;
     }
+    if (studio) {
+      // ---------- Singapore's garage: a charcoal workshop, the city's skyline drawn in neon on its back wall, a pool of light on the car and coloured light off the rings ----------
+      S.background.set('#131417');
+      S.fog.color.set('#131417');
+      this.hemi = new THREE.HemisphereLight('#aab4c8', '#1a1a20', 0.75);
+      S.add(this.hemi);
+      const key = new THREE.SpotLight('#ffffff', 90, 34, 0.6, 0.6, 1.3);
+      key.position.set(2, 9.5, 4);
+      key.target.position.set(0, 1, 0);
+      key.castShadow = true;
+      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.bias = -0.0004;
+      S.add(key, key.target);
+      (this.studio ||= []).push(key);
+      for (const [c, x, z] of [
+        ['#22e6ff', -8, 5],
+        ['#ff3fd0', 8, -5],
+      ]) {
+        const l = new THREE.PointLight(c, 30, 18, 1.6);
+        l.position.set(x, 1.6, z);
+        S.add(l);
+        (this.neonLights ||= []).push(l);
+      }
+      // the floor: dark, a little glossy, a soft glow spilling out from under the stand
+      const fl = new THREE.Mesh(
+        new THREE.CircleGeometry(60, 48).rotateX(-Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: '#1b1c20', roughness: 0.55, metalness: 0.3 }),
+      );
+      fl.receiveShadow = true;
+      S.add(fl);
+      const glowT = canvasTex(256, 256, (x, w) => {
+        const g = x.createRadialGradient(w / 2, w / 2, w * 0.22, w / 2, w / 2, w / 2);
+        g.addColorStop(0, 'rgba(34,230,255,.55)');
+        g.addColorStop(0.5, 'rgba(255,63,208,.16)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = g;
+        x.fillRect(0, 0, w, w);
+      });
+      const pool = new THREE.Mesh(
+        new THREE.PlaneGeometry(30, 30).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({
+          map: glowT,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      pool.position.y = 0.02;
+      S.add(pool);
+      this.pool = pool;
+      // the room: a real garage round the stand. Dark concrete walls in panels with faint brush strokes, a ceiling of
+      // lit panels, and along the walls what a garage has: a red tool chest, shelves of parts, stacks of tyres, an air
+      // compressor, a workbench, a green EXIT sign over a side door. (Open at the front: you walk straight in.)
+      const strokeT = canvasTex(1024, 512, (x, w, h) => {
+        x.fillStyle = '#1b1c21';
+        x.fillRect(0, 0, w, h);
+        for (let i = 0; i < 26; i++) {
+          x.save();
+          x.translate(Math.random() * w, Math.random() * h);
+          x.rotate(-0.5 + Math.random() * 0.25);
+          x.fillStyle = `rgba(255,255,255,${0.012 + Math.random() * 0.03})`;
+          x.fillRect(-220, -18 - Math.random() * 40, 440 + Math.random() * 300, 30 + Math.random() * 70);
+          x.restore();
+        }
+        x.fillStyle = 'rgba(0,0,0,.4)';
+        for (let q = 0; q <= 6; q++) x.fillRect((q * w) / 6 - 2, 0, 4, h); // the joints between panels
+        x.fillRect(0, h - 70, w, 4);
+        x.fillStyle = '#101114';
+        x.fillRect(0, h - 66, w, 66); // a dark skirting
+      });
+      const wallM = new THREE.MeshStandardMaterial({ map: strokeT, roughness: 0.85 });
+      this.backdrop = { material: wallM };
+      const RW = 15,
+        RD = 13,
+        RH = 10.5;
+      const wall = (w, x, z, ry) => {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(w, RH), wallM);
+        m.position.set(x, RH / 2, z);
+        m.rotation.y = ry;
+        m.receiveShadow = true;
+        S.add(m);
+      };
+      wall(RW * 2, 0, -RD, 0);
+      wall(RD * 2 + 14, -RW, 7, Math.PI / 2);
+      wall(RD * 2 + 14, RW, 7, -Math.PI / 2);
+      const ceil = new THREE.Mesh(
+        new THREE.PlaneGeometry(RW * 2, RD * 2 + 14).rotateX(Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: '#17181c', roughness: 0.9 }),
+      );
+      ceil.position.set(0, RH, 7);
+      S.add(ceil);
+      const lit = c => new THREE.MeshBasicMaterial({ color: c });
+      const panelM = lit('#f2f6ff');
+      this.panels = panelM;
+      for (const [px, pz] of [
+        [-6, -6],
+        [6, -6],
+        [-6, 4],
+        [6, 4],
+      ]) {
+        const pn = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 1.5), panelM); // a ceiling light panel
+        pn.position.set(px, RH - 0.1, pz);
+        S.add(pn);
+        S.add(
+          new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.2, 1.8), new THREE.MeshStandardMaterial({ color: '#2a2c32' }))
+            .translateX(px)
+            .translateY(RH - 0.02)
+            .translateZ(pz),
+        );
+      }
+      // a strip light on each side wall, and a duct along the back wall under the ceiling
+      for (const sx of [-1, 1]) {
+        const st = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 3.2), panelM);
+        st.position.set(sx * (RW - 0.1), 6.6, -4);
+        S.add(st);
+      }
+      put(
+        L(new THREE.CylinderGeometry(0.45, 0.45, RW * 2 - 2, 14).rotateZ(Math.PI / 2), '#3a3d45', {
+          metalness: 0.6,
+          roughness: 0.45,
+        }),
+        0,
+        RH - 1.1,
+        -RD + 0.9,
+      );
+      // the red tool chest: a cabinet on castors, drawers with steel pulls, a top box
+      {
+        const g = new THREE.Group(),
+          red = new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.35, metalness: 0.3 }),
+          pull = new THREE.MeshStandardMaterial({ color: '#d5d9e0', metalness: 0.9, roughness: 0.25 });
+        const b = (w, h, d, m, x, y, z) => {
+          const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+          q.position.set(x, y, z);
+          q.castShadow = q.receiveShadow = true;
+          g.add(q);
+        };
+        b(2.6, 1.7, 1.1, red, 0, 1.05, 0);
+        b(2.3, 0.9, 0.95, red, 0, 2.35, 0);
+        for (let q = 0; q < 5; q++) b(2.2, 0.05, 0.06, pull, 0, 0.45 + q * 0.3, 0.58);
+        for (let q = 0; q < 3; q++) b(1.9, 0.05, 0.06, pull, 0, 2.1 + q * 0.25, 0.5);
+        for (const [cx, cz] of [
+          [-1.1, -0.4],
+          [1.1, -0.4],
+          [-1.1, 0.4],
+          [1.1, 0.4],
+        ])
+          b(0.18, 0.2, 0.18, new THREE.MeshStandardMaterial({ color: '#111' }), cx, 0.1, cz);
+        g.position.set(-RW + 1.2, 0, -5);
+        g.rotation.y = Math.PI / 2;
+        S.add(g);
+      }
+      // ---- the fittings, made the way the real things are ----
+      const mt = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o }),
+        steelM = mt('#3b3f48', { metalness: 0.7, roughness: 0.4 }),
+        darkM = mt('#17181c'),
+        concM = mt('#2a2c32', { roughness: 0.9 });
+      const part = (geo, m, x, y, z, ry = 0) => {
+        const q = new THREE.Mesh(geo, m);
+        q.position.set(x, y, z);
+        q.rotation.y = ry;
+        q.castShadow = q.receiveShadow = true;
+        S.add(q);
+        return q;
+      };
+      // the structure: concrete piers up the back wall with a beam across their heads, beams across the ceiling
+      for (const px of [-12.5, -6.2, 6.2, 12.5]) {
+        part(new THREE.BoxGeometry(1.1, RH, 0.7), concM, px, RH / 2, -RD + 0.35);
+        part(new THREE.BoxGeometry(1.5, 0.5, 0.9), concM, px, RH - 1.9, -RD + 0.45); // its capital
+      }
+      part(new THREE.BoxGeometry(RW * 2, 0.9, 0.8), concM, 0, RH - 1.45, -RD + 0.4);
+      for (const bz of [-9, -1, 7]) part(new THREE.BoxGeometry(RW * 2, 0.6, 0.6), concM, 0, RH - 0.3, bz);
+      // a hazard band round the foot of the walls
+      {
+        const hz = canvasTex(
+          256,
+          32,
+          (x, w, h) => {
+            x.fillStyle = '#ffc400';
+            x.fillRect(0, 0, w, h);
+            x.fillStyle = '#17181c';
+            for (let q = -1; q < 9; q++) {
+              x.beginPath();
+              x.moveTo(q * 32, h);
+              x.lineTo(q * 32 + 16, 0);
+              x.lineTo(q * 32 + 32, 0);
+              x.lineTo(q * 32 + 16, h);
+              x.fill();
+            }
+          },
+          { repeat: true },
+        );
+        hz.repeat.set(24, 1);
+        const hzM = new THREE.MeshStandardMaterial({ map: hz, roughness: 0.7 });
+        part(new THREE.BoxGeometry(RW * 2, 0.32, 0.06), hzM, 0, 0.9, -RD + 0.04);
+        for (const sx of [-1, 1]) part(new THREE.BoxGeometry(0.06, 0.32, RD * 2 + 14), hzM, sx * (RW - 0.04), 0.9, 7);
+      }
+      // frosted windows high on the left wall, daylight-white behind them, each in a steel frame with glazing bars
+      for (const wz of [-7, -1.5]) {
+        part(new THREE.BoxGeometry(0.1, 2.5, 4.4), steelM, -RW + 0.06, 6.6, wz);
+        const gl = new THREE.Mesh(new THREE.PlaneGeometry(4.1, 2.2), lit('#cfe6ff'));
+        gl.position.set(-RW + 0.13, 6.6, wz);
+        gl.rotation.y = Math.PI / 2;
+        S.add(gl);
+        for (const dz of [-1.37, 0, 1.37])
+          part(new THREE.BoxGeometry(0.06, 2.2, 0.07), steelM, -RW + 0.16, 6.6, wz + dz);
+        part(new THREE.BoxGeometry(0.06, 0.07, 4.1), steelM, -RW + 0.16, 6.6, wz);
+      }
+      // the tool wall: a pegboard over a steel bench, every tool drawn in its outline, a vice on the bench
+      {
+        const peg = canvasTex(1024, 420, (x, w, h) => {
+          x.fillStyle = '#2f3138';
+          x.fillRect(0, 0, w, h);
+          x.fillStyle = 'rgba(0,0,0,.35)';
+          for (let a = 12; a < w; a += 24) for (let b2 = 12; b2 < h; b2 += 24) x.fillRect(a, b2, 3, 3); // the holes
+          x.lineCap = 'round';
+          const tool = (c, f) => {
+            x.strokeStyle = x.fillStyle = c;
+            f();
+          };
+          for (let q = 0; q < 7; q++)
+            tool('#c9ced6', () => {
+              // spanners, longest first
+              const u = 60 + q * 46,
+                l = 250 - q * 22;
+              x.lineWidth = 9;
+              x.beginPath();
+              x.moveTo(u, 60);
+              x.lineTo(u, 60 + l);
+              x.stroke();
+              x.lineWidth = 6;
+              x.beginPath();
+              x.arc(u, 52, 13, 0.6, Math.PI * 2 - 0.6);
+              x.stroke();
+              x.beginPath();
+              x.arc(u, 60 + l + 8, 11, 0, 7);
+              x.stroke();
+            });
+          for (let q = 0; q < 5; q++)
+            tool(['#ff3fd0', '#22e6ff', '#ffc400', '#ff3fd0', '#22e6ff'][q], () => {
+              const u = 430 + q * 44; // screwdrivers: a coloured handle, a steel shaft
+              x.fillRect(u - 9, 60, 18, 90);
+              x.fillStyle = '#c9ced6';
+              x.fillRect(u - 3, 150, 6, 130);
+            });
+          tool('#c9ced6', () => {
+            x.lineWidth = 12; // a hammer
+            x.beginPath();
+            x.moveTo(700, 110);
+            x.lineTo(700, 330);
+            x.stroke();
+            x.fillRect(660, 70, 90, 44);
+          });
+          tool('#d2341f', () => {
+            x.lineWidth = 14; // a hacksaw
+            x.beginPath();
+            x.moveTo(800, 110);
+            x.lineTo(990, 110);
+            x.lineTo(990, 190);
+            x.stroke();
+            x.lineWidth = 5;
+            x.strokeStyle = '#c9ced6';
+            x.beginPath();
+            x.moveTo(800, 190);
+            x.lineTo(990, 190);
+            x.stroke();
+            x.fillRect(780, 96, 26, 110);
+          });
+          tool('#c9ced6', () => {
+            for (let q = 0; q < 6; q++) {
+              x.beginPath(); // sockets in a row
+              x.arc(810 + q * 32, 300, 9 + q * 1.2, 0, 7);
+              x.fill();
+            }
+          });
+        });
+        const pb = new THREE.Mesh(
+          new THREE.PlaneGeometry(8.6, 3.5),
+          new THREE.MeshStandardMaterial({ map: peg, roughness: 0.8 }),
+        );
+        pb.position.set(0, 3.55, -RD + 0.1);
+        S.add(pb);
+        part(new THREE.BoxGeometry(8.9, 0.1, 0.12), steelM, 0, 5.33, -RD + 0.12);
+        part(
+          new THREE.BoxGeometry(9, 0.14, 1.5),
+          mt('#555a64', { metalness: 0.8, roughness: 0.35 }),
+          0,
+          1.55,
+          -RD + 0.85,
+        ); // the bench top
+        part(new THREE.BoxGeometry(8.8, 1.3, 1.3), mt('#1f2127', { metalness: 0.4 }), 0, 0.82, -RD + 0.8); // its cabinets
+        for (let q = -3; q <= 3; q++) {
+          part(new THREE.BoxGeometry(1.1, 1.05, 0.04), mt('#2a2d35', { metalness: 0.5 }), q * 1.22, 0.84, -RD + 1.47); // a door
+          part(
+            new THREE.BoxGeometry(0.06, 0.4, 0.06),
+            mt('#d5d9e0', { metalness: 0.9, roughness: 0.25 }),
+            q * 1.22 + 0.42,
+            0.9,
+            -RD + 1.51,
+          );
+        }
+        // the vice: a base, two jaws, the screw and its bar
+        part(new THREE.BoxGeometry(0.5, 0.16, 0.6), mt('#22a6c0', { metalness: 0.5 }), -3.2, 1.7, -RD + 1.1);
+        part(new THREE.BoxGeometry(0.4, 0.4, 0.16), mt('#22a6c0', { metalness: 0.5 }), -3.2, 1.96, -RD + 0.95);
+        part(new THREE.BoxGeometry(0.4, 0.4, 0.16), mt('#22a6c0', { metalness: 0.5 }), -3.2, 1.96, -RD + 1.3);
+        part(new THREE.CylinderGeometry(0.035, 0.035, 0.7, 8).rotateX(Math.PI / 2), steelM, -3.2, 1.9, -RD + 1.5);
+        part(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 8).rotateZ(Math.PI / 2), steelM, -3.2, 1.9, -RD + 1.85);
+        // on the bench: a row of oil cans, a toolbox with its handle, a coiled lead
+        for (let q = 0; q < 4; q++) {
+          part(
+            new THREE.CylinderGeometry(0.16, 0.16, 0.42, 14),
+            mt(['#c8102e', '#f2f2ee', '#ffc400', '#22a6c0'][q], { metalness: 0.4, roughness: 0.4 }),
+            1.4 + q * 0.42,
+            1.83,
+            -RD + 0.7,
+          );
+          part(new THREE.CylinderGeometry(0.05, 0.08, 0.1, 10), darkM, 1.4 + q * 0.42, 2.09, -RD + 0.7);
+        }
+        part(
+          new THREE.BoxGeometry(1.0, 0.4, 0.46),
+          mt('#c8102e', { metalness: 0.4, roughness: 0.4 }),
+          -0.6,
+          1.82,
+          -RD + 0.9,
+        );
+        part(new THREE.TorusGeometry(0.16, 0.03, 6, 14, Math.PI), steelM, -0.6, 2.02, -RD + 0.9);
+        part(new THREE.TorusGeometry(0.22, 0.04, 8, 18).rotateX(Math.PI / 2), mt('#ff3fd0'), 3.6, 1.66, -RD + 0.9);
+      }
+      // steel racking in the left corner: oil drums below, boxed parts and spare rims above
+      {
+        const x0 = -9.4,
+          z0 = -RD + 0.75;
+        for (const dx of [-1.9, 1.9])
+          for (const dz of [-0.5, 0.5]) part(new THREE.BoxGeometry(0.1, 5.6, 0.1), steelM, x0 + dx, 2.8, z0 + dz);
+        for (const y of [1.9, 3.3, 4.7]) part(new THREE.BoxGeometry(3.9, 0.08, 1.1), steelM, x0, y, z0);
+        for (const [dx, c] of [
+          [-1.1, '#1f6f9c'],
+          [0, '#c8102e'],
+          [1.1, '#1f6f9c'],
+        ]) {
+          part(
+            new THREE.CylinderGeometry(0.5, 0.5, 1.5, 18),
+            mt(c, { metalness: 0.5, roughness: 0.45 }),
+            x0 + dx,
+            0.75,
+            z0,
+          ); // a drum
+          for (const y of [0.4, 1.1])
+            part(new THREE.CylinderGeometry(0.52, 0.52, 0.06, 18), mt('#11151c', { metalness: 0.6 }), x0 + dx, y, z0);
+        }
+        for (const [dx, w, h, c] of [
+          [-1.3, 0.9, 0.7, '#8a6a44'],
+          [-0.3, 0.8, 0.9, '#7a5c3a'],
+          [0.65, 0.9, 0.6, '#8a6a44'],
+          [1.45, 0.5, 0.8, '#2a2d35'],
+        ]) {
+          part(new THREE.BoxGeometry(w, h, 0.8), mt(c, { roughness: 0.85 }), x0 + dx, 1.94 + h / 2, z0); // a carton
+          part(
+            new THREE.BoxGeometry(w + 0.01, 0.07, 0.81),
+            mt('#d9c9a8', { roughness: 0.8 }),
+            x0 + dx,
+            1.94 + h * 0.55,
+            z0,
+          ); // its tape
+        }
+        for (let q = 0; q < 3; q++) {
+          // spare rims standing in a row
+          const rim = part(
+            new THREE.TorusGeometry(0.42, 0.11, 8, 22).rotateY(Math.PI / 2),
+            mt('#c3c8cf', { metalness: 0.9, roughness: 0.25 }),
+            x0 - 1.1 + q * 1.1,
+            3.87,
+            z0,
+          );
+          rim.rotation.y = 0.5;
+          part(
+            new THREE.CylinderGeometry(0.34, 0.34, 0.1, 16).rotateZ(Math.PI / 2),
+            mt('#22e6ff', { metalness: 0.6 }),
+            x0 - 1.1 + q * 1.1,
+            3.87,
+            z0,
+          ).rotation.y = 0.5;
+        }
+        for (let q = 0; q < 5; q++)
+          part(
+            new THREE.CylinderGeometry(0.2, 0.2, 0.5, 12),
+            mt(['#f2f2ee', '#ffc400', '#c8102e', '#f2f2ee', '#22a6c0'][q], { metalness: 0.3 }),
+            x0 - 1.3 + q * 0.62,
+            4.99,
+            z0,
+          ); // paint tins
+      }
+      // a tyre rack on the right of the back wall: two rails, tyres standing upright along them
+      {
+        const x0 = 9.4,
+          z0 = -RD + 0.9,
+          rub = mt('#15161a', { roughness: 0.92 });
+        for (const y of [0.5, 2.6]) {
+          for (const dz of [-0.35, 0.35]) part(new THREE.BoxGeometry(4.2, 0.08, 0.08), steelM, x0, y, z0 + dz);
+          for (let q = 0; q < 6; q++) {
+            part(
+              new THREE.TorusGeometry(0.62, 0.27, 10, 24).rotateY(Math.PI / 2),
+              rub,
+              x0 - 1.7 + q * 0.68,
+              y + 0.86,
+              z0,
+            );
+            part(
+              new THREE.CylinderGeometry(0.36, 0.36, 0.3, 16).rotateZ(Math.PI / 2),
+              mt(q % 2 ? '#c3c8cf' : '#2a2d35', { metalness: 0.85, roughness: 0.3 }),
+              x0 - 1.7 + q * 0.68,
+              y + 0.86,
+              z0,
+            );
+          }
+        }
+        for (const dx of [-2.1, 2.1]) part(new THREE.BoxGeometry(0.1, 4.4, 0.9), steelM, x0 + dx, 2.2, z0);
+      }
+      // on the floor by the stand: a trolley jack, two axle stands, a creeper, a pair of cones
+      {
+        const jx = -8.2,
+          jz = 3.5,
+          jr = mt('#c8102e', { metalness: 0.5, roughness: 0.4 });
+        part(new THREE.BoxGeometry(0.7, 0.22, 2.0), jr, jx, 0.22, jz);
+        part(new THREE.BoxGeometry(0.5, 0.14, 1.3), jr, jx, 0.48, jz - 0.2).rotation.x = -0.28; // the lifting arm
+        part(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 14), steelM, jx, 0.7, jz - 0.78); // its saddle
+        part(new THREE.CylinderGeometry(0.035, 0.035, 1.9, 8), steelM, jx, 0.95, jz + 1.35).rotation.x = 0.6; // the handle
+        for (const [wx, wz] of [
+          [-0.38, -0.85],
+          [0.38, -0.85],
+          [-0.38, 0.85],
+          [0.38, 0.85],
+        ])
+          part(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 12).rotateZ(Math.PI / 2), darkM, jx + wx, 0.12, jz + wz);
+        for (const sz of [0.6, 1.8]) {
+          part(new THREE.ConeGeometry(0.36, 0.7, 4), mt('#ffc400', { metalness: 0.4 }), 8.6, 0.35, sz).rotation.y =
+            Math.PI / 4; // an axle stand
+          part(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8), steelM, 8.6, 0.85, sz);
+          part(new THREE.BoxGeometry(0.3, 0.08, 0.14), steelM, 8.6, 1.12, sz);
+        }
+        part(new THREE.BoxGeometry(0.75, 0.08, 1.7), darkM, 7.2, 0.16, 5.6, 0.5); // the creeper
+        part(
+          new THREE.BoxGeometry(0.55, 0.12, 0.4),
+          mt('#c8102e'),
+          7.2 + Math.sin(0.5) * 0.6,
+          0.24,
+          5.6 + Math.cos(0.5) * 0.6,
+          0.5,
+        );
+        for (const [cx, cz] of [
+          [-9.5, 7.5],
+          [-8.6, 8.4],
+        ]) {
+          part(new THREE.ConeGeometry(0.28, 0.75, 14), mt('#ff6a00'), cx, 0.42, cz);
+          part(new THREE.CylinderGeometry(0.2, 0.22, 0.14, 14), mt('#f2f2ee'), cx, 0.42, cz);
+          part(new THREE.BoxGeometry(0.62, 0.05, 0.62), mt('#ff6a00'), cx, 0.03, cz);
+        }
+      }
+      // tyres stacked by the wall, and one leaning
+      {
+        const tyreG = new THREE.TorusGeometry(0.62, 0.3, 10, 24).rotateX(Math.PI / 2),
+          rubberM = new THREE.MeshStandardMaterial({ color: '#15161a', roughness: 0.9 });
+        for (const [tx, tz, n] of [
+          [RW - 1.4, -4, 4],
+          [RW - 1.4, -1.7, 3],
+          [-RW + 1.5, 4.2, 3],
+        ])
+          for (let q = 0; q < n; q++) put(new THREE.Mesh(tyreG, rubberM), tx, 0.3 + q * 0.6, tz);
+        const lean = new THREE.Mesh(tyreG, rubberM);
+        lean.rotation.z = 1.25;
+        put(lean, RW - 1.0, 0.85, 0.3);
+      }
+      // the air compressor: a red tank on feet, a black motor on top, a coiled hose
+      {
+        const g = new THREE.Group(),
+          red = new THREE.MeshStandardMaterial({ color: '#d2341f', roughness: 0.4, metalness: 0.4 }),
+          blk = new THREE.MeshStandardMaterial({ color: '#17181c', roughness: 0.6 });
+        const tank = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.5, 6, 16).rotateZ(Math.PI / 2), red);
+        tank.position.y = 0.85;
+        g.add(tank);
+        const motor = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.6), blk);
+        motor.position.y = 1.65;
+        g.add(motor);
+        for (const fx of [-0.7, 0.7])
+          g.add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.8), blk).translateX(fx).translateY(0.17));
+        const hose = new THREE.Mesh(
+          new THREE.TorusGeometry(0.4, 0.05, 8, 20),
+          new THREE.MeshStandardMaterial({ color: '#ffc400', roughness: 0.6 }),
+        );
+        hose.position.set(1.25, 0.9, 0);
+        g.add(hose);
+        g.traverse(o => (o.castShadow = true));
+        g.position.set(-RW + 1.4, 0, -9.5);
+        g.rotation.y = Math.PI / 2;
+        S.add(g);
+      }
+      // the side door, and the EXIT sign over it
+      put(L(new THREE.BoxGeometry(0.12, 4.2, 2.4), '#2a2d36', { metalness: 0.5, roughness: 0.5 }), -RW + 0.08, 2.1, 7);
+      {
+        const exitM = new THREE.MeshBasicMaterial({
+          map: canvasTex(128, 48, (x, w, h) => {
+            x.fillStyle = '#0c3a1f';
+            x.fillRect(0, 0, w, h);
+            x.fillStyle = '#5cff9a';
+            x.font = '900 34px Arial, sans-serif';
+            x.textAlign = 'center';
+            x.textBaseline = 'middle';
+            x.fillText('EXIT', w / 2, h / 2 + 2);
+          }),
+        });
+        const ex = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.56), exitM);
+        ex.position.set(-RW + 0.16, 4.8, 7);
+        ex.rotation.y = Math.PI / 2;
+        S.add(ex);
+        const eg = new THREE.PointLight('#5cff9a', 6, 7, 1.6);
+        eg.position.set(-RW + 0.8, 4.6, 7);
+        S.add(eg);
+      }
+      // Marina Bay in neon on the backdrop: the three towers and the deck across them, the wheel, the lotus museum
+      const skyT = canvasTex(1024, 384, (x, w, h) => {
+        x.lineCap = x.lineJoin = 'round';
+        const glow = (col, draw) => {
+          for (const [lw, a] of [
+            [16, 0.12],
+            [8, 0.3],
+            [3, 1],
+          ]) {
+            x.strokeStyle = col;
+            x.globalAlpha = a;
+            x.lineWidth = lw;
+            x.beginPath();
+            draw();
+            x.stroke();
+          }
+          x.globalAlpha = 1;
+        };
+        glow('#22e6ff', () => {
+          for (const tx of [380, 500, 620]) {
+            x.moveTo(tx - 34, h - 30);
+            x.lineTo(tx - 22, 130);
+            x.lineTo(tx + 22, 130);
+            x.lineTo(tx + 34, h - 30);
+          }
+        });
+        glow('#ff3fd0', () => {
+          x.moveTo(310, 122);
+          x.quadraticCurveTo(500, 86, 720, 112); // the deck across the top
+          x.lineTo(690, 128);
+          x.lineTo(320, 134);
+          x.closePath();
+        });
+        glow('#ff3fd0', () => {
+          x.arc(860, 230, 96, 0, 7); // the wheel
+          for (let q = 0; q < 8; q++) {
+            x.moveTo(860, 230);
+            x.lineTo(860 + Math.cos(q * 0.785) * 96, 230 + Math.sin(q * 0.785) * 96);
+          }
+        });
+        glow('#22e6ff', () => {
+          for (let q = -3; q <= 3; q++) {
+            x.moveTo(170, h - 30); // the lotus
+            x.quadraticCurveTo(170 + q * 22, 250, 170 + q * 42, 200 + Math.abs(q) * 14);
+          }
+          x.moveTo(20, h - 30);
+          x.lineTo(w - 20, h - 30);
+        });
+      });
+      const sky = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 3.75),
+        new THREE.MeshBasicMaterial({
+          map: skyT,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          fog: false,
+        }),
+      );
+      sky.position.set(0, 7.3, -RD + 0.86); // on the back wall's beam line, over the tool wall
+      S.add(sky);
+      this.neonSign = sky;
+      for (const [wx, wz] of [
+        [-7, -9],
+        [7, -9],
+      ]) {
+        const wl = new THREE.PointLight('#ffe2b8', 26, 16, 1.5); // warm light on the back wall's fittings
+        wl.position.set(wx, 6.5, wz);
+        S.add(wl);
+        (this.washLights ||= []).push(wl);
+      }
+      this.door = new THREE.Object3D(); // (no roller door: you walk straight into the garage)
+    } // ---------- end of Singapore's studio ----------
     let floor = null;
     if (navy) {
       // ---------- Kano's room (everything down to the work lamp) ----------
@@ -568,6 +1159,30 @@ export class Garage {
     this.deck.receiveShadow = true;
     this.deck.castShadow = true;
     S.environment = ENV.tex;
+    if (studio) {
+      // the stand in the studio: no orange. A dark skirt, and rings of neon: cyan round the turning deck with magenta
+      // arcs outside it (they turn with the car), cyan and magenta round the base
+      skirt.material.emissive.set('#22e6ff');
+      skirt.material.emissiveIntensity = 0.35;
+      faceM.color.set('#5d626c');
+      const arc = (r, a0, len, col, y, parent, tube = 0.06) => {
+        const m = new THREE.Mesh(
+          new THREE.TorusGeometry(r, tube, 8, 96, len).rotateZ(a0).rotateX(Math.PI / 2),
+          new THREE.MeshBasicMaterial({ color: col }),
+        );
+        m.position.y = y;
+        parent.add(m);
+        (this.neon ||= []).push(m);
+        return m;
+      };
+      arc(SR * 0.72, 0.5, Math.PI * 1.55, '#22e6ff', 0.175, this.deck);
+      arc(SR * 0.72, 0.5 + Math.PI * 1.62, Math.PI * 0.3, '#22e6ff', 0.175, this.deck);
+      arc(SR * 0.93, 2.2, Math.PI * 0.5, '#ff3fd0', 0.175, this.deck);
+      arc(SR * 0.93, 2.2 + Math.PI, Math.PI * 0.5, '#ff3fd0', 0.175, this.deck);
+      arc(SR + 0.95, 0.2, Math.PI * 0.9, '#ff3fd0', 0.62, S, 0.05);
+      arc(SR + 0.95, 0.2 + Math.PI, Math.PI * 0.9, '#22e6ff', 0.62, S, 0.05);
+      this.ringHue = 0.515; // (the LED line at the deck's edge: cyan here)
+    }
     S.environmentIntensity = navy ? 0.28 : 0.45; // a faint studio reflection in the metal (Kano keeps its room dark)
     if (navy && !REFLECT_OFF) {
       // the glossy floor: the room reflected under a slightly see-through tiled surface
@@ -746,6 +1361,22 @@ export class Garage {
       this.faceM?.color.set(on ? '#ffffff' : '#9aa1ae');
       return;
     } // Doha's workshop: daylight or evening
+    if (this.room === 'studio') {
+      // Singapore's studio: lights off is the dark room glowing in neon; on is the studio lit for a photograph
+      this.scene.background.set(on ? '#2b2d33' : '#131417');
+      this.scene.fog.color.set(on ? '#2b2d33' : '#131417');
+      this.backdrop.material.color.set(on ? '#ffffff' : '#8a8f9c');
+      this.panels.color.set(on ? '#ffffff' : '#7f8aa0');
+      this.hemi.intensity = on ? 1.5 : 0.75;
+      this.scene.environmentIntensity = on ? 0.9 : 0.45;
+      for (const l of this.studio || []) l.intensity = on ? 130 : 90;
+      for (const l of this.neonLights || []) l.intensity = on ? 12 : 30;
+      for (const l of this.washLights || []) l.intensity = on ? 46 : 26;
+      this.pool.material.opacity = on ? 0.45 : 1;
+      this.neonSign.material.opacity = on ? 0.55 : 1;
+      this.faceM?.color.set(on ? '#8d93a0' : '#5d626c');
+      return;
+    }
     for (const w of this.walls) {
       w.mat.map = on ? w.light : w.dark;
       w.mat.needsUpdate = true;
@@ -908,14 +1539,17 @@ export class Garage {
     this.door.position.y = 3.4 + open * 6.6; // rolls up into the header
     const p = this.path.getPoint(u);
     {
-      const base = this.cam.aspect < 1 ? 62 : 42,
-        pull = this.cam.aspect < 1 && this.kart?.type === 'monster' ? 1.3 : 1,
+      // (how far the vehicle reaches from its middle: half its width over the tyres, or half its length)
+      const kv = this.kart?.V,
+        reach = kv ? Math.max(kv.track + kv.ww / 2, kv.base + Math.max(kv.wf, kv.wr)) : 0,
+        base = this.cam.aspect < 1 ? 62 : 42,
+        pull = this.cam.aspect < 1 ? Math.min(1.42, Math.max(1, 1 + (reach - 2.3) * 0.385)) : 1,
         want = Math.min(88, base * pull);
       if (Math.abs(this.cam.fov - want) > 0.1) {
         this.cam.fov += (want - this.cam.fov) * Math.min(1, dt * 6);
         this.cam.updateProjectionMatrix();
       }
-    } // on a phone the monster gets a wider view, so it fits between the readout and the buttons
+    } // on a phone the big vehicles get a wider view, by their size, so each fits between the readout and the buttons
     if (this.mode === 'in') {
       p.x += Math.sin(this.clock * 0.25) * 0.6;
       if (this.push)
@@ -980,7 +1614,7 @@ export class Garage {
       this.tw = (this.tw || 0) + ((this.focusOn ? 1 : 0) - (this.tw || 0)) * Math.min(1, dt * 3);
       let d = want - sway;
       d = Math.atan2(Math.sin(d), Math.cos(d));
-      this.turn.rotation.y = sway + d * eio(Math.min(1, this.tw)) + this.userRot;
+      this.turn.rotation.y = sway + d * eio(Math.min(1, this.tw)) + this.userRot + (this.cheerRot || 0);
     }
     const ease = x => 1 - Math.pow(1 - Math.min(1, x), 3);
     // switching: the old one slides off the stand and fades; the new one slides on from the other side (both stay over the stand)
@@ -1062,12 +1696,88 @@ export class Garage {
       this.holder.position.y = y;
       if (this.drop >= 1.4) this.holder.position.y = 0;
     }
-    this.ring.material.color.setHSL(0.07, 1, 0.55 + Math.sin(this.clock * 2) * 0.06);
+    this.ring.material.color.setHSL(this.ringHue ?? 0.07, 1, 0.55 + Math.sin(this.clock * 2) * 0.06);
+    if (this.cheer) {
+      // just unlocked: the car hops off the stand, spins once round with its wheels turning and its pipes alight, a
+      // gold ring bursts out from under it and sparks fly up; then it settles
+      const C = this.cheer,
+        t = (C.t += dt),
+        u = Math.min(1, t / 1.25),
+        out = 1 - Math.pow(1 - u, 3);
+      this.cheerRot = out * Math.PI * 2;
+      if (this.holder && !(this.drop < 1.4))
+        this.holder.position.y =
+          t < 0.6
+            ? Math.sin((t / 0.6) * Math.PI) * C.hop
+            : Math.abs(Math.sin((t - 0.6) * 11)) * 0.22 * Math.exp(-(t - 0.6) * 6);
+      if (this.kart) for (const w of this.kart.wheels) w.spin.rotation.x += dt * 26 * (1 - u);
+      const b = Math.min(1, t / 0.7);
+      C.ring.scale.setScalar(1 + b * 7);
+      C.ring.material.opacity = 0.9 * (1 - b);
+      const p = C.sparks.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const v = C.vel[i];
+        v.y -= 9 * dt;
+        p.setXYZ(i, p.getX(i) + v.x * dt, p.getY(i) + v.y * dt, p.getZ(i) + v.z * dt);
+      }
+      p.needsUpdate = true;
+      C.sparks.material.opacity = Math.max(0, 1 - t / 1.5);
+      if (t > 1.6) {
+        C.ring.removeFromParent();
+        C.sparks.removeFromParent();
+        if (this.holder) this.holder.position.y = 0;
+        this.cheerRot = 0;
+        this.cheer = null;
+      }
+    }
     if (this.kart) {
       const k = this.kart;
       k.wheelRing.rotation.z = -Math.sin(this.clock * 0.9) * 0.3;
-      for (const f of k.flames) f.visible = false;
+      for (const f of k.flames) f.visible = !!this.cheer && this.cheer.t < 1;
     }
+  }
+  // the car on the stand has just been unlocked (see update)
+  // (light: a saved upgrade. The same spin with a smaller hop and fewer sparks)
+  celebrate(light = false) {
+    if (this.cheer) {
+      this.cheer.ring.removeFromParent();
+      this.cheer.sparks.removeFromParent();
+    }
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.82, 1, 48).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: '#ffc400',
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    ring.position.set(this.turn.position.x, 1.12, this.turn.position.z);
+    const n = light ? 26 : 70,
+      pos = new Float32Array(n * 3),
+      vel = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2,
+        r = 1.5 + Math.random() * 3.5;
+      pos.set([this.turn.position.x + Math.cos(a) * 1.2, 1.3, this.turn.position.z + Math.sin(a) * 1.2], i * 3);
+      vel.push(new THREE.Vector3(Math.cos(a) * r, 5 + Math.random() * 6, Math.sin(a) * r));
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const sparks = new THREE.Points(
+      g,
+      new THREE.PointsMaterial({
+        color: '#ffd84a',
+        size: 0.16,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    sparks.frustumCulled = false;
+    this.scene.add(ring, sparks);
+    this.cheer = { t: 0, ring, sparks, vel, hop: light ? 0.45 : 1.1 };
   }
   get inside() {
     return this.mode === 'in';

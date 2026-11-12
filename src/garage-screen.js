@@ -16,13 +16,71 @@ import { openModes } from './modes.js';
 import { UPGRADES, MILESTONES, earned, nextMilestone } from './chest.js';
 
 const VKEYS = Object.keys(VEHICLES);
+// Six of the vehicles are bought with coins (VEHICLES[id].price). You can put a locked one on the stand to look at it
+// and read its stats (`preview`): PLAY becomes UNLOCK with its price, and it isn't yours to race until you've paid.
+let preview = null;
+// The card of the car you'll race wears a ribbon (an orange strip down its side and a YOUR CAR tag), the way games mark
+// what's equipped. When that changes (you pick another, unlock one, or save its new look) the ribbon plays in: `marked`
+// is the car it was last drawn on, `cheer` asks for the animation even when the car is the same (a saved look).
+let marked = null,
+  cheer = false;
+const hasVeh = id => !VEHICLES[id].price || store.get('owned', []).includes('veh:' + id);
+const shown = () => preview || game.vehicle;
+// a line across the garage when something can't be done (not enough coins): big enough to read, gone in a moment
+let toastT = 0;
+// (later: after the car on the stand has had its moment, so the words never cover it)
+const toastLater = (msg, sub, ms = 1250) => {
+  clearTimeout(toastT);
+  toastT = setTimeout(() => toast(msg, sub), ms);
+};
+function toast(msg, sub = '') {
+  let el = $('#gToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'gToast';
+    el.setAttribute('role', 'status');
+    $('#garage').append(el);
+  }
+  el.innerHTML = `<b>${msg}</b>${sub ? `<span>${sub}</span>` : ''}`;
+  el.classList.remove('on');
+  void el.offsetWidth;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), 2400);
+}
+const short = (need, have) =>
+  toast('NOT ENOUGH COINS', `<i class="coin-icon"></i>${(need - have).toLocaleString('en')} more to go`);
 export function renderGarage() {
-  const v = VEHICLES[game.vehicle],
-    st = VSTATS[game.vehicle];
+  const v = VEHICLES[shown()],
+    st = VSTATS[shown()];
   $('#tiles').innerHTML = VKEYS.map(
     id =>
-      `<button class="tile${id === game.vehicle ? ' on' : ''}" data-veh="${id}"><span class="n">${VEHICLES[id].name.toUpperCase()}</span><img src="${game.THUMBS[id] || ''}" alt=""></button>`,
+      `<button class="tile${id === shown() ? ' on' : ''}${hasVeh(id) ? '' : ' locked'}${id === game.vehicle ? ' mine' : ''}${id === game.vehicle && (cheer || (marked && marked !== id)) ? ' just' : ''}" data-veh="${id}"${id === game.vehicle ? ' aria-current="true"' : ''}><span class="n">${VEHICLES[id].name.toUpperCase()}</span><img src="${game.THUMBS[id] || ''}" alt="">${hasVeh(id) ? '' : `<span class="tp"><i class="coin-icon"></i>${VEHICLES[id].price.toLocaleString('en')}</span>`}${id === game.vehicle ? '<i class="rb"></i><span class="yc">YOUR CAR</span>' : ''}</button>`,
   ).join('');
+  marked = game.vehicle;
+  cheer = false;
+  {
+    // the big button: PLAY your own vehicle, or UNLOCK the one on the stand for its price
+    const gp = $('#gPlay'),
+      sub = gp.querySelector('small');
+    if (preview) {
+      gp.disabled = false;
+      gp.querySelector('span').textContent = 'UNLOCK';
+      sub.innerHTML = `<i class="coin-icon"></i>${v.price.toLocaleString('en')}`;
+      sub.hidden = false;
+    } else if (gp.querySelector('span').textContent === 'UNLOCK') {
+      gp.querySelector('span').textContent = 'PLAY';
+      sub.hidden = true;
+    }
+    gp.classList.toggle('unlock', !!preview);
+    $('#custOpen').disabled = !!preview;
+  }
+  {
+    // the row scrolls sideways: keep the chosen vehicle's card in view (without moving the page)
+    const row = $('#tiles'),
+      on = row.querySelector('.tile.on');
+    if (on) row.scrollLeft = Math.max(0, on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2);
+  }
   // each stat, and the part your upgrades add to it (gold, at the end of the bar): the Turbo Kit's speed, Grip's grip
   const up = new Set(store.get('upgrades', [])),
     turbo = up.has('turbo') ? 1.05 : 1,
@@ -70,14 +128,18 @@ function renderCollection() {
     `<button class="btn gc-close">CLOSE</button>`; // (a phone: the pause menu's kind of button, full width)
 }
 // your vehicle's paint, wheels and tyres, bought with coins
-export const custom = id => ({ ...DEFAULT_CUSTOM[id], plate: 'kano', ...store.get('custom.' + id, {}) });
+// (a vehicle wears the plate of the city it's in until you fit another)
+export const custom = id => ({
+  ...DEFAULT_CUSTOM[id],
+  plate: chapter.id === 'doha' ? 'doha' : 'kano',
+  ...store.get('custom.' + id, {}),
+});
 const owned = () => store.get('owned', []);
 // a vehicle's factory part is always its own, even when that part costs coins in the shop (the Muscle's Midnight paint)
 const isFactory = (id, tab, v) => DEFAULT_CUSTOM[id]?.[tab] === v;
-let custTab = 'body',
+let custTab = 'paint', // (the vehicle itself is chosen in the garage's own row of cards, not here)
   draft = null;
 const TABS = [
-  ['body', 'BODY'],
   ['paint', 'PAINT'],
   ['decal', 'DECALS'],
   ['rim', 'WHEELS'],
@@ -106,16 +168,6 @@ function tilePic(tab, v) {
 }
 function renderCustom() {
   if (!draft) return;
-  if (custTab === 'body') {
-    // the bodies: every vehicle as a card; picking one swaps the car on the stand
-    document.querySelectorAll('#custTabs [data-ct]').forEach(b => b.classList.toggle('on', b.dataset.ct === 'body'));
-    $('#custTitle').textContent = 'BODY';
-    $('#custList').innerHTML = VKEYS.map(
-      id =>
-        `<button class="tile2 body ${id === game.vehicle ? 'worn sel' : ''}" data-body="${id}" aria-label="${VEHICLES[id].name}"><img src="${game.THUMBS[id]}" alt=""><span class="tl">${VEHICLES[id].name}</span></button>`,
-    ).join('');
-    return;
-  }
   game.PTH ||= partThumbs();
   const saved = custom(game.vehicle),
     own = owned();
@@ -164,12 +216,15 @@ function closeCustom() {
 }
 
 function pickVehicle(id) {
-  if (id === game.vehicle) return;
-  const dir = VKEYS.indexOf(id) > VKEYS.indexOf(game.vehicle) ? -1 : 1;
-  game.vehicle = id;
-  store.set('veh', game.vehicle);
-  game.race.setVehicle(game.vehicle, custom(game.vehicle));
-  game.garage.setVehicle(game.vehicle, dir, custom(game.vehicle));
+  if (id === shown()) return;
+  const dir = VKEYS.indexOf(id) > VKEYS.indexOf(shown()) ? -1 : 1;
+  if (hasVeh(id)) {
+    preview = null;
+    game.vehicle = id;
+    store.set('veh', game.vehicle);
+    game.race.setVehicle(game.vehicle, custom(game.vehicle));
+  } else preview = id; // a locked one: on the stand to look at, not yours yet
+  game.garage.setVehicle(id, dir, custom(id));
   renderGarage();
   Sound.init();
   const card = $('.g-card');
@@ -182,7 +237,7 @@ function pickVehicle(id) {
 // each city has its own garage room (Kano's navy room, Doha's workshop); the garage you open is the one for the chapter
 // on the home card, built on the spot if it isn't the one built (the garage is its own scene: no reload)
 const garageCity = () => (CHAPTERS[game.chIndex]?.playable ? CHAPTERS[game.chIndex].id : chapter.id);
-const roomOf = id => (id === 'doha' ? 'workshop' : 'navy');
+const roomOf = id => (id === 'doha' ? 'workshop' : id === 'singapore' ? 'studio' : 'navy');
 const LIGHTS_KEY = (id = game.garage?.city || chapter.id) => (id === 'kano' ? 'garageLights' : 'garageLights.' + id);
 export function makeGarage(id) {
   if (game.garage) {
@@ -222,24 +277,39 @@ export function initGarageScreen() {
     }
     store.set('paintDefaults', 2);
   }
+  // six vehicles are bought with coins, for everyone: a saved choice that's now locked goes back to the Kart
+  if (!hasVeh(game.vehicle)) {
+    game.vehicle = 'kart';
+    store.set('veh', 'kart');
+  }
   // decals that left the shop (Arewa Knot, Star): take them off every vehicle and refund anyone who bought them, once
-  for (const [key, part, price] of [
+  for (const [key, part, price, kind = 'decal'] of [
     ['knotRetired', 'knot', 400],
     ['starRetired', 'star', 350],
+    // (the decals became side graphics, and the plates one for each city)
+    ['tigerRetired', 'tiger', 300],
+    ['starknotRetired', 'starknot', 350],
+    ['loopknotRetired', 'loopknot', 350],
+    ['bandRetired', 'band', 300],
+    ['hornsRetired', 'horns', 400],
+    ['silverPlateRetired', 'silver', 150, 'plate'],
+    ['midnightPlateRetired', 'midnight', 200, 'plate'],
+    ['naijaPlateRetired', 'naija', 250, 'plate'],
+    ['buddyPlateRetired', 'buddy', 250, 'plate'],
   ])
     if (!store.get(key, false)) {
       for (const id of Object.keys(DEFAULT_CUSTOM)) {
         const c = store.get('custom.' + id, null);
-        if (c?.decal === part) {
-          delete c.decal;
+        if (c?.[kind] === part) {
+          delete c[kind];
           store.set('custom.' + id, c);
         }
       }
       const own = owned();
-      if (own.includes('decal:' + part)) {
+      if (own.includes(kind + ':' + part)) {
         store.set(
           'owned',
-          own.filter(o => o !== 'decal:' + part),
+          own.filter(o => o !== kind + ':' + part),
         );
         store.set('wallet', store.get('wallet', 0) + price);
       }
@@ -266,15 +336,6 @@ export function initGarageScreen() {
     renderCustom();
   });
   $('#custList').addEventListener('click', e => {
-    const bb = e.target.closest('[data-body]');
-    if (bb) {
-      if (bb.dataset.body !== game.vehicle) {
-        pickVehicle(bb.dataset.body);
-        draft = { ...custom(game.vehicle) };
-      }
-      renderCustom();
-      return;
-    }
     const b = e.target.closest('[data-part]');
     if (!b) return;
     draft[custTab] = b.dataset.part;
@@ -293,6 +354,7 @@ export function initGarageScreen() {
       w = store.get('wallet', 0);
     if (c > w) {
       $('#custTitle').textContent = `NEED ${c - w} MORE COINS`;
+      short(c, w);
       Feedback.say('deny');
       return;
     }
@@ -306,19 +368,32 @@ export function initGarageScreen() {
     game.race.setVehicle(game.vehicle, draft);
     if (game.TEX) {
       Object.assign(game.THUMBS, vehicleThumbs(game.TEX, [game.vehicle], custom));
+      cheer = true; // its card plays the ribbon in again: saved, and this is the car you race
       renderGarage();
     }
     $('#custSave').textContent = 'SAVE';
     closeCustom();
+    game.garage.celebrate(true); // the car shows off its new look: a spin and a few sparks
+    toastLater(`${VEHICLES[game.vehicle].name.toUpperCase()} SAVED`, 'Ready to race');
   });
   $('#tiles').addEventListener('click', e => {
     const b = e.target.closest('[data-veh]');
     if (b) pickVehicle(b.dataset.veh);
   });
   $('#gPrev').addEventListener('click', () =>
-    pickVehicle(VKEYS[(VKEYS.indexOf(game.vehicle) + VKEYS.length - 1) % VKEYS.length]),
+    pickVehicle(VKEYS[(VKEYS.indexOf(shown()) + VKEYS.length - 1) % VKEYS.length]),
   );
-  $('#gNext').addEventListener('click', () => pickVehicle(VKEYS[(VKEYS.indexOf(game.vehicle) + 1) % VKEYS.length]));
+  $('#gNext').addEventListener('click', () => pickVehicle(VKEYS[(VKEYS.indexOf(shown()) + 1) % VKEYS.length]));
+  // the message goes the moment you do anything else (pick another car, a part, a tab): any tap in the garage clears
+  // it first, before that tap's own handler runs (which may put up a new one)
+  $('#garage').addEventListener(
+    'click',
+    () => {
+      clearTimeout(toastT);
+      $('#gToast')?.classList.remove('on');
+    },
+    true,
+  );
   // into the garage: the roller door lifts and the camera glides in; the controls show once you're inside
   $('#garageBtn').addEventListener('click', () => {
     Sound.init();
@@ -348,6 +423,11 @@ export function initGarageScreen() {
     $('#gLights').classList.toggle('on', on);
   });
   $('#gBack').addEventListener('click', () => {
+    if (preview) {
+      preview = null; // (a locked vehicle you were looking at goes back; yours is on the stand next time)
+      game.garage.setVehicle(game.vehicle, 0, custom(game.vehicle));
+      renderGarage();
+    }
     $('#garage').hidden = true;
     game.state = 'menu';
     renderChapter();
@@ -356,6 +436,30 @@ export function initGarageScreen() {
   // the garage's big button races (pick it, dress it, go); customising is the button above it
   $('#custOpen').addEventListener('click', openCustom);
   $('#gPlay').addEventListener('click', () => {
+    if (preview) {
+      // UNLOCK: pay for the vehicle on the stand, and it's yours and chosen
+      const price = VEHICLES[preview].price,
+        w = store.get('wallet', 0);
+      if (price > w) {
+        short(price, w);
+        return Feedback.say('deny');
+      }
+      store.set('wallet', w - price);
+      store.set('owned', [...owned(), 'veh:' + preview]);
+      Feedback.say('buy');
+      const id = preview;
+      preview = null;
+      game.vehicle = id;
+      store.set('veh', id);
+      game.race.setVehicle(id, custom(id));
+      renderChapter();
+      cheer = true;
+      renderGarage();
+      game.garage.celebrate(); // it hops, spins once and throws sparks
+      Sound.unlock(); // and a fanfare
+      toastLater(`${VEHICLES[id].name.toUpperCase()} UNLOCKED`, 'This is your car now');
+      return;
+    }
     if (!CHAPTERS[game.chIndex].playable) return Feedback.say('deny');
     if (travelTo(CHAPTERS[game.chIndex].id, 'modes')) return;
     Sound.init();

@@ -1,5 +1,6 @@
 // The vehicle studio: one vehicle with Buddy at the wheel, seen from four sides at once, and a list of any part that
-// reaches into his head. Open /studio.html?v=kart (or buggy, monster, muscle). Used to design the vehicles.
+// reaches into his head. Open /studio.html?v=kart (or any other vehicle: the bar across the top lists them). Drag in a
+// view to turn it, scroll to move in and out, double-click to put it back. Used to design the vehicles.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildTextures, setAniso } from './textures.js';
@@ -89,19 +90,76 @@ const views = [
   ['REAR 3/4', [c.x - d * 0.55, c.y + d * 0.45, c.z - d * 0.8]],
   ['LOW (wheels)', [c.x + d * 0.75, c.y * 0.25, c.z + d * 0.45]],
 ];
+// each view turns about its own target: drag to rotate it, the wheel to move in and out, double-click (or its RESET) to
+// put it back where it started. RESET ALL in the bar puts all four back.
 const cams = views.map(([n, p]) => {
   const cm = new THREE.PerspectiveCamera(32, 1, 0.1, 200);
-  cm.position.set(...p);
-  cm.lookAt(n.startsWith('LOW') ? new THREE.Vector3(c.x, c.y * 0.55, c.z) : c);
+  cm.userData.target = n.startsWith('LOW') ? new THREE.Vector3(c.x, c.y * 0.55, c.z) : c.clone();
+  cm.userData.home = new THREE.Vector3(...p);
+  cm.position.copy(cm.userData.home);
+  cm.lookAt(cm.userData.target);
   return cm;
 });
-const labels = views.map(([n]) => {
+const resetView = i => {
+  cams[i].position.copy(cams[i].userData.home);
+  cams[i].lookAt(cams[i].userData.target);
+  draw();
+};
+const labels = views.map(([n], i) => {
   const l = document.createElement('div');
   l.className = 'lbl';
-  l.textContent = n;
+  l.innerHTML = `${n} <button title="Put this view back">RESET</button>`;
+  l.querySelector('button').addEventListener('click', () => resetView(i));
   document.body.append(l);
   return l;
 });
+{
+  const all = document.createElement('button');
+  all.id = 'resetAll';
+  all.textContent = 'RESET ALL';
+  all.addEventListener('click', () => cams.forEach((_, i) => resetView(i)));
+  bar.insertBefore(all, document.getElementById('hits'));
+  const viewAt = e => (e.clientX < innerWidth / 2 ? 0 : 1) + (e.clientY < innerHeight / 2 ? 0 : 2);
+  const sph = new THREE.Spherical(),
+    off = new THREE.Vector3();
+  let drag = -1,
+    lx = 0,
+    ly = 0;
+  // move view i's camera round its target by (dx, dy) pixels, and in or out by `zoom`
+  const orbit = (i, dx, dy, zoom = 1) => {
+    const cm = cams[i],
+      t = cm.userData.target;
+    sph.setFromVector3(off.copy(cm.position).sub(t));
+    sph.theta -= dx * 0.008;
+    sph.phi = Math.min(Math.PI - 0.05, Math.max(0.05, sph.phi - dy * 0.008));
+    sph.radius = Math.min(d * 4, Math.max(d * 0.15, sph.radius * zoom));
+    cm.position.copy(t).add(off.setFromSpherical(sph));
+    cm.lookAt(t);
+    draw();
+  };
+  canvas.addEventListener('pointerdown', e => {
+    drag = viewAt(e);
+    lx = e.clientX;
+    ly = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (drag < 0) return;
+    orbit(drag, e.clientX - lx, e.clientY - ly);
+    lx = e.clientX;
+    ly = e.clientY;
+  });
+  for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, () => (drag = -1));
+  canvas.addEventListener('dblclick', e => resetView(viewAt(e)));
+  canvas.addEventListener(
+    'wheel',
+    e => {
+      e.preventDefault();
+      orbit(viewAt(e), 0, 0, Math.exp(e.deltaY * 0.0012));
+    },
+    { passive: false },
+  );
+}
 function draw() {
   const w = innerWidth,
     h = innerHeight;

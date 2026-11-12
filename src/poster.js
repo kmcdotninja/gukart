@@ -203,6 +203,10 @@ function tyreFire(k, type) {
     kart: [0.62, 1.26, 0.42, 0.3],
     buggy: [0.75, 1.5, 0.7, 0.31],
     muscle: [0.8, 1.62, 0.7, 0.35],
+    rail: [2, 2.4, 1.25, 0.65],
+    raider: [2.18, 1.9, 1.15, 0.52],
+    roadster: [2.22, 2.05, 1.08, 0.5],
+    brute: [2.05, 1.62, 1.25, 0.58],
   }[type]; // [half track, half wheelbase, tyre radius, half tyre width]
   k.root.updateMatrixWorld(true);
   const back = new THREE.Vector3(0, 0, -1).transformDirection(k.root.matrixWorld);

@@ -1,6 +1,6 @@
-// The World Tour: the game's championship, raced from city to city (Tour 1: Kano's Old City, Doha's Msheireb, Kano's
-// Dala Hill, Doha's The Pearl, then the Final at Lusail, at night). Each race pays 10, 7, 5, 3, 2, 1 points; 20 points
-// from the first four unlock the Final (about third place on average). After the Final the top three overall go up on
+// The World Tour: the game's championship, raced city by city over every circuit (Kano's two, Doha's three, then
+// Singapore's, ending with the Final at Marina Bay, at night). Each race pays 10, 7, 5, 3, 2, 1 points; 40 points
+// from the first eight unlock the Final (about third place on average). After the Final the top three overall go up on
 // the podium, and if you're one of them you take home its trophy (gold, silver, bronze) and the prize.
 // Forgiving: a bad race never knocks you out; quitting halfway means that race is run again when you come back (the
 // home screen's CONTINUE); after any finish you can retry the race, twice per tour. Short of 20 points after race 4,
@@ -23,22 +23,27 @@ import { setNight } from './scene.js';
 import { travelTo } from './home.js';
 
 export const POINTS = [10, 7, 5, 3, 2, 1];
-export const RETRIES = 2;
+export const RETRIES = 4;
 export const TROPHY = ['GOLD', 'SILVER', 'BRONZE'],
-  TROPHY_PRIZE = [1500, 800, 400];
+  TROPHY_PRIZE = [3000, 1600, 800];
 // the tours, each a list of [city, circuit]; the last race is the Final, opened by `gate` points from the others
 export const TOURS = [
   {
     id: 'tour1',
     name: 'World Tour 1',
+    // every circuit, a city at a time (one flight between each): Kano, Doha, then Singapore and the Final at Marina Bay
     races: [
       ['kano', 'old'],
-      ['doha', 'msheireb'],
       ['kano', 'dala'],
+      ['doha', 'msheireb'],
       ['doha', 'pearl'],
       ['doha', 'lusail'],
+      ['singapore', 'gardens'],
+      ['singapore', 'river'],
+      ['singapore', 'changi'],
+      ['singapore', 'marina'],
     ],
-    gate: 20,
+    gate: 40, // (third place on average over the eight races before the Final)
   },
 ];
 export const TOUR = TOURS[0]; // (the one there is, for now: Abu Dhabi, Singapore and Lagos bring the next)
@@ -46,7 +51,7 @@ export const TOUR = TOURS[0]; // (the one there is, for now: Abu Dhabi, Singapor
 const KEY = 'tour';
 export const cupOf = () => {
   const t = store.get(KEY, null);
-  return t && t.id === TOUR.id ? t : null;
+  return t && t.id === TOUR.id && t.races?.length === TOUR.races.length ? t : null; // (a tour saved when it was five races is dropped)
 };
 const save = t => store.set(KEY, t);
 // a racer's name in this tour (drawn when it started; older saved tours fall back to the defaults)
@@ -105,16 +110,25 @@ export function introLines() {
 const PLANE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-6z"/></svg>';
 export function showRoute() {
-  const n = TOUR.races.length;
-  $('#trRoute').innerHTML = TOUR.races
-    .map(([city, circ], i) => {
-      const fin = i === n - 1,
-        c = CHAPTERS.find(x => x.id === city),
-        name = (c.circuits?.find(x => x.id === circ)?.name || c.name).toUpperCase(),
-        hop = i && TOUR.races[i - 1][0] !== city ? `<i class="tr-fly">${PLANE}</i>` : '';
-      return `${hop}<div class="tr-stop${fin ? ' fin' : ''}"><img src="/places/${city}-${circ}${fin ? '-night' : ''}.jpg" alt=""><b class="tr-n"><span>${fin ? 'F' : i + 1}</span></b>${fin ? `<em class="tr-pts">${TOUR.gate} PTS</em>` : ''}<p class="tr-t"><small>${fin ? 'THE FINAL' : c.name.toUpperCase()}</small><span>${name}</span></p></div>`;
+  // one card per city, in the order the tour visits them: its picture, how many circuits are raced there, and on the
+  // last one the Final. (However many cities and circuits a tour has, the page stays this simple.)
+  const n = TOUR.races.length,
+    legs = [];
+  TOUR.races.forEach(([city, circ], i) => {
+    if (legs.at(-1)?.city !== city) legs.push({ city, stops: [] });
+    legs.at(-1).stops.push([circ, i]);
+  });
+  $('#trRoute').innerHTML = legs
+    .map((leg, li) => {
+      const c = CHAPTERS.find(x => x.id === leg.city),
+        last = li === legs.length - 1,
+        k = leg.stops.length,
+        finName = last ? (c.circuits?.find(x => x.id === leg.stops.at(-1)[0])?.name || c.name).toUpperCase() : '';
+      return `${li ? `<i class="tr-fly">${PLANE}</i>` : ''}<div class="tr-stop city${last ? ' fin' : ''}"><img src="/places/${leg.city}${last ? '-night' : ''}.jpg" alt=""><b class="tr-n"><span>${li + 1}</span></b>${last ? `<em class="tr-pts">THE FINAL</em>` : ''}<p class="tr-t"><small>${k} ${k === 1 ? 'CIRCUIT' : 'CIRCUITS'}${last ? ` · FINAL AT ${finName}` : ''}</small><span>${c.name.toUpperCase()}</span></p></div>`;
     })
     .join('');
+  $('#tourRoute .tr-note').innerHTML = `<b>${n} RACES</b> · ${TOUR.gate} PTS OPEN THE FINAL`;
+  $('#trRoute').scrollLeft = $('#trRoute').scrollTop = 0;
   show($('#tourRoute'));
 }
 export function hideRoute() {
@@ -265,7 +279,7 @@ function finalStandings(t) {
     paintTable(t, true);
     $('#resWallet').textContent = (from + prize).toLocaleString('en');
     $('#prize').innerHTML = won
-      ? `<div class="pz trophy t${won}"><span>${TROPHY[won - 1]} TROPHY</span><b><i class="coin-icon"></i>+${prize}</b></div>`
+      ? `<div class="pz trophy t${won}"><span>WORLD TOUR · ${TROPHY[won - 1]} TROPHY</span><b><i class="coin-icon"></i>+${prize}</b></div>`
       : '';
     $('#againBtn').textContent = 'NEW TOUR';
     $('#menuBtn').textContent = 'HOME';

@@ -34,6 +34,10 @@ export const VEHICLE_SOUND = {
   buggy: { pitch: 1.04, half: 0.08, rumble: 0.45, rasp: 0.35, turbo: 0.3, low: 1, top: 5200 }, // closest to the Supra
   monster: { pitch: 0.68, half: 0.17, rumble: 0.95, rasp: 0.25, turbo: 0.45, tone: 0.8, vol: 1.15, low: 6, top: 3300 }, // a big, deep, slow engine
   muscle: { pitch: 0.82, half: 0.13, rumble: 0.75, rasp: 0.3, turbo: 0.2, tone: 0.9, vol: 1.1, low: 5, top: 3900 }, // a burbling V8 weight
+  rail: { pitch: 0.92, half: 0.14, rumble: 0.6, rasp: 0.5, turbo: 0.15, low: 3, top: 4700 }, // an open twin, all bark
+  raider: { pitch: 0.78, half: 0.14, rumble: 0.8, rasp: 0.3, turbo: 0.5, tone: 0.85, vol: 1.1, low: 5, top: 3700 }, // a big turbo truck engine
+  roadster: { pitch: 0.9, half: 0.1, rumble: 0.6, rasp: 0.45, turbo: 0.35, low: 3, top: 4800 }, // high and hard
+  brute: { pitch: 0.72, half: 0.16, rumble: 0.9, rasp: 0.25, turbo: 0.4, tone: 0.82, vol: 1.12, low: 6, top: 3400 }, // heavy diesel thunder
 };
 export function engineParams(type) {
   const tune = store.get('engineTune.' + type, {}); // tweaks saved from the sound studio (sound.html)
@@ -552,14 +556,19 @@ export const Sound = {
       this.voice = new EngineVoice(c, this.engBus, engineParams(o.type));
       this.voiceType = o.type;
     }
-    this.voice.update({ ...o, gain: o.running ? 1 : 0 }, dt);
+    const lv = o.level ?? 1; // (the home screen plays the engine well down, under the music)
+    this.voice.update({ ...o, gain: o.running ? lv : 0 }, dt);
     this.sqG.gain.setTargetAtTime(
-      o.running ? ((o.drift ? 0.045 : 0) + (o.brake && o.speed > 0.25 ? 0.03 : 0)) * Math.min(1, o.speed * 2) : 0,
+      o.running ? ((o.drift ? 0.045 : 0) + (o.brake && o.speed > 0.25 ? 0.03 : 0)) * Math.min(1, o.speed * 2) * lv : 0,
       t,
       0.06,
     );
     this.sqF.frequency.setTargetAtTime(900 + Math.sin(t * 13) * 120 + o.speed * 400, t, 0.05);
-    this.wdG.gain.setTargetAtTime(o.running ? Math.max(0, o.speed - 0.3) * 0.05 + (o.air ? 0.03 : 0) : 0, t, 0.2);
+    this.wdG.gain.setTargetAtTime(
+      o.running ? (Math.max(0, o.speed - 0.3) * 0.05 + (o.air ? 0.03 : 0)) * lv : 0,
+      t,
+      0.2,
+    );
     this.wdF.frequency.setTargetAtTime(400 + o.speed * 1400, t, 0.2);
   },
   // the two nearest rivals: r = [{ type, speed, dist (metres, + ahead), side (-1..1), rel (their speed minus yours, m/s) }]
@@ -704,6 +713,71 @@ export const Sound = {
     g.connect(this.bus);
     o.start(t);
     o.stop(t + dur + 0.02);
+  },
+  // a vehicle unlocked: a rising whoosh, four bright notes climbing fast to a held chord, a low thump under it
+  unlock() {
+    if (!this.ctx || !this.on) return;
+    const c = this.ctx,
+      t = c.currentTime + 0.02,
+      lp = c.createBiquadFilter(),
+      out = c.createGain();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(1200, t);
+    lp.frequency.exponentialRampToValueAtTime(7000, t + 0.5);
+    out.gain.value = 0.55;
+    lp.connect(out);
+    out.connect(this.master);
+    const note = (f, at, dur, vol, type = 'sawtooth') => {
+      for (const d of [-7, 7]) {
+        const o = c.createOscillator(),
+          g = c.createGain();
+        o.type = type;
+        o.frequency.value = f;
+        o.detune.value = d;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.linearRampToValueAtTime(vol, at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        o.connect(g);
+        g.connect(lp);
+        o.start(at);
+        o.stop(at + dur + 0.03);
+      }
+    };
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, t + 0.12 + i * 0.085, 0.3, 0.16)); // C E G C, climbing
+    for (const f of [523.25, 659.25, 783.99, 1046.5, 1318.5]) note(f, t + 0.5, 1.1, 0.11); // the chord, held
+    note(130.8, t + 0.5, 0.9, 0.3, 'triangle');
+    // the whoosh up into it, and a splash of noise on the chord
+    for (const [at, dur, f0, f1, v] of [
+      [t, 0.5, 400, 6000, 0.14],
+      [t + 0.5, 0.9, 9000, 5000, 0.12],
+    ]) {
+      const s = c.createBufferSource(),
+        f = c.createBiquadFilter(),
+        g = c.createGain();
+      s.buffer = noise(c);
+      f.type = 'bandpass';
+      f.Q.value = 0.8;
+      f.frequency.setValueAtTime(f0, at);
+      f.frequency.exponentialRampToValueAtTime(f1, at + dur);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(v, at + (f1 > f0 ? dur * 0.9 : 0.01));
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      s.connect(f);
+      f.connect(g);
+      g.connect(out);
+      s.start(at);
+      s.stop(at + dur + 0.05);
+    }
+    const o = c.createOscillator(),
+      g = c.createGain(); // the thump
+    o.frequency.setValueAtTime(150, t + 0.5);
+    o.frequency.exponentialRampToValueAtTime(40, t + 0.8);
+    g.gain.setValueAtTime(0.5, t + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+    o.connect(g);
+    g.connect(out);
+    o.start(t + 0.5);
+    o.stop(t + 0.9);
   },
   coin() {
     this.blip(1320, 0.08, 'square', 0.07, 1.5);

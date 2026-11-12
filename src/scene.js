@@ -44,15 +44,18 @@ export function setNight(on) {
   game.night = on ? 1 : 0;
   // Kano's night is dark: moonlight and lamplit windows. Doha's is a big city's: the sky glows, the streets are lit end to
   // end, the towers blaze, so the light is brighter and warmer and the haze is a lit purple rather than black
-  const city = on && chapter.id === 'doha';
-  sun.color.set(on ? (city ? '#b4bfff' : '#8fa8ff') : '#ffe2b8');
-  sun.intensity = on ? (city ? 1.5 : 1.0) : 3.6;
-  hemi.color.set(on ? (city ? '#9a90d8' : '#4a5f9e') : '#cfe2ff');
-  hemi.groundColor.set(on ? (city ? '#6a4a34' : '#3a2a1c') : '#8a6a48');
-  hemi.intensity = on ? (city ? 1.75 : 1.05) : 1.35;
-  scene.fog.color.set(on ? (city ? '#2c2148' : '#0a0f22') : '#e9d9bf');
-  scene.environmentIntensity = on ? (city ? 0.7 : 0.45) : 1;
-  renderer.toneMappingExposure = on ? (city ? 1.4 : 1.3) : 1.0;
+  // Singapore's is a Las Vegas night: the sky and the streets dark, so the city's lights (every window, the LED edges
+  // of the towers, the floodlit landmarks, the Supertrees) blaze against it in colour. The contrast is the point
+  const city = on && (chapter.id === 'doha' || chapter.id === 'singapore'),
+    neon = on && chapter.id === 'singapore';
+  sun.color.set(on ? (neon ? '#8f9cff' : city ? '#b4bfff' : '#8fa8ff') : '#ffe2b8');
+  sun.intensity = on ? (neon ? 0.85 : city ? 1.5 : 1.0) : 3.6;
+  hemi.color.set(on ? (neon ? '#6a64b0' : city ? '#9a90d8' : '#4a5f9e') : '#cfe2ff');
+  hemi.groundColor.set(on ? (neon ? '#3a2a58' : city ? '#6a4a34' : '#3a2a1c') : '#8a6a48');
+  hemi.intensity = on ? (neon ? 1.05 : city ? 1.75 : 1.05) : 1.35;
+  scene.fog.color.set(on ? (neon ? '#140c30' : city ? '#2c2148' : '#0a0f22') : '#e9d9bf');
+  scene.environmentIntensity = on ? (neon ? 0.5 : city ? 0.7 : 0.45) : 1;
+  renderer.toneMappingExposure = on ? (neon ? 1.35 : city ? 1.4 : 1.3) : 1.0;
   game.world?.setNight(game.night);
   game.race?.setNight?.(game.night);
   $('#nightBtn')?.classList.toggle('on', on);

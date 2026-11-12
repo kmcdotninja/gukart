@@ -1078,6 +1078,11 @@ button:focus-visible {
 #garage > * {
   pointer-events: auto;
 }
+/* the garage is a screen of its own: the home screen never shows under it, whatever brought it back (it used to show
+   through when the game finished loading, or a circuit finished swapping, after the garage had opened) */
+body:has(#garage:not([hidden])) #menu {
+  display: none;
+}
 .g-top {
   position: absolute;
   top: 0;
@@ -1202,9 +1207,23 @@ button:focus-visible {
 /* vehicle cards: the name top-left, the selected one gets a solid white outline; the picture is pinned to the space
    under the name and always fits inside it */
 .tiles {
+  /* one row, as many cards as there are vehicles: swipe it sideways (each card snaps into place) */
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 104px;
   gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.tiles::-webkit-scrollbar {
+  display: none;
+}
+.tile {
+  scroll-snap-align: start;
 }
 .tile {
   height: 120px;
@@ -1251,6 +1270,171 @@ button:focus-visible {
 }
 .tile.on {
   border: 2px solid var(--white);
+}
+/* the car you'll race: an orange ribbon down the card's side and a YOUR CAR tag (the white outline is only the one on
+   the stand, which can be a locked car you're looking at). `just` plays it in when the choice changes or is saved */
+.tile .rb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: linear-gradient(180deg, var(--hazard), var(--orange));
+  transform-origin: 50% 100%;
+}
+.tile .yc {
+  position: absolute;
+  left: 6px;
+  bottom: 0;
+  padding: 1px 8px 1px 6px;
+  background: var(--orange);
+  color: var(--white);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 100%, 0 100%);
+}
+.tile.mine {
+  border-color: var(--orange);
+}
+.tile.mine.on {
+  border-color: var(--white);
+}
+.tile.just .rb {
+  animation: rb-grow 0.34s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.tile.just .yc {
+  animation: yc-in 0.34s 0.1s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.tile.just {
+  animation: mine-pulse 0.7s ease-out both;
+}
+.tile.just img {
+  animation: mine-pop 0.45s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+@keyframes rb-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes yc-in {
+  from {
+    transform: translateX(-110%);
+  }
+}
+@keyframes mine-pulse {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(255, 106, 0, 0);
+    background: rgba(255, 140, 40, 0.55);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(255, 106, 0, 0);
+  }
+}
+@keyframes mine-pop {
+  0% {
+    transform: scale(0.86);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile.just,
+  .tile.just .rb,
+  .tile.just .yc,
+  .tile.just img {
+    animation: none;
+  }
+}
+/* a vehicle still to be bought: dimmed, its price in the corner */
+.tile.locked img {
+  filter: brightness(0.55) saturate(0.6) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
+}
+.tile .tp {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.7);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--hazard);
+}
+.tile .tp .coin-icon,
+.g-play small .coin-icon,
+#gToast .coin-icon {
+  width: 0.9em;
+  height: 0.9em;
+  flex: none;
+}
+.g-play small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.g-play small[hidden] {
+  display: none;
+}
+.cust-open:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+/* the line across the garage when something can't be done (not enough coins) */
+#gToast {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: min(300px, 78vw);
+  padding: 12px 22px 11px;
+  background: rgba(11, 19, 48, 0.94);
+  border: 2px solid var(--hazard);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+  font-family: var(--race);
+  font-style: italic;
+  color: var(--white);
+  text-align: center;
+  transform: translate(-50%, -50%) skewX(-8deg) scale(0.9);
+  opacity: 0;
+  pointer-events: none !important;
+  transition:
+    opacity 0.08s ease,
+    transform 0.08s ease; /* (it leaves faster than it arrives) */
+}
+#gToast.on {
+  transition-duration: 0.16s;
+  opacity: 1;
+  transform: translate(-50%, -50%) skewX(-8deg) scale(1);
+}
+#gToast b {
+  font-weight: 900;
+  font-size: 26px;
+  letter-spacing: 0.03em;
+  color: var(--hazard);
+}
+#gToast span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #gToast {
+    transition: none;
+  }
 }
 
 /* CUSTOMISE: built exactly like .go (same 18px slant, same gradient direction, same inset foot, same stripes on the
@@ -1363,6 +1547,8 @@ button:focus-visible {
   }
   .tiles {
     flex: 1;
+    min-width: 0;
+    grid-auto-columns: 150px;
   }
   .g-play {
     width: 260px;
@@ -1711,6 +1897,30 @@ button:focus-visible {
   background: var(--white);
   color: #0b1330;
 }
+/* a phone: the tabs take a row of their own under the bar, three equal buttons, so LANDMARKS is never off the edge */
+@media (max-width: 640px) {
+  .nfs-top {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .nfs-top .wallet {
+    margin-left: auto;
+  }
+  .nfs-tabs {
+    order: 9;
+    flex: 0 0 100%;
+    padding-left: 0;
+    gap: 4px;
+    overflow: visible;
+  }
+  .nfs-tabs button {
+    flex: 1;
+    padding: 8px 4px;
+    font-size: 16px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
 
 /* the pins. Only the places you'd go to (the race, the garage, other islands) carry a name; landmarks are small
    markers whose name shows when you point at one or pick it, so the island isn't buried under labels */
@@ -1882,8 +2092,11 @@ button:focus-visible {
   max-width: calc(100% - 32px);
   overflow-x: auto;
   scrollbar-width: none;
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: x proximity;
   padding: 4px;
+  touch-action: pan-x; /* (the map round it takes no touch gestures of its own: this row must say it scrolls) */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .isl {
   flex: 0 0 auto;

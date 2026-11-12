@@ -18,17 +18,17 @@ import { renderer } from './scene.js';
 import { qaSign, QA_BROWN } from './doharoad.js';
 
 // a facade drawn once and repeated by the metre (the geometry's UVs are in metres / the tile size)
-function facade(draw, w = 128, h = 128) {
+export function facade(draw, w = 128, h = 128) {
   return canvasTex(w, h, draw, { repeat: true });
 }
-const GLASS = {
+export const GLASS = {
   blue: ['#1f4f7a', '#5d9cc9'],
   teal: ['#1d5a5e', '#5fb3ae'],
   silver: ['#6f7f8f', '#c9d6e2'],
   dark: ['#152234', '#4a6f93'],
   green: ['#2a5c4f', '#7fbfa6'],
 };
-function glassTex([a, b]) {
+export function glassTex([a, b]) {
   return facade((x, w, h) => {
     const g = x.createLinearGradient(0, 0, w, h);
     g.addColorStop(0, a);
@@ -43,7 +43,7 @@ function glassTex([a, b]) {
   });
 }
 // UVs in metres: a box w x h x d whose texture repeats every `tile` metres
-function boxM(w, h, d, tile = 16) {
+export function boxM(w, h, d, tile = 16) {
   const g = new THREE.BoxGeometry(w, h, d),
     uv = g.attributes.uv,
     n = g.attributes.normal;
@@ -59,7 +59,7 @@ function boxM(w, h, d, tile = 16) {
   return g.translate(0, h / 2, 0);
 }
 const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
-function cylM(r0, r1, h, seg = 24, tile = 16, open = false) {
+export function cylM(r0, r1, h, seg = 24, tile = 16, open = false) {
   const g = new THREE.CylinderGeometry(r0, r1, h, seg, 1, open),
     uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++)

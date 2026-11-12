@@ -3,6 +3,7 @@
 // pads…) dropped along the way at distances from the start. The two long straights are solved so the circuit closes.
 import { turtle, closer } from './turtle.js';
 import { dalaTrack } from './kano2.js';
+import { marinaTrack, gardensTrack, riverTrack, changiTrack } from './sgtracks.js';
 
 // Kano is a figure of eight: the two lobes meet at one crossing, where the flyover leg rides 12 m over the start straight.
 // No spirals, no loops: straight ramps up and down, humps that throw you in the air, jumps over the canals.
@@ -42,10 +43,10 @@ function kanoTrack(Lr, Lf) {
     [5, 'pad', { lat: 0 }],
     [26, 'gate', { name: 'KOFAR DAN AGUNDI' }],
   ]);
-  t.straight(116, 12, [[50, 'coins', { lat: 0, n: 8 }]]);
+  t.straight(116, 22, [[50, 'coins', { lat: 0, n: 8 }]]); // (22 m up: room to breathe for whoever's on the road below)
   t.straight(90, 0, [[30, 'items']]);
-  t.straight(Lr - 246, -7);
-  t.straight(60, -5);
+  t.straight(Lr - 246, -13);
+  t.straight(60, -9);
   t.arc(80, -135, 0, [
     [20, 'market', { len: 160 }],
     [60, 'items'],
@@ -296,6 +297,15 @@ export const DOHA_CIRCUITS = [
   { id: 'lusail', name: 'Lusail', track: closer(lusailTrack), fn: lusailTrack },
 ];
 
+// Singapore is four circuits (src/sgtracks.js): Marina Bay at night, Gardens by the Bay, Downtown and the River, and
+// Changi Airport with Jewel
+export const SINGAPORE_CIRCUITS = [
+  { id: 'marina', name: 'Marina Bay', track: closer(marinaTrack), fn: marinaTrack },
+  { id: 'gardens', name: 'The Gardens', track: closer(gardensTrack), fn: gardensTrack },
+  { id: 'river', name: 'The River', track: closer(riverTrack), fn: riverTrack },
+  { id: 'changi', name: 'Changi', track: closer(changiTrack), fn: changiTrack },
+];
+
 // Kano is two circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had) and Dala Hill
 export const KANO_CIRCUITS = [
   { id: 'old', name: 'Old City', track: closedKano, fn: kanoTrack, rid: 'kano' },
@@ -343,8 +353,9 @@ export const CHAPTERS = [
     local: 'Marina Bay',
     tagline: 'The Garden City',
     reward: 1100,
-    playable: false,
-    desc: 'A night race round Marina Bay under the lights: past the giant garden trees, under the hotel with the ship on its roof, and over the bridge by the river.',
+    playable: true,
+    desc: 'Round Marina Bay under the lights, through the Supertrees and the Cloud Forest, along the river past Boat Quay, and through Jewel at Changi round the Rain Vortex.',
+    circuits: SINGAPORE_CIRCUITS,
   },
   {
     id: 'lagos',

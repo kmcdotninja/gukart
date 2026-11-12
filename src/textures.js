@@ -910,7 +910,45 @@ export function buildTextures() {
 // gate plaque: navy panel, white condensed letters, orange edge tag
 // a gantry sign; arrow -1 or 1 puts our own arrow (never a text glyph) on that side of the words, pointing that way
 // a road sign: Kano's are navy with orange ends; Doha's ('doha') are maroon with gold, in the gateway's colours
+// Singapore's: white on green (destinations by ordinary roads), a white rounded border, upright lettering in mixed case
+// as on the island's own signs ("Sky Bridge", "Marina Bay MRT")
+const sgCase = t =>
+  t
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/\bMrt\b/g, 'MRT');
+function sgSign(text, arrow) {
+  return canvasTex(1024, 160, (x, w, h) => {
+    x.fillStyle = '#00703c';
+    x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#ffffff';
+    x.lineWidth = 7;
+    x.beginPath();
+    x.roundRect(14, 12, w - 28, h - 24, 18);
+    x.stroke();
+    x.fillStyle = '#ffffff';
+    x.font = `700 88px "Barlow", "Arial", sans-serif`;
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    const t = sgCase(text),
+      s = 3.6,
+      aw = 24 * s,
+      gap = 30,
+      tw = x.measureText(t).width,
+      full = tw + (arrow ? aw + gap : 0);
+    x.fillText(t, w / 2 - full / 2 + (arrow < 0 ? aw + gap : 0) + tw / 2, h / 2 + 4);
+    if (arrow) {
+      const ax = arrow < 0 ? w / 2 - full / 2 : w / 2 + full / 2 - aw;
+      x.save();
+      x.translate(ax + (arrow < 0 ? aw : 0), h / 2 - 12 * s);
+      x.scale(arrow < 0 ? -s : s, s);
+      x.fill(new Path2D(ARROW));
+      x.restore();
+    }
+  });
+}
 export function signTex(text, arrow = 0, style = 'kano') {
+  if (style === 'singapore') return sgSign(text, arrow);
   const dq = style === 'doha';
   return canvasTex(1024, 160, (x, w, h) => {
     x.fillStyle = dq ? '#7a1430' : '#0f1a42';

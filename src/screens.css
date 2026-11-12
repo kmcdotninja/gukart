@@ -416,7 +416,7 @@
 .tour-tile {
   display: block;
   width: 100%;
-  height: 150px;
+  height: 188px; /* (a quarter taller than it was: the tour is the main thing on the page) */
 }
 .tt-body {
   position: absolute;
@@ -514,29 +514,30 @@
 }
 @media (min-width: 820px) {
   /* a wide screen: the same block as a phone (the tour on top, the three tiles under it), standing at the right side */
+  /* (sized up for a desktop: the whole block is about a quarter bigger; on a short window it scales down to fit) */
   #menu .dock {
-    width: 560px;
-    gap: 12px;
+    width: min(700px, 46vw);
+    gap: 14px;
   }
   #menu .tour-tile {
-    height: 216px;
+    height: min(290px, 36vh);
   }
   #menu .dock-row {
-    gap: 12px;
+    gap: 14px;
   }
   #menu .big-tile {
-    height: 130px;
+    height: min(170px, 21vh);
   }
   #menu .big-tile > span {
-    font-size: 24px;
-    left: 14px;
-    bottom: 12px;
+    font-size: 28px;
+    left: 16px;
+    bottom: 14px;
   }
   .tt-name {
-    font-size: 56px;
+    font-size: 68px;
   }
   .tt-sub {
-    font-size: 22px;
+    font-size: 26px;
   }
   .tt-marks li {
     width: 38px;
@@ -1339,6 +1340,23 @@ body.onfire #hud::before {
   width: 17px;
   fill: var(--line);
 }
+/* the route is one card per city (it scrolls sideways if a tour ever has more than fit) */
+.tr-route {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tr-stop.city {
+  flex: 1 0 220px;
+  height: min(360px, 50vh);
+}
+.tr-stop.city .tr-t small {
+  white-space: normal;
+}
+/* (the last city's card is the same size as the others: its gold frame and THE FINAL tag mark it) */
+.tr-stop.city.fin {
+  flex: 1 0 220px;
+  height: min(360px, 50vh);
+}
 .tr-stop.fin {
   flex: 1.15;
   height: min(340px, 46vh);
@@ -1449,6 +1467,16 @@ body.onfire #hud::before {
   }
   .tr-t small {
     font-size: 13px;
+  }
+  /* a phone: the city cards stack; the list scrolls if a tour has more cities than fit */
+  .tr-route {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .tr-stop.city,
+  .tr-stop.city.fin {
+    flex: 1 0 96px;
+    height: auto;
   }
   .tr-fly {
     display: none;
@@ -1645,7 +1673,8 @@ body.onfire #hud::before {
   }
   #garage .tiles {
     grid-area: tiles;
-    grid-template-columns: repeat(4, minmax(0, 260px));
+    grid-auto-columns: 170px; /* (one scrolling row of equal cards: it used to be four fixed columns) */
+    min-width: 0;
     gap: 10px;
   }
   #garage .cust-open {
