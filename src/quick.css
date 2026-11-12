@@ -490,9 +490,9 @@
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  padding: 8px 10px;
-  background: rgba(8, 12, 30, 0.72);
-  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  filter: drop-shadow(
+    0 2px 4px rgba(0, 0, 0, 0.75)
+  ); /* (straight on the picture: a shadow is enough to lift them off it) */
 }
 .lvl-bars i {
   width: 14px;
@@ -509,7 +509,7 @@
   height: 36px;
 }
 .lvl-bars i.off {
-  opacity: 0.22;
+  opacity: 0.35;
 }
 
 .q-card.lvl-easy {
@@ -528,7 +528,6 @@
     right: 18px;
     top: 14px;
     gap: 4px;
-    padding: 6px 8px;
   }
   .lvl-bars i {
     width: 10px;
