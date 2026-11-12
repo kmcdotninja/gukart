@@ -82,13 +82,17 @@
     <header class="g-top">
       <button class="sq-btn" id="gBack" aria-label="Home"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M11.35 3.25a1 1 0 0 1 1.3 0l8.6 7.4a.9.9 0 0 1-.6 1.6H19V20a1 1 0 0 1-1 1h-4v-5.5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1V21H6a1 1 0 0 1-1-1v-7.75H3.35a.9.9 0 0 1-.6-1.6z"/></svg></button>
       <h2 class="g-title">GARAGE</h2>
+      <button class="sq-btn coll-btn" id="gCollBtn" aria-label="Your upgrades"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M7 3h10v1.5h3.5V8a4.5 4.5 0 0 1-4.6 4.5A5 5 0 0 1 13 15v2.5h3.5V21h-9v-3.5H11V15a5 5 0 0 1-2.9-2.5A4.5 4.5 0 0 1 3.5 8V4.5H7zM5.5 6.5V8a2.5 2.5 0 0 0 2 2.45V6.5zm13 0h-2v3.95a2.5 2.5 0 0 0 2-2.45z"/></svg><b id="gCollN">0/5</b></button>
       <button class="sq-btn" id="gLights" aria-label="Garage lights"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
       <div class="wallet"><i class="coin-icon"></i><span id="gWallet">0</span></div>
     </header>
     <div class="panel g-card">
       <div class="tag"><span id="gName">KART</span><i></i><i></i></div>
       <dl class="gstats" id="gStats"></dl>
+      <p class="g-uplegend" id="gUpLegend" hidden><b></b>FROM YOUR UPGRADES</p>
     </div>
+    <!-- the upgrades won from chests (src/chest.js): a panel on a wide screen; on a phone it opens from its button -->
+    <section class="panel g-coll" id="gColl"></section>
     <section class="cust" id="cust" hidden>
       <nav class="cust-icons" id="custTabs">
         <!-- one icon set: 24px grid, flat solid fill in currentColor, details cut out (see .cust-icons in style.css) -->
@@ -109,7 +113,7 @@
     <button class="g-arrow left" id="gPrev" aria-label="Previous vehicle"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M22 8L10 20l12 12M32 8L20 20l12 12" stroke="currentColor" stroke-width="4" fill="none"/></svg></button>
     <button class="g-arrow right" id="gNext" aria-label="Next vehicle"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M18 8l12 12-12 12M8 8l12 12-12 12" stroke="currentColor" stroke-width="4" fill="none"/></svg></button>
     <div class="g-bottom">
-      <button class="cust-open" id="custOpen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2.5c-4.6 0-8.5 3.6-8.5 8.6 0 4.6 3.6 8.4 8 8.4 1.3 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8h2.1c2.4 0 4.1-1.8 4.1-4.2 0-3.6-3.8-6.6-8.5-6.6zM7 12.3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.6-3.8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.7 3.8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg><span><b>CUSTOMISE</b><small>PAINT · WHEELS · DECALS</small></span></button>
+      <button class="cust-open" id="custOpen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2.5c-4.6 0-8.5 3.6-8.5 8.6 0 4.6 3.6 8.4 8 8.4 1.3 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8h2.1c2.4 0 4.1-1.8 4.1-4.2 0-3.6-3.8-6.6-8.5-6.6zM7 12.3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.6-3.8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.7 3.8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg><span><b>CUSTOMISE</b></span></button>
       <button class="go g-play" id="gPlay"><span>PLAY</span><small class="mono">KANO</small></button>
       <div class="tiles" id="tiles"></div>
     </div>
@@ -157,6 +161,7 @@
       <div class="heat" id="heat"><span>HEAT</span><div class="heat-bar"><i id="heatFill"></i></div></div>
     </div>
     <div class="hud-tc">
+      <div class="final-badge" id="finalBadge" hidden>THE FINAL</div>
       <div class="progress"><div class="stripebar thin"><i id="progFill"></i></div></div>
       <div class="weapon panel empty" id="weapon"><span class="wicon" id="wicon"></span><span class="wname mono" id="wname">NO WEAPON</span><b id="wammo"></b></div>
     </div>
@@ -202,14 +207,25 @@
   <div class="fs-tip" id="fsTip" hidden><b>Play full screen</b><span>Tap <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M5 12v8h14v-8" stroke="currentColor" stroke-width="2" fill="none"/></svg> Share, then <b>Add to Home Screen</b>. Open Gukart from your home screen.</span><button id="fsTipX" aria-label="Close">✕</button></div>
 
   <!-- before a race: the chapter's card, after Asphalt's level loading -->
+  <!-- the World Tour's route, shown as a new tour starts: its five races across the islands (src/cup.js showRoute) -->
+  <section id="tourRoute" hidden>
+    <div class="tr-wrap">
+      <div class="tr-top"><button class="sq-btn" id="trBack" aria-label="Back"><svg class="ic flip" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button><div class="tag"><span>WORLD TOUR 1</span><i></i><i></i></div></div>
+      <p class="tr-sub"><b>WIN A TROPHY</b></p>
+      <div class="tr-route" id="trRoute"></div>
+      <div class="tr-foot"><p class="tr-note"><b>20 PTS</b> OPEN THE FINAL</p><button class="go tr-go" id="trGo"><span>START</span></button></div>
+    </div>
+  </section>
+
   <section id="raceLoad" hidden>
     <div class="rl-left">
+      <svg class="rl-trophy" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M7 3h10v1.5h3.5V8a4.5 4.5 0 0 1-4.6 4.5A5 5 0 0 1 13 15v2.5h3.5V21h-9v-3.5H11V15a5 5 0 0 1-2.9-2.5A4.5 4.5 0 0 1 3.5 8V4.5H7zM5.5 6.5V8a2.5 2.5 0 0 0 2 2.45V6.5zm13 0h-2v3.95a2.5 2.5 0 0 0 2-2.45z"/></svg>
       <p class="rl-tag"><span id="rlCity">KANO</span><i></i><i></i></p>
       <h2 id="rlTitle">THE WALLED CITY</h2>
       <p class="rl-laps mono"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c6 0 4-8 9-8s4 5 6 5" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="5" cy="19" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="16" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg><span id="rlLaps">3 LAPS</span></p>
       <p class="rl-chip" id="rlChip">FINISH 1ST TO WIN +500</p>
     </div>
-    <p class="rl-goal"><b id="rlGoal">500 COINS · 3 STARS</b></p>
+    <p class="rl-goal"><b id="rlGoal">500 COINS</b></p>
     <svg class="dia rl-dia" id="rlDia" viewBox="0 0 60 60" aria-hidden="true"><rect x="12" y="12" width="36" height="36" transform="rotate(45 30 30)" class="dia-bg"/><rect x="12" y="12" width="36" height="36" transform="rotate(45 30 30)" class="dia-fg" pathLength="100"/></svg>
   </section>
 
@@ -276,7 +292,7 @@
   <section id="results" class="sheet" hidden>
     <div class="wallet res-wallet" id="resWalletChip"><i class="coin-icon"></i><span id="resWallet">0</span></div>
     <div class="panel card">
-      <div class="tag"><span>KANO · RESULT</span><i></i><i></i></div>
+      <div class="tag"><span>RESULT</span><i></i><i></i></div>
       <!-- big and plain: your place and the coins, one line on what it means, one big button, two small ones -->
       <div class="res-head">
         <h2 class="place-big"><b id="resPlace">1</b><span id="resSfx">ST</span></h2>

@@ -3,9 +3,8 @@
 // already set, so NEXT, NEXT, NEXT goes straight to the race. A new circuit or city is only built when you press GO.
 import { Haptics } from './haptics.js';
 import { screenIn, screenOut, stagger, leave, DUR } from './motion.js';
-import { LAPS } from './race.js';
 import { Sound } from './audio.js';
-import { store, fmtTime } from './util.js';
+import { store } from './util.js';
 import { $, sceneIn } from './dom.js';
 import { CHAPTERS } from './chapters.js';
 import { chapter, circuitOf, game } from './game.js';
@@ -17,17 +16,13 @@ import './quick.css';
 let modesFrom = 'garage';
 // QUICK RACE's three: one race, a time trial, a free drive (the World Tour starts from the home screen, src/cup.js)
 export const MODES = [
-  { id: 'gp', name: 'RACE', en: 'Against the crew', line: () => `${LAPS} laps · 6 racers · win +${chapter.reward}` },
+  { id: 'gp', name: 'RACE', en: 'Against the crew' },
   {
     id: 'tt',
     name: 'TIME TRIAL',
     en: 'Against the clock',
-    line: () => {
-      const b = store.get('bestlap.' + game.RID, null);
-      return b ? `Best lap ${fmtTime(b)} · race your ghost` : `${LAPS} laps · set your best lap`;
-    },
   },
-  { id: 'free', name: 'FREE DRIVE', en: 'Just cruise', line: () => 'No rivals · no clock · keep the coins' },
+  { id: 'free', name: 'FREE DRIVE', en: 'Just cruise' },
 ];
 export const modeName = id => (id === 'cup' ? 'WORLD TOUR' : MODES.find(M => M.id === id)?.name || '');
 // the game's own arrow icon (no text arrows)
@@ -57,7 +52,7 @@ export function openModes(from) {
   const box = $('#mCards');
   box.innerHTML = MODES.map(
     M =>
-      `<button class="mcard" data-mode="${M.id}" aria-expanded="false" aria-label="${M.name}, ${M.en}"><img src="${modePic(M.id)}" alt=""><span class="mc-body"><span class="mc-name">${M.name}</span><span class="mc-more"><span class="mc-in"><span class="mc-en">${M.en}</span><span class="mc-line">${M.line()}</span><span class="mc-play">NEXT ${ARROW}</span></span></span></span></button>`,
+      `<button class="mcard" data-mode="${M.id}" aria-expanded="false" aria-label="${M.name}, ${M.en}"><img src="${modePic(M.id)}" alt=""><span class="mc-body"><span class="mc-name">${M.name}</span><span class="mc-more"><span class="mc-in"><span class="mc-en">${M.en}</span><span class="mc-play">NEXT ${ARROW}</span></span></span></span></button>`,
   ).join('');
   // all in this one task, before anything is painted: the underpass comes up, the screen fades, the cards are put in place, then they rise in
   game.state = 'modes';

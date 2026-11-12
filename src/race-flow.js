@@ -14,26 +14,33 @@ import { modeName } from './modes.js';
 import { endDrive } from './results.js';
 import { hidePodium } from './podium.js';
 import { setNight } from './scene.js';
-import { introLines, cupNext, retryCupRace, newCup, cupOf, youIn, endTour } from './cup.js';
+import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal } from './cup.js';
+import { rivalNames } from './buddy.js';
 
 // the loading card before a race (Asphalt): the chapter, the goal, pictures of its places, a filling diamond
 export const INTRO = location.hash === '#capture' ? 2.4 : 5.2; // seconds: long enough to read the card and see the grid
 export function raceIntro(then) {
   const c = chapter,
     el = $('#raceLoad');
-  $('#rlTitle').textContent = c.tagline.toUpperCase();
+  // the World Tour's Final dresses up: a gold card with a trophy, THE FINAL; fireworks and the crowd at the start
+  // (src/main.js); a gold badge on the HUD all race
+  const t = game.mode === 'cup' && cupOf();
+  game.final = !!(t && isFinal(t));
+  el.classList.toggle('final', game.final);
+  $('#finalBadge').hidden = !game.final;
+  $('#rlTitle').textContent = game.final ? 'THE FINAL' : c.tagline.toUpperCase();
   const bl = store.get('bestlap.' + game.RID, null);
   const T = {
-    gp: [`${LAPS} LAPS · 6 RACERS`, `FINISH 1ST TO WIN +${c.reward}`, `${c.reward} COINS · 3 STARS`],
+    gp: [`${LAPS} LAPS`, `FINISH 1ST TO WIN +${c.reward}`, `${c.reward} COINS`],
     tt: [
-      `${LAPS} LAPS · SOLO`,
+      `${LAPS} LAPS`,
       bl ? `BEAT ${fmtTime(bl)}` : 'SET YOUR BEST LAP',
       bl ? 'RACE YOUR GHOST' : 'YOUR BEST LAP BECOMES YOUR GHOST',
     ],
-    free: ['NO CLOCK · NO RIVALS', `CRUISE ${CITY}`, 'EVERY COIN YOU PICK UP IS YOURS'],
+    free: ['NO RIVALS', `CRUISE ${CITY}`, 'KEEP THE COINS'],
     cup: game.mode === 'cup' ? introLines() : null,
   }[game.mode];
-  $('#rlCity').textContent = `${c.name.toUpperCase()} · ${modeName(game.mode)}`;
+  $('#rlCity').textContent = modeName(game.mode);
   $('#rlLaps').textContent = T[0];
   $('#rlChip').textContent = T[1];
   $('#rlGoal').textContent = T[2];
@@ -86,6 +93,8 @@ export function startRace() {
   game.race.ev = events;
   game.race.setMode(raceMode());
   game.race.reset();
+  // the rivals' names: a World Tour keeps the ones it drew at its start; any other race draws new ones
+  game.race.setNames(game.mode === 'cup' ? cupOf()?.names : rivalNames());
   Sound.quiet = false;
   $('#hud').dataset.mode = raceMode();
   TT.last = -1;
@@ -148,11 +157,10 @@ function toMenu(raced = false) {
 // the quit question: a race asks to confirm; a World Tour race offers to save the tour and come back to this race
 // later (SAVE & EXIT), to drop it (END TOUR), or to carry on (KEEP RACING)
 function paintQuitAsk() {
-  const t = game.mode === 'cup' && cupOf(),
-    me = t && youIn(t);
+  const t = game.mode === 'cup' && cupOf();
   $('#quitAsk .tag span').textContent = t ? 'LEAVE THE WORLD TOUR?' : 'QUIT RACE?';
   $('#quitAsk .ask-text').textContent = t
-    ? `Race ${t.i + 1} of ${t.races.length} · ${me.pts} pts. Save the tour and carry on from this race later, or end it.`
+    ? 'Save the tour for later, or end it.'
     : "You'll lose this race and go back to the chapters.";
   $('#quitNo').textContent = t ? 'KEEP RACING' : 'BACK';
   $('#quitYes').textContent = t ? 'SAVE & EXIT' : 'QUIT';

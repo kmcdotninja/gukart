@@ -113,7 +113,7 @@ export const events = {
         setTimeout(() => banner('BEST LAP', 'ko', 1100), 900);
         Haptics.big();
       }
-      toast(`Lap ${TT.laps.length} · ${fmtTime(lt)}`);
+      toast(`Lap ${TT.laps.length}  ${fmtTime(lt)}`);
     }
     TT.last = lap;
     TT.start = t;
@@ -132,7 +132,15 @@ export const events = {
       game.mode === 'tt'
         ? `<span>${TT.newBest ? 'NEW BEST LAP' : 'YOUR TIME'}</span><b class="tm">${fmtTime(TT.laps.reduce((a, b) => a + b, 0))}</b>`
         : `<span>YOU CAME</span><b>${p.rank}<em>${ordinal(p.rank)}</em></b>`;
-    show(el);
+    // first a moment of Buddy himself: the finish camera on him celebrating (or let down) in his seat, nothing on the
+    // screen; then YOU CAME 1ST over it
+    let shown = false;
+    const showPlace = () => {
+      if (shown || game.state !== 'finish') return;
+      shown = true;
+      show(el);
+    };
+    setTimeout(showPlace, 1500);
     // Buddy celebrates in his seat: pops up and spins, a backflip, then cheers
     const moves =
       p.rank === 1
@@ -162,11 +170,11 @@ export const events = {
       }, t * 1000);
       t += Math.min(d, 1.2);
     }
-    // quick to the point: YOU CAME 1ST for under two seconds, the podium, and the results card in over the podium
-    // about two and a half seconds later (the podium keeps celebrating behind it). A tap skips ahead at any step
+    // then the podium, and the results card in over the podium about two and a half seconds later (the podium keeps
+    // celebrating behind it). A tap skips ahead at any step
     const toPodium = () => {
       if (game.state !== 'finish') return;
-      hide(el, null, -1);
+      if (shown) hide(el, null, -1);
       if (game.mode === 'tt') return showResults();
       game.state = 'podium';
       // top three: the podium, you in it wearing YOU; further back: just you, let down
@@ -178,12 +186,13 @@ export const events = {
       }, 2600);
     };
     const tap = () => {
-      if (game.state === 'finish') toPodium();
+      if (game.state === 'finish' && !shown) showPlace();
+      else if (game.state === 'finish') toPodium();
       else if (game.state === 'podium') showResults();
       if (game.state === 'finish' || game.state === 'podium') addEventListener('pointerdown', tap, { once: true });
     };
     setTimeout(() => addEventListener('pointerdown', tap, { once: true }), 300); // (not the tap that was still held)
-    setTimeout(toPodium, 1900);
+    setTimeout(toPodium, 3100); // (1.5 s of Buddy, 1.6 s of YOU CAME 1ST)
   },
   takedown(name, n) {
     hud.kos.textContent = n;

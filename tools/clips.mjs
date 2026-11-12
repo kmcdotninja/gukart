@@ -44,7 +44,10 @@ const CLIPS = {
   'world-tour': {
     store: { city: 'kano', 'circuit.kano': 'old', coach, night: false },
     seconds: 8,
-    at: [[1.4, '#goBtn']],
+    at: [
+      [1.0, '#goBtn'],
+      [3.6, '#trGo'],
+    ], // (a new tour shows its route first)
     cap: ['WORLD TOUR', '5 races · Kano to Doha · win a trophy'],
   },
   'quick-race': {
@@ -100,7 +103,7 @@ const CLIPS = {
     seconds: 8,
     // a tour race, started from home and run on until it's nearly over: you cross the line first
     preroll: 9,
-    setup: `(() => { document.querySelector('#goBtn').click(); })()`,
+    setup: `(() => { document.querySelector('#goBtn').click(); document.querySelector('#trGo')?.click(); })()`,
     setup2: `(() => { const g = window.gukart.game, k = g.race.player; k.ai = true; k.lap = 2; k.s = g.track.len - 40;
       for (const o of g.race.all) if (o !== k) { o.lap = 2; o.s = Math.max(0, g.track.len - 140 - o.n * 12); } })()`,
     cap: ['PODIUM', 'Win it, and celebrate on the steps'],
@@ -126,6 +129,23 @@ const CLIPS = {
     setup: RACE,
     seconds: 7,
     cap: ['NIGHT RACING', 'Doha under the lights'],
+  },
+  final: {
+    store: {
+      city: 'doha',
+      'circuit.doha': 'lusail',
+      coach,
+      night: true,
+      tour: tour(4, [
+        ['buddy', 'zaki', 'gimbiya', 'kibiya', 'tauraro', 'dodo'],
+        ['zaki', 'buddy', 'gimbiya', 'kibiya', 'tauraro', 'dodo'],
+        ['buddy', 'gimbiya', 'zaki', 'kibiya', 'tauraro', 'dodo'],
+        ['gimbiya', 'buddy', 'zaki', 'kibiya', 'dodo', 'tauraro'],
+      ]),
+    },
+    seconds: 12,
+    at: [[0.8, '#goBtn']],
+    cap: ['THE FINAL', 'Lusail, under the lights'],
   },
   airport: {
     store: { city: 'doha', 'circuit.doha': 'msheireb', coach, night: false },

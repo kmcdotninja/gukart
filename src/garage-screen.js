@@ -13,6 +13,7 @@ import { cam } from './scene.js';
 import { chapter, game } from './game.js';
 import { travelTo, renderChapter } from './home.js';
 import { openModes } from './modes.js';
+import { UPGRADES, MILESTONES, earned, nextMilestone } from './chest.js';
 
 const VKEYS = Object.keys(VEHICLES);
 export function renderGarage() {
@@ -22,23 +23,51 @@ export function renderGarage() {
     id =>
       `<button class="tile${id === game.vehicle ? ' on' : ''}" data-veh="${id}"><span class="n">${VEHICLES[id].name.toUpperCase()}</span><img src="${game.THUMBS[id] || ''}" alt=""></button>`,
   ).join('');
+  // each stat, and the part your upgrades add to it (gold, at the end of the bar): the Turbo Kit's speed, Grip's grip
+  const up = new Set(store.get('upgrades', [])),
+    turbo = up.has('turbo') ? 1.05 : 1,
+    grip = up.has('grip') ? 1.08 : 1;
   const rows = [
-    ['SPEED', (st.top - 0.9) * 10],
+    ['SPEED', (st.top - 0.6) * 2, (st.top * turbo - 0.6) * 2],
     ['ACCEL', (st.acc - 0.8) * 3],
-    ['GRIP', (st.turn - 0.8) * 4],
+    ['GRIP', (st.turn - 0.6) * 2, (st.turn * grip - 0.6) * 2],
     ['OFF-ROAD', st.off],
     ['WEIGHT', st.mass / 2],
   ];
   $('#gStats').innerHTML = rows
-    .map(([a, x]) => {
-      const pc = Math.round(clamp(x, 0.05, 1) * 100);
-      return `<dt>${a}</dt><dd><div class="stripebar thin"><i style="width:${pc}%"></i></div></dd><span class="pc">${pc}%</span>`;
+    .map(([a, x, withUp = x]) => {
+      const pc = Math.round(clamp(x, 0.05, 1) * 100),
+        all = Math.round(clamp(withUp, 0.05, 1) * 100);
+      return `<dt>${a}</dt><dd><div class="stripebar thin"><i style="width:${pc}%"></i><u style="left:${pc}%;width:${all - pc}%"></u></div></dd><span class="pc">${all}%</span>`;
     })
     .join('');
+  $('#gUpLegend').hidden = !(up.has('turbo') || up.has('grip'));
+  renderCollection();
   $('#gName').textContent = v.name.toUpperCase();
   $('#garageBtn').setAttribute('aria-label', `Open the garage, ${v.name}`); // (the tile's picture is a fixed one: the kart on its own, public/tile-garage.png)
   renderCustom();
   $('#gWallet').textContent = store.get('wallet', 0).toLocaleString('en');
+}
+// the collection: the five upgrades, the ones you've won with their pictures and what they do, the rest still to come
+// in a chest; how many you have, and how near the next chest is
+function renderCollection() {
+  const up = store.get('upgrades', []),
+    next = nextMilestone(),
+    got = earned(),
+    prev = [0, ...MILESTONES].filter(m => m <= got).at(-1) ?? 0;
+  $('#gCollN').textContent = `${up.length}/${UPGRADES.length}`;
+  $('#gColl').innerHTML =
+    `<div class="gc-head"><div class="tag"><span>COLLECTION</span><i></i><i></i></div><b class="gc-n"><em>${up.length}</em> / ${UPGRADES.length}</b></div>` +
+    `<div class="gc-grid">${UPGRADES.map(
+      u =>
+        up.includes(u.id)
+          ? `<div class="gc-up got"><img src="/upgrades/${u.id}.jpg" alt=""><b>${u.name}</b><span>${u.short}</span></div>`
+          : `<div class="gc-up"><img src="/upgrades/${u.id}.jpg" alt=""><i class="gc-lock"></i><b>${u.name}</b></div>`, // (what you're missing: its picture, locked)
+    ).join('')}</div>` +
+    (next
+      ? `<div class="gc-next"><span>NEXT CHEST</span><div class="gc-bar"><i style="width:${Math.round(((got - prev) / (next - prev)) * 100)}%"></i></div><b>${got.toLocaleString('en')} / ${next.toLocaleString('en')}</b></div>`
+      : `<div class="gc-next"><span>EVERY UPGRADE WON</span></div>`) +
+    `<button class="btn gc-close">CLOSE</button>`; // (a phone: the pause menu's kind of button, full width)
 }
 // your vehicle's paint, wheels and tyres, bought with coins
 export const custom = id => ({ ...DEFAULT_CUSTOM[id], plate: 'kano', ...store.get('custom.' + id, {}) });
@@ -80,7 +109,7 @@ function renderCustom() {
   if (custTab === 'body') {
     // the bodies: every vehicle as a card; picking one swaps the car on the stand
     document.querySelectorAll('#custTabs [data-ct]').forEach(b => b.classList.toggle('on', b.dataset.ct === 'body'));
-    $('#custTitle').textContent = `BODY · ${VKEYS.length} OWNED`;
+    $('#custTitle').textContent = 'BODY';
     $('#custList').innerHTML = VKEYS.map(
       id =>
         `<button class="tile2 body ${id === game.vehicle ? 'worn sel' : ''}" data-body="${id}" aria-label="${VEHICLES[id].name}"><img src="${game.THUMBS[id]}" alt=""><span class="tl">${VEHICLES[id].name}</span></button>`,
@@ -253,7 +282,7 @@ export function initGarageScreen() {
     game.garage.focus(custTab);
     renderCustom(); // picking a part closes in on it
     const { c } = costOf(draft);
-    $('#custSave').textContent = c ? `SAVE · ${c}` : 'SAVE';
+    $('#custSave').textContent = c ? `SAVE ${c}` : 'SAVE';
   });
   $('#custCancel').addEventListener('click', () => {
     $('#custSave').textContent = 'SAVE';
@@ -296,6 +325,22 @@ export function initGarageScreen() {
     $('#menu').hidden = true;
     openGarage();
   });
+  // (a phone: the collection opens over the garage from its button, and closes from its CLOSE button or a tap outside)
+  $('#gCollBtn').addEventListener('click', () => $('#garage').classList.toggle('coll-open'));
+  $('#gColl').addEventListener('click', e => {
+    if (e.target.closest('.gc-close')) $('#garage').classList.remove('coll-open');
+  });
+  // a tap anywhere outside it closes it (the garage behind is dimmed and out of reach while it's open)
+  $('#garage').addEventListener(
+    'click',
+    e => {
+      if (!$('#garage').classList.contains('coll-open') || e.target.closest('#gColl, #gCollBtn')) return;
+      $('#garage').classList.remove('coll-open');
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    true,
+  );
   $('#gLights').addEventListener('click', () => {
     const on = !game.garage.lightsOn;
     game.garage.setLights(on);

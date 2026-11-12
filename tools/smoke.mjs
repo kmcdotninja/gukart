@@ -126,6 +126,15 @@ try {
   await expectVisible(page, '#menu', 'the home screen shows');
   if (!(await visible(page, '#goBtn'))) fail('the World Tour tile should be on the home screen');
   else pass('the home card is on Kano');
+  // a new World Tour shows its route first, and back returns home
+  await click(page, '#goBtn');
+  await expectVisible(page, '#tourRoute', "a new tour's route opens");
+  if ((await page.locator('#trRoute .tr-stop').count()) === 5) pass('the route shows the five races');
+  else fail('the route should show five races');
+  await click(page, '#trBack');
+  await page.waitForTimeout(500);
+  if (!(await visible(page, '#tourRoute'))) pass('back closes the route');
+  else fail('the route stayed open after back');
 
   // garage: open it, change vehicle, the name and the wallet follow, back home
   await click(page, '#garageBtn');
@@ -234,13 +243,13 @@ try {
   console.log('Doha');
   await click(page, '#mapBtn');
   await expectVisible(page, '#map', 'the map opens with its places');
-  const doha = page.locator('#map .isl', { hasText: 'DOHA' });
+  const doha = page.locator('#map .isl[data-city="doha"]');
   if (await doha.count()) pass('the map offers Doha');
   else fail('the map has no Doha');
   await doha.first().click();
   await booted(page, 'Doha loads');
   await expectVisible(page, '#map', 'Doha opens on its map');
-  const other = page.locator('#map .isl:not(.sel)', { hasText: 'DOHA' });
+  const other = page.locator('#map .isl[data-city="doha"]:not(.sel)');
   if (await other.count()) {
     await other.first().click();
     await expectVisible(page, '#map', 'another Doha circuit swaps in without a reload', 120000);

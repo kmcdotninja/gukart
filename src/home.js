@@ -9,7 +9,7 @@ import { setNight } from './scene.js';
 import { chapter, circuitOf, game } from './game.js';
 import { openModes } from './modes.js';
 import { swapCircuit } from './circuit.js';
-import { cupOf, playCup, trophyOf, TOUR, raceName, isFinal } from './cup.js';
+import { cupOf, playCup, trophyOf, TOUR, raceName, isFinal, showRoute, hideRoute } from './cup.js';
 import { maybeChest } from './chest.js';
 
 export function travelTo(id, then = '', circ = null) {
@@ -38,8 +38,8 @@ export function renderChapter() {
     n = TOUR.races.length;
   $('#tourSub').textContent = !t
     ? won
-      ? `${['GOLD', 'SILVER', 'BRONZE'][won - 1]} WON · ${n} RACES`
-      : `${n} RACES · KANO · DOHA`
+      ? `${['GOLD', 'SILVER', 'BRONZE'][won - 1]} WON`
+      : `${n} RACES`
     : isFinal(t)
       ? 'THE FINAL'
       : `RACE ${t.i + 1} OF ${n}`;
@@ -73,8 +73,15 @@ export function initHome() {
   // the World Tour: start it, or carry on (in another city, the game goes there first)
   $('#goBtn').addEventListener('click', () => {
     Sound.init();
+    if (!cupOf()) return showRoute(); // a new tour: its route first
     screenOut($('#menu'));
     playCup(); // (it goes to the race's city and circuit first, if they aren't the ones built)
+  });
+  $('#trBack').addEventListener('click', hideRoute);
+  $('#trGo').addEventListener('click', () => {
+    hideRoute();
+    screenOut($('#menu'));
+    playCup();
   });
   // QUICK RACE: the modes, with the city and circuit to race on along the top
   $('#quickBtn').addEventListener('click', () => {

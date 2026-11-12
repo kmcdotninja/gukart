@@ -55,7 +55,7 @@ export function snapshots() {
   places.push({
     kind: 'race',
     name: (game.circuit ? game.circuit.name.toUpperCase() : CITY) + ' GRAND PRIX',
-    sub: `3 laps · win +${chapter.reward} coins`,
+    sub: `Win +${chapter.reward} coins`,
     action: 'RACE',
     isNew: !store.get('best.' + game.RID, null),
     img: game.kanoSnap,

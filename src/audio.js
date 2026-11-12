@@ -764,6 +764,34 @@ export const Sound = {
   hit() {
     this.blip(300, 0.4, 'square', 0.15, 0.3);
   },
+  // the crowd at the Final's start: a swell of band-passed noise, two bands, rising and dying away over a few seconds
+  cheer() {
+    if (!this.ctx || !this.on || this.quiet) return;
+    const c = this.ctx,
+      t = c.currentTime;
+    for (const [f, q, lv] of [
+      [900, 0.8, 0.09],
+      [2200, 1.2, 0.05],
+    ]) {
+      const s = c.createBufferSource(),
+        bp = c.createBiquadFilter(),
+        g = c.createGain();
+      s.buffer = noise(c);
+      s.loop = true;
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = q;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(lv, t + 0.35);
+      g.gain.setTargetAtTime(lv * 0.55, t + 0.6, 0.5);
+      g.gain.setTargetAtTime(0, t + 2.2, 0.6);
+      s.connect(bp);
+      bp.connect(g);
+      g.connect(this.bus);
+      s.start(t, Math.random());
+      s.stop(t + 5);
+    }
+  },
   beep(hi) {
     this.blip(hi ? 880 : 440, hi ? 0.5 : 0.18, 'square', 0.1, 1);
   },

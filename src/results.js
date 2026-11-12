@@ -5,7 +5,6 @@ import { store, fmtTime, ordinal } from './util.js';
 import { $, whip, show } from './dom.js';
 import { chapter, game } from './game.js';
 import { TT, FREE } from './timetrial.js';
-import { modeName } from './modes.js';
 import { afterCupRace } from './cup.js';
 import { earn } from './chest.js';
 
@@ -21,7 +20,7 @@ export function endDrive() {
   $('#hud').hidden = true;
   whip(1);
   show($('#results'));
-  $('#results .tag span').textContent = `${game.PLACE} · FREE DRIVE`;
+  $('#results .tag span').textContent = `${game.PLACE}`;
   $('.place-big').hidden = true;
   $('#resChapter').textContent = 'DRIVE OVER';
   $('#standings').innerHTML = '';
@@ -42,7 +41,7 @@ export function endDrive() {
 export function showResults() {
   if (game.state !== 'finish' && game.state !== 'podium') return;
   game.state = 'results';
-  $('#results .tag span').textContent = `${game.PLACE} · ${modeName(game.mode)}`;
+  $('#results .tag span').textContent = `${game.PLACE}`;
   $('.place-big').hidden = game.mode !== 'gp' && game.mode !== 'cup';
   $('#standings').className = game.mode === 'tt' ? 'standings laps' : 'standings';
   if (game.mode === 'tt') {

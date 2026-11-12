@@ -36,7 +36,7 @@ export function openMap() {
     // another flies you there (another circuit swaps in place, another city loads), and its map opens
     islands: CHAPTERS.filter(c => c.playable).flatMap(c =>
       (c.circuits || [{ id: null, name: c.name }]).map(x => ({
-        name: `${c.name} · ${x.name}`.toUpperCase(),
+        name: x.name.toUpperCase(),
         city: c.id,
         circ: x.id,
         ch: c.n,

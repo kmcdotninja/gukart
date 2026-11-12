@@ -18,7 +18,7 @@ export function buildMap(root, { places, onAction, wallet, onPan, islands = [], 
       <div class="wallet"><i class="coin-icon"></i><span>${wallet}</span></div>
     </header>
     <div class="nfs-card" id="nfsCard"></div>
-    ${islands.length ? '' : '<!-- no island list: the map is one race -->'}<nav class="isl-list" aria-label="Islands" ${islands.length ? '' : 'hidden'}>${islands.map((is, i) => `<button class="isl ${is.open || is.built ? 'open' : ''} ${is.open ? 'sel' : ''}" data-isl="${i}"><b>${is.name}</b>${is.open || is.built ? '' : '<small>SOON</small>'}</button>`).join('')}</nav>`;
+    ${islands.length ? '' : '<!-- no island list: the map is one race -->'}<nav class="isl-list" aria-label="Islands" ${islands.length ? '' : 'hidden'}>${islands.map((is, i) => `<button class="isl ${is.open || is.built ? 'open' : ''} ${is.open ? 'sel' : ''}" data-isl="${i}" data-city="${is.city}"><b>${is.name}</b>${is.open || is.built ? '' : '<small>SOON</small>'}</button>`).join('')}</nav>`;
   const pins = root.querySelector('#nfsPins'),
     card = root.querySelector('#nfsCard');
   const ICON = {

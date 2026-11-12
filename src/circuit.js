@@ -109,7 +109,7 @@ export async function swapCircuit(id, then = '') {
   game.mapShot = null;
   game.circuit = c;
   game.RID = ridOf(chapter, c);
-  game.PLACE = `${CITY} · ${c.name.toUpperCase()}`;
+  game.PLACE = c.name.toUpperCase();
   store.set('circuit.' + chapter.id, c.id);
   try {
     await buildCircuit(game.TEX);

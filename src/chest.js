@@ -17,26 +17,31 @@ export const UPGRADES = [
   {
     id: 'hot',
     name: 'HOT TYRES',
+    short: '+3 S ON FIRE',
     line: 'Fire mode lasts 3 s longer',
   },
   {
     id: 'turbo',
     name: 'TURBO KIT',
+    short: '+5% SPEED',
     line: '+5% top speed',
   },
   {
     id: 'grip',
     name: 'GRIP',
+    short: '+8% GRIP',
     line: 'Tighter corners and drifts',
   },
   {
     id: 'nitro',
     name: 'BIG NITRO',
+    short: 'LONGER NITRO',
     line: 'Nitro boosts last longer',
   },
   {
     id: 'armour',
     name: 'ARMOUR',
+    short: 'TOUGHER',
     line: 'Longer shields, shorter spin-outs',
   },
 ];

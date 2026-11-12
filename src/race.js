@@ -646,6 +646,10 @@ export class Race {
     return ((((a - b) % L) + L * 1.5) % L) - L / 2;
   } // signed road distance a - b
 
+  // the rivals' names for this race ({ id: name }); Buddy is always Buddy
+  setNames(names = {}) {
+    for (const k of this.all) k.name = names[k.def.id] || k.def.name;
+  }
   reset() {
     const tr = this.tr;
     const slots = [4, 0, 1, 2, 3, 5]; // Buddy starts 5th
@@ -1027,7 +1031,7 @@ export class Race {
     if (by === this.player && k !== this.player) {
       this.act(this.player, 'fist', 1);
       this.player.takedowns++;
-      this.addScore(150, `Takedown · ${k.name}`);
+      this.addScore(150, 'Takedown');
       this.ev.takedown(k.name, this.player.takedowns);
     }
     if (k === this.player && by && by !== k) this.ev.toast(`Hit by ${by.name}`);
@@ -1235,8 +1239,17 @@ export class Race {
         k.lap--;
       }
       // ---- up and down: on the road you ride it; where it drops away faster than gravity (a crest, a ramp) you fly
+      // a jump ramp lifts the ground under you over its last 10 m (1.6 m at its lip): you drive up its face, nose up,
+      // and leave from the top (the kart used to run on at road height, through the wedge)
+      let ramp = 0;
+      if (!k.br)
+        for (const kk of tr.kickers) {
+          const d = this.dS(k.s, kk.s);
+          if (d > -10 && d < 0 && Math.abs(k.lat) < W / 2) ramp = 1.6 * (1 + d / 10);
+        }
+      k.rampP = ramp > 0 ? Math.atan2(1.6, 10) : 0;
       const Fv = this.frameOf(k, this.F),
-        roadY = Fv.p.y + Fv.l.y * k.lat;
+        roadY = Fv.p.y + Fv.l.y * k.lat + ramp;
       for (const kk of tr.kickers)
         if (!k.br && !k.fly && s0 < kk.s && k.s >= kk.s && k.speed > 10) {
           this.note('jump', k);
@@ -1303,7 +1316,7 @@ export class Race {
             for (let n = 0; n < 4 + k.squash * 14; n++) this.puff(k, k.offroad ? '#e2c79c' : '#e8dcc6');
         }
       }
-      k.air = Math.max(0, k.Y - roadY);
+      k.air = Math.max(0, k.Y - (roadY - ramp)); // (drawn from the road itself, so on a ramp it sits up on the wedge)
       // the road's edge: dirt shoulders on the ground, barriers on the decks
       const wi = tr.idx(k.s),
         lim = k.br
@@ -1791,13 +1804,14 @@ export class Race {
         .copy(F.p)
         .addScaledVector(F.l, k.lat)
         .addScaledVector(F.u, k.air + k.hop);
-      if (k.fly) {
-        // in the air the kart follows its own arc (nose up leaving, nose down falling), not the road under it
+      if (k.fly || k.rampP) {
+        // in the air the kart follows its own arc (nose up leaving, nose down falling), not the road under it; on a
+        // ramp's face it tips nose up with the slope
         const fl = this.v4.copy(v1);
         fl.y = 0;
         if (fl.lengthSq() < 1e-4) fl.copy(v1);
         fl.normalize();
-        const pitch = Math.atan2(k.vy, Math.max(10, Math.abs(k.speed))) * 0.9;
+        const pitch = k.fly ? Math.atan2(k.vy, Math.max(10, Math.abs(k.speed))) * 0.9 : k.rampP;
         v1.copy(fl).multiplyScalar(Math.cos(pitch)).addScaledVector(Y, Math.sin(pitch)).normalize();
         this.up.copy(Y).addScaledVector(v1, -v1.y).normalize();
         v2.crossVectors(this.up, v1).normalize();

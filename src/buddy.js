@@ -56,6 +56,8 @@ const muscleF = (x, y, z) => {
   return smax(d, -(y - 0.4), 0.03);
 };
 
+// the racers: Buddy (you) and five rivals. A rival's name is only its default: each race draws them fresh from NICKNAMES
+// (a World Tour draws them once and keeps them for all its races: src/cup.js)
 export const RACERS = [
   {
     id: 'buddy',
@@ -66,12 +68,49 @@ export const RACERS = [
     trim: '#ffc22e',
     veh: 'kart',
   },
-  { id: 'zaki', name: 'Zaki', fur: '#e8336a', ear: '#ff7a9a', kart: '#f2c654', trim: '#1d2a6b', veh: 'monster' },
-  { id: 'tauraro', name: 'Tauraro', fur: '#3a7bfd', ear: '#7cc4ff', kart: '#f6f0e4', trim: '#e8336a', veh: 'buggy' },
-  { id: 'kibiya', name: 'Kibiya', fur: '#2ec4b6', ear: '#9bf6ff', kart: '#ff6a00', trim: '#f6f0e4', veh: 'kart' },
-  { id: 'gimbiya', name: 'Gimbiya', fur: '#ff6a00', ear: '#ff8a2a', kart: '#1f8a4c', trim: '#ffe066', veh: 'muscle' },
-  { id: 'dodo', name: 'Dodo', fur: '#5c677d', ear: '#a3c4f3', kart: '#6fd3ff', trim: '#131517', veh: 'monster' },
+  { id: 'zaki', name: 'Crush', fur: '#e8336a', ear: '#ff7a9a', kart: '#f2c654', trim: '#1d2a6b', veh: 'monster' },
+  { id: 'tauraro', name: 'Nova', fur: '#3a7bfd', ear: '#7cc4ff', kart: '#f6f0e4', trim: '#e8336a', veh: 'buggy' },
+  { id: 'kibiya', name: 'Zippy', fur: '#2ec4b6', ear: '#9bf6ff', kart: '#ff6a00', trim: '#f6f0e4', veh: 'kart' },
+  { id: 'gimbiya', name: 'Blaze', fur: '#ff6a00', ear: '#ff8a2a', kart: '#1f8a4c', trim: '#ffe066', veh: 'muscle' },
+  { id: 'dodo', name: 'Bolt', fur: '#5c677d', ear: '#a3c4f3', kart: '#6fd3ff', trim: '#131517', veh: 'monster' },
 ];
+
+// rivals' racing names, drawn at random for each race
+export const NICKNAMES = [
+  'Crush',
+  'Nova',
+  'Zippy',
+  'Blaze',
+  'Bolt',
+  'Dash',
+  'Viper',
+  'Rocket',
+  'Flash',
+  'Jinx',
+  'Razor',
+  'Spark',
+  'Comet',
+  'Turbo',
+  'Storm',
+  'Ace',
+  'Blitz',
+  'Riot',
+  'Zoom',
+  'Fury',
+  'Echo',
+  'Pulse',
+  'Havoc',
+  'Rogue',
+];
+// five different names for the five rivals: { zaki: 'Viper', ... }
+export function rivalNames() {
+  const pool = [...NICKNAMES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return Object.fromEntries(RACERS.filter(r => r.id !== 'buddy').map((r, i) => [r.id, pool[i]]));
+}
 
 export function roundedBox(w, h, d, r, seg = 4) {
   const g = new THREE.BoxGeometry(w, h, d, seg * 2, seg * 2, seg * 2);

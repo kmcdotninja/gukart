@@ -14,7 +14,7 @@ import { CHAPTERS } from './chapters.js';
 import { swapCircuit } from './circuit.js';
 import { raceIntro, startRace } from './race-flow.js';
 import { showPodium } from './podium.js';
-import { RACERS } from './buddy.js';
+import { RACERS, rivalNames } from './buddy.js';
 import { paintTop } from './results.js';
 import { earn } from './chest.js';
 import { Sound } from './audio.js';
@@ -49,10 +49,12 @@ export const cupOf = () => {
   return t && t.id === TOUR.id ? t : null;
 };
 const save = t => store.set(KEY, t);
-const nameOf = id => (RACERS.find(r => r.id === id)?.name || id).toUpperCase();
+// a racer's name in this tour (drawn when it started; older saved tours fall back to the defaults)
+const nameOf = (id, t = cupOf()) =>
+  (id === 'buddy' ? 'Buddy' : t?.names?.[id] || RACERS.find(r => r.id === id)?.name || id).toUpperCase();
 export const raceName = ([city, circ]) => {
   const c = CHAPTERS.find(x => x.id === city);
-  return `${c.name} · ${c.circuits?.find(x => x.id === circ)?.name || c.name}`;
+  return c.circuits?.find(x => x.id === circ)?.name || c.name;
 };
 export const isFinal = t => t.i === t.races.length - 1;
 
@@ -88,14 +90,35 @@ export function introLines() {
     n = t.races.length,
     me = youIn(t);
   return [
-    isFinal(t) ? 'THE FINAL · UNDER THE LIGHTS' : `WORLD TOUR · RACE ${t.i + 1} OF ${n}`,
+    isFinal(t) ? 'THE FINAL' : `RACE ${t.i + 1} OF ${n}`,
     t.i === 0
       ? `${TOUR.gate} PTS FROM RACES 1-4 OPEN THE FINAL`
       : isFinal(t)
-        ? `YOU'RE ${me.place}${ordinal(me.place).toUpperCase()} · ${me.pts} PTS · TOP 3 WIN A TROPHY`
+        ? `YOU'RE ${me.place}${ordinal(me.place).toUpperCase()}`
         : `${toGatePts(t)} / ${TOUR.gate} PTS TO THE FINAL`,
-    `POINTS ${POINTS.join(' · ')}`,
+    isFinal(t) ? 'TOP 3 WIN A TROPHY' : `${POINTS[0]} PTS FOR A WIN`,
   ];
+}
+
+// a new tour's route, before its first race: the five stops across the islands, a plane between cities, the Final in
+// gold with the points it needs. START sets off; back returns home
+const PLANE =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-6z"/></svg>';
+export function showRoute() {
+  const n = TOUR.races.length;
+  $('#trRoute').innerHTML = TOUR.races
+    .map(([city, circ], i) => {
+      const fin = i === n - 1,
+        c = CHAPTERS.find(x => x.id === city),
+        name = (c.circuits?.find(x => x.id === circ)?.name || c.name).toUpperCase(),
+        hop = i && TOUR.races[i - 1][0] !== city ? `<i class="tr-fly">${PLANE}</i>` : '';
+      return `${hop}<div class="tr-stop${fin ? ' fin' : ''}"><img src="/places/${city}-${circ}${fin ? '-night' : ''}.jpg" alt=""><b class="tr-n"><span>${fin ? 'F' : i + 1}</span></b>${fin ? `<em class="tr-pts">${TOUR.gate} PTS</em>` : ''}<p class="tr-t"><small>${fin ? 'THE FINAL' : c.name.toUpperCase()}</small><span>${name}</span></p></div>`;
+    })
+    .join('');
+  show($('#tourRoute'));
+}
+export function hideRoute() {
+  hide($('#tourRoute'), null, -1);
 }
 
 // start the tour, or carry on with it: the next race's city and circuit are built if they aren't (another city loads
@@ -103,7 +126,7 @@ export function introLines() {
 export function playCup() {
   let t = cupOf();
   if (!t) {
-    t = { id: TOUR.id, races: TOUR.races, i: 0, res: [], retries: RETRIES };
+    t = { id: TOUR.id, races: TOUR.races, i: 0, res: [], retries: RETRIES, names: rivalNames() };
     save(t);
   }
   game.mode = 'cup';
@@ -138,14 +161,14 @@ export function afterCupRace() {
   // one line on what the race meant: the points it won, and how near the Final is
   const me = youIn(t);
   $('#resChapter').textContent = done
-    ? `${me.pts} PTS · ${me.place}${ordinal(me.place).toUpperCase()} OVERALL`
+    ? `${me.place}${ordinal(me.place).toUpperCase()} OVERALL`
     : gateNow
       ? ok
-        ? `${toGatePts(t)} PTS · YOU'RE IN THE FINAL`
-        : `${toGatePts(t)} / ${TOUR.gate} PTS · NOT IN THE FINAL`
+        ? "YOU'RE IN THE FINAL"
+        : 'NOT IN THE FINAL'
       : ok
-        ? `+${me.gained} PTS · FINAL UNLOCKED`
-        : `+${me.gained} PTS · ${toGatePts(t)} / ${TOUR.gate} TO THE FINAL`;
+        ? 'FINAL UNLOCKED'
+        : `${toGatePts(t)} / ${TOUR.gate} TO THE FINAL`;
   // the button says what's next in big words; where it is goes small underneath (one line each, never wrapped)
   const where = raceName(t.races[t.i < n ? t.i : n - 1]).toUpperCase();
   $('#againBtn').innerHTML = done
@@ -156,7 +179,7 @@ export function afterCupRace() {
   $('#menuBtn').textContent = 'HOME';
   const r = $('#retryBtn');
   r.hidden = !t.retries;
-  r.textContent = `RETRY · ${t.retries} LEFT`;
+  r.textContent = 'RETRY';
 }
 // the card's top three: this race's, with the points each won; after the Final, the tour's, with their totals
 function paintTable(t, final = false) {
@@ -233,11 +256,11 @@ function finalStandings(t) {
     game.cupFinal = true;
     whip(1);
     show($('#results'));
-    $('#results .tag span').textContent = `${TOUR.name.toUpperCase()} · FINAL STANDINGS`;
+    $('#results .tag span').textContent = 'FINAL STANDINGS';
     $('.place-big').hidden = false;
     $('#resPlace').textContent = me.place;
     $('#resSfx').textContent = ordinal(me.place).toUpperCase();
-    $('#resChapter').textContent = won ? `${me.pts} PTS OVERALL` : `${me.pts} PTS · THE TOP 3 WIN A TROPHY`;
+    $('#resChapter').textContent = won ? `${me.pts} PTS OVERALL` : 'THE TOP 3 WIN A TROPHY';
     $('#resStats').innerHTML = '';
     paintTable(t, true);
     $('#resWallet').textContent = (from + prize).toLocaleString('en');

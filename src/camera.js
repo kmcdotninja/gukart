@@ -31,7 +31,6 @@ const camBack = {
   },
   camAhead = { p: new THREE.Vector3(), t: new THREE.Vector3(), u: new THREE.Vector3(), l: new THREE.Vector3(), i: 0 };
 
-const W2C = 13;
 // first person: Buddy's head, body and legs are hidden (you're in his seat); his arms and paws stay, reaching out to the
 // wheel and turning it as you steer. He doesn't pop, flip or throw his arms up while you're in his seat (src/race.js
 // poseDriver), so his paws never leave the wheel
@@ -237,29 +236,20 @@ export function updateCamera(dt) {
       camLook.copy(wantLook);
     }
   } else if (game.state === 'finish') {
-    // a fixed camera at the line: low beside the arch, watching you cross and roll away; then it rises to look down on the finish
-    const t = game.clock - game.finishAt,
-      Fl = game.track.frame(0, game.track.newFrame()),
-      side = 1;
-    const low = Fl.p
-      .clone()
-      .addScaledVector(Fl.t, 22)
-      .addScaledVector(Fl.l, side * (W2C + 6))
-      .addScaledVector(Fl.u, 2.2);
-    const high = Fl.p
-      .clone()
-      .addScaledVector(Fl.t, 10)
-      .addScaledVector(Fl.l, side * 6)
-      .addScaledVector(Fl.u, 34);
-    const u = Math.min(1, Math.max(0, (t - 1.6) / 2.2)),
-      e3 = u * u * (3 - 2 * u);
-    want.lerpVectors(low, high, e3);
-    wantLook
+    // over the line: the camera swings round in front of the kart and frames Buddy close, so you see him celebrate
+    // (a backflip, a pop, cheering) or slump, before YOU CAME 1ST comes up; it keeps pace as the kart coasts on
+    const t = game.clock - game.finishAt;
+    game.race.frameOf(k, F);
+    const lift = k.m.V.cam,
+      a = k.rh + 0.35 + Math.sin(t * 0.6) * 0.12; // a little off his nose, easing round
+    fwd.copy(F.t).multiplyScalar(Math.cos(a)).addScaledVector(F.l, Math.sin(a));
+    want
       .copy(kp)
-      .lerp(Fl.p.clone().addScaledVector(Fl.t, 30), e3 * 0.5)
-      .addScaledVector(Fl.u, 1.2);
+      .addScaledVector(fwd, 9 + lift)
+      .addScaledVector(F.u, 2.6 + lift);
+    wantLook.copy(kp).addScaledVector(F.u, 2.3 + lift * 0.6); // aimed a little high: his backflips stay in the frame
     wantUp.set(0, 1, 0);
-    rate = t < 0.1 ? 60 : 5;
+    rate = t < 0.6 ? 4 : 8; // a quick sweep round from behind, then it holds him in frame
   } else if (podium.on && (game.state === 'podium' || game.state === 'results')) {
     // the podium: square on to the three steps, the finish arch behind them, drifting slowly side to side and in
     const t = podium.t,

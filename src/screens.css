@@ -927,3 +927,738 @@ body.onfire #hud::before {
   font-size: clamp(14px, 4vw, 19px);
   letter-spacing: 0;
 }
+
+/* ---- the World Tour's Final: the race card in gold with a trophy, and a gold badge on the HUD */
+#raceLoad .rl-trophy {
+  display: none;
+}
+#raceLoad.final .rl-trophy {
+  display: block;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 6px;
+  fill: #ffc400;
+  filter: drop-shadow(0 0 18px rgba(255, 196, 0, 0.7));
+  animation: trophyIn 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes trophyIn {
+  from {
+    transform: scale(0.3) rotate(-14deg);
+    opacity: 0;
+  }
+}
+#raceLoad.final {
+  background:
+    radial-gradient(120% 90% at 10% 50%, rgba(255, 196, 0, 0.32), rgba(255, 196, 0, 0) 60%),
+    linear-gradient(90deg, rgba(40, 26, 4, 0.92), rgba(40, 26, 4, 0.55) 55%, rgba(40, 26, 4, 0));
+}
+#raceLoad.final .rl-tag span {
+  background: linear-gradient(100deg, #ffc400, #ffdf6b);
+  color: #1a1204;
+}
+#raceLoad.final h2 {
+  color: #ffd84a;
+  text-shadow:
+    0 4px 0 #8a5a00,
+    0 0 30px rgba(255, 196, 0, 0.55);
+}
+#raceLoad.final .rl-chip {
+  background: #ffc400;
+  color: #1a1204;
+}
+.final-badge {
+  align-self: center;
+  margin: 0 auto 6px;
+  padding: 4px 18px 3px;
+  background: linear-gradient(100deg, #ffc400, #ffdf6b);
+  color: #1a1204;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  box-shadow: 0 0 18px rgba(255, 196, 0, 0.45);
+}
+.final-badge[hidden] {
+  display: none;
+}
+
+/* ---- the garage: the part of a stat your upgrades add (gold, at the end of the bar), and the collection */
+.gstats .stripebar u {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: block;
+  background: #ffc400;
+  box-shadow: 0 0 10px rgba(255, 196, 0, 0.8);
+}
+.g-uplegend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 12px 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: #cfd6ee;
+  white-space: nowrap;
+}
+.g-uplegend b {
+  width: 18px;
+  height: 9px;
+  transform: skewX(-24deg);
+  background: #ffc400;
+}
+.g-uplegend[hidden] {
+  display: none;
+}
+.g-coll {
+  position: absolute;
+  top: calc(var(--st) + 66px);
+  right: max(14px, var(--sr));
+  width: 480px;
+  padding: 0 0 14px;
+  --cut: 10px;
+}
+.gc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.gc-head .tag {
+  height: 26px;
+  font-size: 17px;
+}
+.gc-n {
+  padding-right: 14px;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 20px;
+}
+.gc-n em {
+  font-style: inherit;
+  color: #ffc400;
+}
+.gc-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 12px 12px 0;
+}
+.gc-up {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: #0d1430;
+  border: 1.5px solid rgba(111, 211, 255, 0.25);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.gc-up.got {
+  border-color: #ffc400;
+}
+.gc-up img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+/* a locked upgrade: its picture darkened and greyed, the padlock over it */
+.gc-up:not(.got) img {
+  filter: grayscale(0.85) brightness(0.45);
+}
+/* the lock over a locked upgrade's picture: a bold white padlock on a dark disc, so it reads on any picture */
+.gc-up .gc-lock {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  margin: calc(50% - 23px) 0 0 -23px;
+  border-radius: 50%;
+  background:
+    no-repeat center / 24px
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffffff' d='M7 10V7a5 5 0 0 1 10 0v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2 0h6V7a3 3 0 0 0-6 0z'/%3E%3C/svg%3E"),
+    rgba(5, 9, 24, 0.82);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.gc-up b {
+  margin: 6px 6px 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.gc-up span {
+  margin: 3px 6px 7px;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: #ffc400;
+  white-space: nowrap;
+}
+.gc-up:not(.got) b,
+.gc-up:not(.got) span {
+  color: #9fb0dc;
+}
+.gc-next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 12px 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 15px;
+  color: #cfd6ee;
+  white-space: nowrap;
+}
+.gc-bar {
+  flex: 1;
+  height: 9px;
+  transform: skewX(-24deg);
+  background: rgba(255, 255, 255, 0.12);
+}
+.gc-bar i {
+  display: block;
+  height: 100%;
+  background: #ffc400;
+}
+.gc-next b {
+  font-weight: 900;
+  color: #fff;
+}
+#garage.customising .g-coll {
+  display: none;
+}
+/* the collection's button: a phone only (on a wide screen the panel is always there) */
+.coll-btn {
+  display: none;
+}
+@media (max-width: 819px) {
+  .coll-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: auto !important;
+    padding: 0 10px;
+  }
+  .coll-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: #ffc400;
+  }
+  .coll-btn b {
+    font-family: var(--race);
+    font-style: italic;
+    font-weight: 900;
+    font-size: 16px;
+    white-space: nowrap;
+  }
+  .g-coll {
+    display: none;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(var(--sb) + 12px);
+    z-index: 5;
+  }
+  #garage.coll-open .g-coll {
+    display: block;
+  }
+  .gc-grid {
+    gap: 6px;
+    padding: 10px 10px 0;
+  }
+  .gc-up b {
+    font-size: 13px;
+  }
+  .gc-up span {
+    font-size: 10px;
+  }
+}
+
+/* ---- the World Tour's route (src/cup.js showRoute): light, over the home screen blurred; the stops in a row (a
+   column on a phone) joined by a dashed line, a plane between the cities, the Final in gold */
+#tourRoute {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: linear-gradient(180deg, rgba(5, 9, 24, 0.55), rgba(5, 9, 24, 0.82) 55%, rgba(5, 9, 24, 0.95));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+#tourRoute[hidden] {
+  display: none;
+}
+.tr-wrap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--st) + 22px) max(32px, var(--sr)) calc(var(--sb) + 26px) max(32px, var(--sl));
+}
+.tr-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tr-top .tag {
+  height: 40px;
+  font-size: 26px;
+}
+.tr-sub {
+  margin: 16px 0 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 21px;
+  letter-spacing: 0.04em;
+  color: #cfd6ee;
+  white-space: nowrap;
+}
+.tr-sub b {
+  color: #ffc400;
+}
+.tr-route {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 10px 0;
+}
+.tr-route::before {
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  border-top: 3px dashed rgba(255, 106, 0, 0.75);
+}
+.tr-stop {
+  --cut: 14px;
+  position: relative;
+  flex: 1;
+  height: min(300px, 40vh);
+  overflow: hidden;
+  background: #0d1226;
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+}
+.tr-stop img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tr-stop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 9, 24, 0) 40%, rgba(5, 9, 24, 0.88));
+}
+.tr-n {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  top: 12px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--orange);
+  transform: rotate(45deg);
+}
+.tr-n span {
+  transform: rotate(-45deg);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 19px;
+}
+.tr-t {
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  right: 10px;
+  bottom: 12px;
+  margin: 0;
+}
+.tr-t small {
+  display: block;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--line);
+  white-space: nowrap;
+}
+.tr-t span {
+  display: block;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 32px;
+  line-height: 0.95;
+  white-space: nowrap;
+}
+.tr-fly {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--navy);
+  border: 2px solid var(--line);
+  border-radius: 50%;
+}
+.tr-fly svg {
+  width: 17px;
+  fill: var(--line);
+}
+.tr-stop.fin {
+  flex: 1.15;
+  height: min(340px, 46vh);
+  outline: 3px solid #ffc400;
+  outline-offset: -3px;
+}
+.tr-stop.fin .tr-n {
+  background: #ffc400;
+}
+.tr-stop.fin .tr-n span {
+  color: #1a1204;
+}
+.tr-stop.fin .tr-t span {
+  color: #ffd84a;
+}
+.tr-pts {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  padding: 4px 12px;
+  background: #ffc400;
+  color: #1a1204;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  font-family: var(--race);
+  font-style: normal;
+  font-weight: 900;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.tr-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.tr-note {
+  margin: 0;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 19px;
+  color: #cfd6ee;
+  white-space: nowrap;
+}
+.tr-note b {
+  color: #ffc400;
+}
+.tr-go {
+  width: 260px;
+  height: 70px;
+}
+.tr-go span {
+  font-size: 40px;
+}
+@media (max-width: 819px) {
+  .tr-wrap {
+    padding: calc(var(--st) + 16px) 16px calc(var(--sb) + 18px);
+  }
+  .tr-top .tag {
+    height: 36px;
+    font-size: 22px;
+  }
+  .tr-sub {
+    font-size: 16px;
+    margin-top: 12px;
+  }
+  .tr-route {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .tr-route::before {
+    left: 30px;
+    right: auto;
+    top: 4%;
+    bottom: 4%;
+    border-top: 0;
+    border-left: 3px dashed rgba(255, 106, 0, 0.75);
+  }
+  .tr-stop,
+  .tr-stop.fin {
+    height: auto;
+    flex: 1;
+  }
+  .tr-stop.fin {
+    flex: 1.25;
+  }
+  .tr-stop::after {
+    background: linear-gradient(90deg, rgba(5, 9, 24, 0.9), rgba(5, 9, 24, 0.5) 55%, rgba(5, 9, 24, 0.15));
+  }
+  .tr-n {
+    width: 30px;
+    height: 30px;
+    left: 14px;
+    top: 50%;
+    margin-top: -15px;
+  }
+  .tr-t {
+    left: 60px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+  .tr-t span {
+    font-size: 26px;
+  }
+  .tr-t small {
+    font-size: 13px;
+  }
+  .tr-fly {
+    display: none;
+  }
+  .tr-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .tr-note {
+    font-size: 14px;
+    text-align: center;
+  }
+  .tr-go {
+    width: 100%;
+    height: 60px;
+  }
+  .tr-go span {
+    font-size: 34px;
+  }
+}
+
+/* the collection's CLOSE button: a phone only, full width at the foot of the card, like the pause menu's buttons */
+.gc-close {
+  display: none;
+}
+@media (max-width: 819px) {
+  .gc-close {
+    display: block;
+    width: calc(100% - 24px);
+    height: 52px;
+    margin: 14px 12px 0;
+    font-size: 22px;
+    font-weight: 900;
+  }
+  /* the upgrades three to a row (three, then two), each a good size */
+  .gc-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .gc-up b {
+    font-size: 15px;
+  }
+}
+/* a phone, the collection open: it has the screen to itself. A dark backdrop over the garage (a tap on it closes),
+   the garage's own controls out of sight behind it, the panel solid */
+@media (max-width: 819px) {
+  #garage.coll-open::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    background: rgba(5, 9, 24, 0.78);
+    pointer-events: auto;
+  }
+  #garage.coll-open .g-bottom,
+  #garage.coll-open .g-arrow,
+  #garage.coll-open .g-card,
+  #garage.coll-open .cust {
+    visibility: hidden;
+  }
+  #garage.coll-open .g-coll {
+    background: rgba(12, 21, 54, 0.98);
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+}
+/* a phone: as little text as possible. The collection's cards show only their names (the picture, or the lock, says
+   the rest); the route drops its points sentence (the Final's 20 PTS tag says it) */
+@media (max-width: 819px) {
+  .gc-up span,
+  .tr-note {
+    display: none;
+  }
+  .gc-up b {
+    margin-bottom: 7px;
+  }
+}
+/* a wide screen too: the collection is a button in the garage's header, and opens as a card over the dimmed garage
+   (closed with CLOSE or a tap outside), so the garage stays clear the rest of the time */
+@media (min-width: 820px) {
+  .coll-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: auto !important;
+    padding: 0 12px;
+  }
+  .coll-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: #ffc400;
+  }
+  .coll-btn b {
+    font-family: var(--race);
+    font-style: italic;
+    font-weight: 900;
+    font-size: 18px;
+    white-space: nowrap;
+  }
+  .g-coll {
+    display: none;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: 600px;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    background: rgba(12, 21, 54, 0.98);
+  }
+  #garage.coll-open .g-coll {
+    display: block;
+  }
+  #garage.coll-open::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    background: rgba(5, 9, 24, 0.72);
+    pointer-events: auto;
+  }
+  #garage.coll-open .g-bottom,
+  #garage.coll-open .g-arrow,
+  #garage.coll-open .g-card,
+  #garage.coll-open .cust {
+    visibility: hidden;
+  }
+  .gc-close {
+    display: block;
+    width: calc(100% - 24px);
+    height: 52px;
+    margin: 16px 12px 0;
+    font-size: 22px;
+    font-weight: 900;
+  }
+}
+/* the collection card on a wide screen: as on a phone (three to a row, big pictures, names only), only bigger */
+@media (min-width: 820px) {
+  .g-coll {
+    width: min(760px, 64vw);
+    padding-bottom: 20px;
+  }
+  .g-coll .gc-head .tag {
+    height: 36px;
+    font-size: 24px;
+  }
+  .gc-n {
+    font-size: 26px;
+  }
+  .gc-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    padding: 18px 18px 0;
+  }
+  .gc-up b {
+    margin: 10px 10px 10px;
+    font-size: 22px;
+  }
+  .gc-up span {
+    display: none;
+  }
+  .gc-up .gc-lock {
+    width: 64px;
+    height: 64px;
+    margin: calc(50% - 32px) 0 0 -32px;
+    background-size: 32px, auto;
+  }
+  .gc-next {
+    margin: 18px 18px 0;
+    font-size: 19px;
+  }
+  .gc-close {
+    width: calc(100% - 36px);
+    height: 60px;
+    margin: 18px 18px 0;
+    font-size: 26px;
+  }
+}
+/* the garage's foot on a wide screen: the vehicle cards on the left (not stretched across the whole width), and on the
+   right a column of the two things you do here, CUSTOMISE over PLAY, both big and the same width, inside the margins */
+@media (min-width: 900px) {
+  #garage .g-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas:
+      'tiles cust'
+      'tiles play';
+    align-items: end;
+    column-gap: 24px;
+    row-gap: 10px;
+    padding-right: max(28px, var(--sr));
+    padding-left: max(28px, var(--sl));
+  }
+  #garage .tiles {
+    grid-area: tiles;
+    grid-template-columns: repeat(4, minmax(0, 260px));
+    gap: 10px;
+  }
+  #garage .cust-open {
+    grid-area: cust;
+    position: static;
+    width: 100%;
+    height: 72px;
+    justify-content: center;
+  }
+  #garage .g-play {
+    grid-area: play;
+    width: 100%;
+    height: 96px;
+    align-self: end;
+  }
+}

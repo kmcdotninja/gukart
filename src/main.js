@@ -37,6 +37,7 @@ import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
+import { salvo, updateFireworks } from './fireworks.js';
 import { playCup } from './cup.js';
 import './style.css';
 import './screens.css';
@@ -108,6 +109,7 @@ function frame(now) {
       banner(String(n), 'count', 900);
       Sound.beep(false);
       Haptics.count();
+      if (game.final) salvo(2); // the Final: fireworks over the start with every number
     }
     game.lastCd = n;
     game.world.startLights(Math.min(5, Math.ceil((3.99 - game.cd) / 0.58))); // the gantry lights come on red one by one
@@ -118,8 +120,15 @@ function frame(now) {
       Haptics.big();
       game.world.startLights('go');
       setTimeout(() => game.world.startLights(0), 3000);
+      if (game.final) {
+        // the Final: a big salvo and the crowd's roar at GO, and a few more bursts as the pack gets away
+        salvo(7);
+        Sound.cheer();
+        for (const t of [900, 1800, 2900]) setTimeout(() => game.state === 'race' && salvo(2), t);
+      }
     }
   }
+  updateFireworks(dt);
   if (['menu', 'tomap', 'map'].includes(game.state) && game.race.karts.some(k => k.finished)) attract();
   game.race.update(
     dt,
