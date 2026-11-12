@@ -18,3 +18,6 @@ dist/
 recordings/
 .vercel
 .env*
+
+# the editor's own comment data (holds an email address)
+.ide-comments/
