@@ -410,7 +410,13 @@ export function dressKanoCity(k, h) {
         for (const fk of tr.forks || []) if (fk.dist(x, z) < 20 / 2 + 6) return false;
         return true;
       };
-    const brickM = lam('#ffffff', { map: brickT, emissive: '#2a1408', emissiveMap: brickT }),
+    // (at night the towers are floodlit, warm gold, the clock faces bright)
+    const brickM = h.glow(
+        lam('#ffffff', { map: brickT, emissive: '#2a1408', emissiveMap: brickT }),
+        null,
+        '#ffd08a',
+        1.15,
+      ),
       TH = deckY + 16,
       towers = [];
     // the four towers in the four angles between the crossing roads, each pushed out until it stands clear of both
@@ -449,7 +455,7 @@ export function dressKanoCity(k, h) {
     const truss = (a, b, words) => {
       const len = a.distanceTo(b),
         g = new THREE.Group(),
-        steel = lam('#3a3e44');
+        steel = h.glow(lam('#3a3e44'), null, '#9fc6ff', 0.35);
       g.position.copy(a).add(b).multiplyScalar(0.5);
       g.rotation.y = Math.atan2(b.x - a.x, b.z - a.z) + Math.PI / 2;
       for (const y of [-1, 1])
@@ -471,6 +477,12 @@ export function dressKanoCity(k, h) {
           x.fillText(words, w / 2, hh * 0.54);
         }),
       });
+      // a row of bulbs along each lower chord, lit at night
+      const bulbM = h.glow(lam('#e8e0c8'), null, '#fff1c8', 2.2),
+        bulbs = [];
+      for (let x = -len / 2 + 1; x < len / 2 - 1; x += 1.2)
+        for (const z of [-1.35, 1.35]) bulbs.push(new THREE.SphereGeometry(0.16, 6, 4).translate(x, -1.45, z));
+      g.add(new THREE.Mesh(mergeAll(bulbs), bulbM));
       for (const z of [-1, 1]) {
         const p2 = new THREE.Mesh(new THREE.PlaneGeometry(len - 6, 1.9), wordsM);
         p2.position.set(0, 0, z * 1.25);
@@ -486,6 +498,62 @@ export function dressKanoCity(k, h) {
       const w = t2.clone().applyMatrix4(GE.matrixWorld);
       reserve(w.x, w.z, 5);
     }
+    // the loop's deck lit along both edges in strips of green and white the whole way round (on at night)
+    {
+      const green = h.glow(lam('#1d3a26'), null, '#3dff8a', 1.6),
+        whiteL = h.glow(lam('#3a3a3a'), null, '#ffffff', 1.8),
+        strips = [[], []];
+      for (let s1 = f.s; s1 < f.s + f.len; s1 += 3) {
+        const i1 = tr.idx(s1);
+        if (!tr.elevated[i1] || tr.P[i1].y < 2) continue;
+        const a1 = head(s1),
+          y1 = tr.P[i1].y;
+        for (const sd2 of [-1, 1]) {
+          const q = tr.beside(i1, sd2 * (W / 2 + 0.95));
+          strips[Math.floor(s1 / 9) % 2].push(
+            new THREE.BoxGeometry(0.22, 0.3, 3.05).rotateY(a1).translate(q.x, y1 + 1.25, q.z),
+          );
+        }
+      }
+      for (const [k2, m] of [
+        [0, green],
+        [1, whiteL],
+      ])
+        if (strips[k2].length) scene.add(new THREE.Mesh(mergeAll(strips[k2]), m));
+    }
+    // four high masts round the island, a ring of floodlights on each, a halo round the heads after dark
+    {
+      const haloT = canvasTex(128, 128, (x, w, hh) => {
+          const g2 = x.createRadialGradient(w / 2, hh / 2, 0, w / 2, hh / 2, w / 2);
+          g2.addColorStop(0, 'rgba(255,240,210,1)');
+          g2.addColorStop(0.35, 'rgba(255,220,160,.45)');
+          g2.addColorStop(1, 'rgba(255,200,120,0)');
+          x.fillStyle = g2;
+          x.fillRect(0, 0, w, hh);
+        }),
+        haloM = new THREE.SpriteMaterial({
+          map: haloT,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          opacity: 0,
+        }),
+        headM = h.glow(lam('#d8d4c8'), null, '#fff4dc', 2.4);
+      for (let k2 = 0; k2 < 4; k2++) {
+        const a2 = (k2 / 4) * TAU + TAU / 8,
+          mx = Math.cos(a2) * 16,
+          mz = Math.sin(a2) * 16;
+        G.add(mesh(cy(0.35, 0.55, 30, 8), steelM, mx, 0, mz));
+        G.add(
+          mesh(new THREE.TorusGeometry(1.6, 0.3, 6, 16).rotateX(Math.PI / 2).translate(0, 30, 0), headM, mx, 0, mz),
+        );
+        const halo = new THREE.Sprite(haloM);
+        halo.position.set(mx, 30, mz);
+        halo.scale.set(16, 16, 1);
+        G.add(halo);
+      }
+      h.night?.(n => (haloM.opacity = n * 0.9));
+    }
     // the flag, high over it all, on its own pole beside the roundabout
     G.add(mesh(cy(0.25, 0.35, 40, 8), steelM, 0, 0, 22));
     const flagT = canvasTex(96, 64, (x, w, hh) => {
@@ -496,7 +564,7 @@ export function dressKanoCity(k, h) {
     });
     const flag = new THREE.Mesh(
       new THREE.PlaneGeometry(6, 4).translate(3, 0, 0),
-      new THREE.MeshLambertMaterial({ map: flagT, side: THREE.DoubleSide }),
+      h.glow(new THREE.MeshLambertMaterial({ map: flagT, side: THREE.DoubleSide }), flagT, '#ffffff', 0.8), // (floodlit at night)
     );
     flag.position.set(0, 37.5, 22);
     G.add(flag);

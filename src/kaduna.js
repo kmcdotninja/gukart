@@ -90,7 +90,8 @@ export function dressKaduna(k) {
   };
 
   /* ---------- night: the lit things carry a glow ---------- */
-  const glowing = [];
+  const glowing = [],
+    nightFns = []; // (anything else that changes after dark: night(n), n from 0 day to 1 night)
   const glow = (mat, map, col = '#ffffff', str = 1) => {
     if (map) mat.emissiveMap = map;
     const base = mat.emissive ? mat.emissive.clone() : new THREE.Color(0);
@@ -2274,6 +2275,7 @@ export function dressKaduna(k) {
       tryTree,
       animated,
       glow,
+      night: fn => nightFns.push(fn),
     });
 
   /* ---------- the land round each circuit ---------- */
@@ -2399,6 +2401,7 @@ export function dressKaduna(k) {
   const tmp = new THREE.Color();
   k.night = n => {
     for (const g of glowing) g.mat.emissive.copy(g.base).lerp(tmp.copy(g.col).multiplyScalar(g.str), n);
+    for (const fn of nightFns) fn(n);
   };
   k.update = t => {
     for (const a of animated) a(t);
