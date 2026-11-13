@@ -266,6 +266,7 @@ export const PARTS = {
   plate: [
     ['kano', 'Kano', 0],
     ['doha', 'Doha', 0],
+    ['kaduna', 'Kaduna', 0],
     ['lagos', 'Lagos', 150],
     ['singapore', 'Singapore', 250],
     ['dubai', 'Dubai', 300],
@@ -297,6 +298,15 @@ const PLATES = {
     head: 'KANO',
     num: 'GUK 001',
     foot: 'CENTRE OF COMMERCE',
+  },
+  kaduna: {
+    kind: 'ng',
+    bg: ['#ffffff', '#eef3fb'],
+    rim: '#1f62c4',
+    ink: '#13204f',
+    head: 'KADUNA',
+    num: 'GUK 001',
+    foot: 'LIBERAL CENTRE OF LEARNING',
   },
   lagos: {
     kind: 'ng',

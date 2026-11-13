@@ -1,4 +1,4 @@
-// Chapter 4, Singapore: the city round Marina Bay, its gardens, its river and its old quarters. world.js lays the
+// Chapter 5, Singapore: the city round Marina Bay, its gardens, its river and its old quarters. world.js lays the
 // ground, the water, the road furniture and the start; this builds the city on it, each landmark after the real one:
 //  - Marina Bay Sands: three towers, each two leaning slabs, with the ship of the SkyPark across their tops (its bow
 //    cantilevered out past the last tower), the beams of the light show over it at night

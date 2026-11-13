@@ -452,7 +452,11 @@ export function buildRoad(scene, tr, tex) {
       ? new THREE.MeshLambertMaterial({ map: DQ.paverTex(), side: THREE.DoubleSide })
       : tr.city === 'singapore'
         ? new THREE.MeshLambertMaterial({ map: SG.paverTex(), side: THREE.DoubleSide }) // (Singapore: slabs and a verge)
-        : new THREE.MeshLambertMaterial({ color: '#d9c7a2', map: tex.dirt, side: THREE.DoubleSide });
+        : new THREE.MeshLambertMaterial({
+            color: tr.city === 'kaduna' ? '#cf9f78' : '#d9c7a2', // (Kaduna's verges are red laterite)
+            map: tex.dirt,
+            side: THREE.DoubleSide,
+          });
   const foot = i => W / 2 + 12.5 + tr.P[i].y * 1.8,
     drop = i => -tr.P[i].y - 0.4;
   for (const sg of [1, -1]) {
@@ -879,6 +883,32 @@ export function buildForks(tr) {
         'laupasat',
         'erp',
         'gantry',
+        'abugate',
+        'waterfall',
+        'avenue',
+        'senate',
+        'library',
+        'physci',
+        'compsci',
+        'longhalls',
+        'hostels',
+        'football',
+        'squaregate',
+        'racecourse',
+        'footbridge',
+        'skywalk',
+        'grandstand',
+        'gazebo',
+        'lugard',
+        'flyover',
+        'gumiarch',
+        'market',
+        'railbridge',
+        'oldcity',
+        'palacesq',
+        'mosque',
+        'zgate',
+        'rock',
       ].includes(f.type)
     )
       for (let s = f.s - 30; s < f.s + (f.len || 0) + 30; s += seg) blocked[tr.wrap(Math.floor(tr.wrapS(s) / seg))] = 1; // no fork through a city's set pieces

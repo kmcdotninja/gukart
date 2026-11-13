@@ -82,7 +82,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const R0 = tr.radius + 150; // island radius
   const city = opts.city || 'kano',
     doha = city === 'doha',
-    coast = doha || city === 'singapore'; // (a big modern city on the water: its sea comes from the circuit's features, its own scenery)
+    kd = city === 'kaduna', // (Kaduna: its river and its ground come from the features too, the old Kano pieces still work)
+    coast = doha || city === 'singapore' || kd; // (a big modern city on the water: its sea comes from the circuit's features, its own scenery)
   let isLand = () => true;
   const occ = [];
   // the canals under the jumps: the ground drops away there
@@ -330,12 +331,13 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         return m[a * n1 + b] < 0.2;
       };
     }
-    // Doha's ground is sand with a little green; Singapore's is lawn and garden between grey paving, a stone sea wall
+    // Doha's ground is sand with a little green; Singapore's is lawn and garden between grey paving, a stone sea wall;
+    // Kaduna's is the savanna's red laterite and dry grass, the river banks a muddy brown
     const sg = city === 'singapore',
-      cSand = new THREE.Color(sg ? '#6f9e46' : '#efe0bd'),
-      cPave = new THREE.Color(sg ? '#b9b8b4' : '#d9d2c4'),
-      cGreen = new THREE.Color(sg ? '#4f8a3a' : '#8fb35a'),
-      cBeach = new THREE.Color(sg ? '#c9c4b8' : '#f8ecd0');
+      cSand = new THREE.Color(sg ? '#6f9e46' : kd ? '#b98c60' : '#efe0bd'),
+      cPave = new THREE.Color(sg ? '#b9b8b4' : kd ? '#cdb79a' : '#d9d2c4'),
+      cGreen = new THREE.Color(sg ? '#4f8a3a' : kd ? '#7c9a46' : '#8fb35a'),
+      cBeach = new THREE.Color(sg ? '#c9c4b8' : kd ? '#9b7a58' : '#f8ecd0');
     for (let k = 0; k < gp.count; k++) {
       const x = gp.getX(k),
         z = gp.getZ(k),
@@ -344,7 +346,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       gp.setY(k, d < W / 2 + 26 && !wet[k] ? -0.35 : lerp(0.15, -7, sstep(0.25, 0.75, wv)));
       if (doha && wet[k] && d < 90 && tr.lowb[tr.nearest(x, z).i]) gp.setY(k, -27); // deep water round the aquarium tunnel
       c.copy(cSand)
-        .lerp(cGreen, sstep(0.6, 0.75, fbm(x * 0.02 + 3, z * 0.02)) * 0.5)
+        .lerp(cGreen, sstep(kd ? 0.32 : 0.6, kd ? 0.62 : 0.75, fbm(x * 0.02 + 3, z * 0.02)) * (kd ? 0.9 : 0.5))
         .lerp(cPave, 1 - sstep(W / 2 + 3, W / 2 + 18, d))
         .lerp(cBeach, sstep(0.15, 0.45, wv));
       cols.set([c.r, c.g, c.b], k * 3);
@@ -685,6 +687,21 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       ink: '#ffffff',
       plateBg: '#2a7d52',
       trim: '#2a7d52',
+    },
+    // Zaria's Kofar Doka: the oldest gate in the wall, a deep red-brown earth arch, plain and thick, rounded towers
+    'KOFAR DOKA': {
+      mud: '#b0714a',
+      tw: 6,
+      th: 13,
+      H: 12,
+      spring: 7,
+      crown: 9.6,
+      D: 8,
+      zanko: true,
+      pal: ['rgba(60,25,10,.45)', 'rgba(255,236,210,.4)', 'rgba(226,190,150,.85)'],
+      ink: '#5a2610',
+      plateBg: '#e3c39a',
+      trim: '#e3c39a',
     },
     'KOFAR DAWANAU': {
       mud: '#e0a66c',
@@ -1468,7 +1485,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const flagMeshes = [];
   // everything is placed where the chapter's track says (features carry road distances)
   const fr = s => tr.wrapS(s) / tr.len;
-  if (!coast)
+  if (!coast || kd)
     for (const f of tr.feats) {
       if (f.type === 'gate') gate(fr(f.s), f.name);
       else if (f.type === 'walls') wall(fr(f.s), fr(f.s + f.len));
@@ -1517,6 +1534,11 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     reserve,
     water,
     faceRoad,
+    // (Kano's own builders, for a city that has the same old quarters: Zaria's houses, trees, bunting)
+    tryHouse,
+    tree,
+    bunting: s => bunting(fr(s)),
+    circuit: (opts.gantry || '').split('.')[1] || '',
     roadGap,
     clearOfRoad,
     trunks,

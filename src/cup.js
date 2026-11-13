@@ -1,6 +1,6 @@
-// The World Tour: the game's championship, raced city by city over every circuit (Kano's two, Doha's three, then
-// Singapore's, ending with the Final at Marina Bay, at night). Each race pays 10, 7, 5, 3, 2, 1 points; 40 points
-// from the first eight unlock the Final (about third place on average). After the Final the top three overall go up on
+// The World Tour: the game's championship, raced city by city over every circuit (Kano's two, Doha's three, Kaduna's
+// three, then Singapore's, ending with the Final at Marina Bay, at night). Each race pays 10, 7, 5, 3, 2, 1 points; 55
+// points from the first eleven unlock the Final (about third place on average). After the Final the top three overall go up on
 // the podium, and if you're one of them you take home its trophy (gold, silver, bronze) and the prize.
 // Forgiving: a bad race never knocks you out; quitting halfway means that race is run again when you come back (the
 // home screen's CONTINUE); after any finish you can retry the race, twice per tour. Short of 20 points after race 4,
@@ -31,19 +31,23 @@ export const TOURS = [
   {
     id: 'tour1',
     name: 'World Tour 1',
-    // every circuit, a city at a time (one flight between each): Kano, Doha, then Singapore and the Final at Marina Bay
+    // every circuit, a city at a time (one flight between each): Kano, Doha, Kaduna, then Singapore and the Final at
+    // Marina Bay
     races: [
       ['kano', 'old'],
       ['kano', 'dala'],
       ['doha', 'msheireb'],
       ['doha', 'pearl'],
       ['doha', 'lusail'],
+      ['kaduna', 'abu'],
+      ['kaduna', 'city'],
+      ['kaduna', 'zazzau'],
       ['singapore', 'gardens'],
       ['singapore', 'river'],
       ['singapore', 'changi'],
       ['singapore', 'marina'],
     ],
-    gate: 40, // (third place on average over the eight races before the Final)
+    gate: 55, // (third place on average over the eleven races before the Final)
   },
 ];
 export const TOUR = TOURS[0]; // (the one there is, for now: Abu Dhabi, Singapore and Lagos bring the next)

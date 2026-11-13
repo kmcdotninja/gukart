@@ -129,8 +129,8 @@ try {
   // a new World Tour shows its route first, and back returns home
   await click(page, '#goBtn');
   await expectVisible(page, '#tourRoute', "a new tour's route opens");
-  if ((await page.locator('#trRoute .tr-stop.city').count()) === 3) pass('the route shows its three cities');
-  else fail('the route should show three cities');
+  if ((await page.locator('#trRoute .tr-stop.city').count()) === 4) pass('the route shows its four cities');
+  else fail('the route should show four cities (Kano, Doha, Kaduna, Singapore)');
   await click(page, '#trBack');
   await page.waitForTimeout(500);
   if (!(await visible(page, '#tourRoute'))) pass('back closes the route');

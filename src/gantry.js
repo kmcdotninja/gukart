@@ -36,6 +36,18 @@ export const GANTRIES = {
     text: 'QATAR GRAND PRIX',
     num: '22',
   },
+  // Kaduna: ABU's green, Murtala Square's flags, the old city's earth and gold
+  'kaduna.abu': { style: 'board', board: '#1f7a3e', ink: '#ffffff', text: 'ABU ZARIA GRAND PRIX', frame: '#e9e3d6' },
+  'kaduna.city': {
+    style: 'banner',
+    panels: [
+      ['MURTALA SQUARE', '#1d3f8f', '#ffffff'],
+      ['KADUNA GRAND PRIX', '#ffffff', '#008751'],
+      ['GUKART', '#1d3f8f', '#ffffff'],
+    ],
+    frame: '#d8dde3',
+  },
+  'kaduna.zazzau': { style: 'frame', frame: '#b0714a', banner: '#1a1410', ink: '#e8c46a', text: 'ZAZZAU GRAND PRIX' },
   'singapore.marina': {
     style: 'frame',
     frame: '#e2231a',

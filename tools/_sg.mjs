@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { preview } from 'vite';
-const [out, circs = 'marina,gardens,river,heritage', nights = '1,0'] = process.argv.slice(2);
+// node tools/_sg.mjs <outdir> [circuits] [nights] [city]: each place on each circuit, and the circuit from the air
+const [out, circs = 'marina,gardens,river,heritage', nights = '1,0', city = 'singapore'] = process.argv.slice(2);
 const server = await preview({ preview: { port: 4174, strictPort: true, host: '127.0.0.1' }, logLevel: 'silent' });
 const b = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 for (const circ of circs.split(','))
@@ -12,13 +13,13 @@ for (const circ of circs.split(','))
       if (m.type() === 'error' || /blocked|warn/i.test(m.text())) errs.push(m.type() + ' ' + m.text().slice(0, 200));
     });
     await p.addInitScript(
-      ([c, n]) => {
+      ([c, n, cy]) => {
         localStorage.clear();
-        localStorage.setItem('gukart.city', '"singapore"');
-        localStorage.setItem('gukart.circuit.singapore', JSON.stringify(c));
+        localStorage.setItem('gukart.city', JSON.stringify(cy));
+        localStorage.setItem('gukart.circuit.' + cy, JSON.stringify(c));
         localStorage.setItem('gukart.night', n === '1' ? 'true' : 'false');
       },
-      [circ, night],
+      [circ, night, city],
     );
     const t0 = Date.now();
     await p.goto('http://127.0.0.1:4174/?gktest#capture');

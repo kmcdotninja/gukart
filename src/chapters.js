@@ -4,6 +4,7 @@
 import { turtle, closer } from './turtle.js';
 import { dalaTrack } from './kano2.js';
 import { marinaTrack, gardensTrack, riverTrack, changiTrack } from './sgtracks.js';
+import { abuTrack, kdTrack, zazzauTrack } from './kdtracks.js';
 
 // Kano is a figure of eight: the two lobes meet at one crossing, where the flyover leg rides 12 m over the start straight.
 // No spirals, no loops: straight ramps up and down, humps that throw you in the air, jumps over the canals.
@@ -306,6 +307,14 @@ export const SINGAPORE_CIRCUITS = [
   { id: 'changi', name: 'Changi', track: closer(changiTrack), fn: changiTrack },
 ];
 
+// Kaduna is three circuits (src/kdtracks.js): ABU Zaria (through the Department of Computer Science), the City Centre
+// (round Murtala Square's old racecourse) and Zazzau, the old walled city of Zaria
+export const KADUNA_CIRCUITS = [
+  { id: 'abu', name: 'ABU Zaria', track: closer(abuTrack), fn: abuTrack },
+  { id: 'city', name: 'City Centre', track: closer(kdTrack), fn: kdTrack },
+  { id: 'zazzau', name: 'Zazzau', track: closer(zazzauTrack), fn: zazzauTrack },
+];
+
 // Kano is two circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had) and Dala Hill
 export const KANO_CIRCUITS = [
   { id: 'old', name: 'Old City', track: closedKano, fn: kanoTrack, rid: 'kano' },
@@ -337,8 +346,19 @@ export const CHAPTERS = [
     circuits: DOHA_CIRCUITS,
   },
   {
-    id: 'abudhabi',
+    id: 'kaduna',
     n: 3,
+    name: 'Kaduna',
+    local: 'Nigeria',
+    tagline: 'The Garrison Town',
+    reward: 1300,
+    playable: true,
+    desc: 'Through Ahmadu Bello University and down the corridor of its Computer Science department, round the old racecourse at Murtala Square, and through the gates of old Zazzau past the Emir and his horsemen.',
+    circuits: KADUNA_CIRCUITS,
+  },
+  {
+    id: 'abudhabi',
+    n: 4,
     name: 'Abu Dhabi',
     local: 'UAE',
     tagline: 'City of Islands',
@@ -348,7 +368,7 @@ export const CHAPTERS = [
   },
   {
     id: 'singapore',
-    n: 4,
+    n: 5,
     name: 'Singapore',
     local: 'Marina Bay',
     tagline: 'The Garden City',
@@ -359,7 +379,7 @@ export const CHAPTERS = [
   },
   {
     id: 'lagos',
-    n: 5,
+    n: 6,
     name: 'Lagos',
     local: 'Nigeria',
     tagline: 'City on the Lagoon',

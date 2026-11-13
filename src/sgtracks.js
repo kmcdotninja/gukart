@@ -30,7 +30,7 @@ function spiral(t, R, deg, dy, list, ramp = 30) {
   ease(false);
   return { total, mid };
 }
-function corner(t, R, deg, dy = 0, list) {
+export function corner(t, R, deg, dy = 0, list) {
   R = Math.max(R, MIN_R);
   const n = 12,
     th = (Math.abs(deg) * Math.PI) / 180,
