@@ -240,7 +240,6 @@ export function dressKaduna(k) {
     roofRust = lam('#9b5a3a'),
     concrete = lam('#cfc8bc'),
     white = lam('#f4f2ec'),
-    cream = lam('#efe3c6'),
     abuGreen = lam('#1f7a3e'),
     darkM = lam('#262a30'),
     steelM = new THREE.MeshStandardMaterial({ color: '#7e8790', metalness: 0.6, roughness: 0.45 }),
@@ -451,75 +450,156 @@ export function dressKaduna(k) {
   /* ======================================================================================================== */
   /* ---------- ABU Zaria ---------- */
 
-  // the ABU gates: two green horns rise from either side of the road and curve in to meet over it, the university's
-  // crest where they meet, the name on a low wall beside the road (the North Gate is the same, smaller)
+  // the ABU gates, as the Main Gate stands: one cream masonry facade across the way in, a great round arch over the
+  // road, its top edge rising to a peak where the university's green crest sits, AHMADU BELLO UNIVERSITY in green
+  // letters across its face, a smaller arch each side for people on foot (lined in green), lower wings out to the
+  // ends, and a red boom barrier raised beside the road. (The North Gate is the same, a little smaller)
+  const gateCream = lam('#ecd78f', { emissive: '#3d3520' });
   for (const f of fOf('abugate')) {
     const i = tr.idx(f.s),
       p = tr.point(f.s, 0),
       a = head(f.s),
       G = group(p.x, p.z, a),
       north = !!f.north,
-      span = W / 2 + 2.5,
-      top = north ? 13 : 17;
-    // a horn: a tapering tube from the foot (at x = ±span) curving up and in to the crown
-    for (const sx of [-1, 1])
-      for (const dz of north ? [0] : [-2.4, 2.4]) {
-        const pts = [];
-        for (let k2 = 0; k2 <= 16; k2++) {
-          const u = k2 / 16,
-            ang = (u * Math.PI) / 2;
-          pts.push(new THREE.Vector3(sx * span * Math.cos(ang) * (1 - 0.02 * u), top * Math.sin(ang), dz));
-        }
-        const curve = new THREE.CatmullRomCurve3(pts);
-        const g = new THREE.TubeGeometry(curve, 32, 1, 10, false),
-          pos = g.attributes.position;
-        // taper: thick at the foot, slim at the crown
-        const c = new THREE.Vector3();
-        for (let v = 0; v < pos.count; v++) {
-          const seg = Math.floor(v / 11) / 32,
-            q = curve.getPointAt(Math.min(1, seg));
-          c.set(pos.getX(v), pos.getY(v), pos.getZ(v)).sub(q);
-          const r = 1.25 - seg * 0.75;
-          pos.setXYZ(v, q.x + c.x * r, q.y + c.y * r, q.z + c.z * r);
-        }
-        g.computeVertexNormals();
-        G.add(mesh(g, abuGreen));
-        G.add(mesh(cy(1.6, 1.9, 1, 12), concrete, sx * span, 0, dz)); // its plinth
-      }
-    // the crest where the horns meet: a white disc ringed in green, the knot on it
-    const crest = new THREE.MeshLambertMaterial({
-      map: canvasTex(256, 256, (x, w, h) => {
-        x.fillStyle = '#1f7a3e';
-        x.beginPath();
-        x.arc(w / 2, h / 2, w / 2, 0, TAU);
-        x.fill();
-        x.fillStyle = '#f4f2ec';
-        x.beginPath();
-        x.arc(w / 2, h / 2, w * 0.42, 0, TAU);
-        x.fill();
-        starKnot(x, w / 2, h / 2, w * 0.3, ['rgba(0,40,10,.4)', 'rgba(255,255,255,.6)', '#1f7a3e']);
-      }),
-    });
-    const disc = mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.8, 32).rotateX(Math.PI / 2), [abuGreen, crest, crest]);
-    disc.position.set(0, top + 0.3, 0);
-    G.add(disc);
-    // the name on a low wall each side, facing the oncoming road
-    const nm = board(f.name, 16, 1.6, '#f4f2ec', '#1f7a3e', { italic: false });
+      k5 = north ? 0.85 : 1,
+      sp = W / 2 + 1.5, // the main arch's half span (the road under it)
+      PIER = 3 * k5, // solid wall either side of the main arch
+      PA = 4.4 * k5, // a walkway arch's width
+      WING = 3 * k5,
+      half = sp + PIER + PA + WING,
+      SIDE = 18, // the wall's height at the main arch's sides
+      PEAK = 22, // and at the peak
+      WT = 7.5 * k5, // the wings' height
+      D = 3.6;
+    const xa = sp + PIER, // where the wings start
+      pc = xa + PA / 2; // a walkway arch's middle
+    const sh = new THREE.Shape();
+    sh.moveTo(-half, 0);
+    sh.lineTo(-half, WT);
+    sh.lineTo(-xa, WT);
+    sh.lineTo(-xa, SIDE);
+    sh.quadraticCurveTo(-xa * 0.45, SIDE + (PEAK - SIDE) * 0.55, 0, PEAK);
+    sh.quadraticCurveTo(xa * 0.45, SIDE + (PEAK - SIDE) * 0.55, xa, SIDE);
+    sh.lineTo(xa, WT);
+    sh.lineTo(half, WT);
+    sh.lineTo(half, 0);
+    sh.lineTo(-half, 0);
+    // the openings: a round arch over the road (springing at 1 m), a smaller one in each wing
+    const archHole = (cx, hw, spring) => {
+      const h = new THREE.Path();
+      h.moveTo(cx - hw, 0);
+      h.lineTo(cx - hw, spring);
+      h.absarc(cx, spring, hw, Math.PI, 0, true);
+      h.lineTo(cx + hw, 0);
+      h.lineTo(cx - hw, 0);
+      return h;
+    };
+    sh.holes.push(archHole(0, sp, 1));
+    for (const sx of [-1, 1]) sh.holes.push(archHole(sx * pc, PA / 2 - 0.5, 2.6 * k5));
+    G.add(
+      mesh(
+        new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: false, curveSegments: 24 }).translate(0, 0, -D / 2),
+        gateCream,
+      ),
+    );
+    // the green lining of each walkway arch
     for (const sx of [-1, 1]) {
-      const wx = sx * (span + 11);
-      G.add(mesh(bx(17, 2.6, 1.2), cream, wx, 0, 0));
-      signBoth(G, nm, 16, 1.6, wx, 0.6, 0, 0, 1.2);
+      const r = new THREE.Shape(),
+        hw = PA / 2 - 0.5,
+        cx = sx * pc,
+        sprg = 2.6 * k5;
+      r.moveTo(cx - hw, 0);
+      r.lineTo(cx - hw, sprg);
+      r.absarc(cx, sprg, hw, Math.PI, 0, true);
+      r.lineTo(cx + hw, 0);
+      r.lineTo(cx + hw - 0.35, 0);
+      r.lineTo(cx + hw - 0.35, sprg);
+      r.absarc(cx, sprg, hw - 0.35, 0, Math.PI, false);
+      r.lineTo(cx - hw + 0.35, 0);
+      r.lineTo(cx - hw, 0);
+      G.add(
+        mesh(
+          new THREE.ExtrudeGeometry(r, { depth: D + 0.2, bevelEnabled: false, curveSegments: 16 }).translate(
+            0,
+            0,
+            -(D + 0.2) / 2,
+          ),
+          abuGreen,
+        ),
+      );
+    }
+    // the name in green letters across the face, under the crest, both sides
+    const nameT = canvasTex(2048, 160, (x, w, h) => {
+      x.clearRect(0, 0, w, h);
+      x.fillStyle = '#1f7a3e';
+      x.font = `700 ${h * 0.72}px "Barlow", "Arial", sans-serif`;
+      x.textBaseline = 'middle';
+      x.textAlign = 'right';
+      x.fillText(north ? 'AHMADU BELLO' : 'AHMADU BELLO', w * 0.43, h * 0.55);
+      x.textAlign = 'left';
+      x.fillText(north ? 'NORTH GATE' : 'UNIVERSITY', w * 0.57, h * 0.55);
+    });
+    const nameM = new THREE.MeshLambertMaterial({ map: nameT, transparent: true, depthWrite: false });
+    const nw = 26,
+      ny = 16.4;
+    for (const sz of [-1, 1]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(nw, (nw * 160) / 2048), nameM);
+      pl.position.set(0, ny, sz * (D / 2 + 0.03));
+      if (sz < 0) pl.rotation.y = Math.PI;
+      G.add(pl);
+    }
+    // the crest on the peak: a green shield with a white border, the knot on it, standing on the wall's top
+    const cw = 4.6 * k5,
+      chh = 5.4 * k5;
+    const shield = new THREE.Shape();
+    shield.moveTo(-cw / 2, chh);
+    shield.lineTo(-cw / 2, chh * 0.42);
+    shield.quadraticCurveTo(-cw / 2, chh * 0.08, 0, 0);
+    shield.quadraticCurveTo(cw / 2, chh * 0.08, cw / 2, chh * 0.42);
+    shield.lineTo(cw / 2, chh);
+    shield.lineTo(-cw / 2, chh);
+    const crestT = canvasTex(256, 300, (x, w, h) => {
+      x.fillStyle = '#ffffff';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = '#1f7a3e';
+      x.beginPath();
+      x.moveTo(12, 12);
+      x.lineTo(w - 12, 12);
+      x.lineTo(w - 12, h * 0.58);
+      x.quadraticCurveTo(w - 12, h * 0.92, w / 2, h - 10);
+      x.quadraticCurveTo(12, h * 0.92, 12, h * 0.58);
+      x.closePath();
+      x.fill();
+      loopKnot(x, w / 2, h * 0.46, w * 0.3, ['rgba(0,30,10,.5)', 'rgba(255,255,255,.4)', '#f4f2ec']);
+    });
+    // (the shape's UVs are in metres: scale them to the texture)
+    const sg = new THREE.ExtrudeGeometry(shield, { depth: 0.8, bevelEnabled: false });
+    const uv = sg.attributes.uv,
+      nrm = sg.attributes.normal;
+    for (let v = 0; v < uv.count; v++)
+      if (Math.abs(nrm.getZ(v)) > 0.5) uv.setXY(v, (uv.getX(v) + cw / 2) / cw, uv.getY(v) / chh);
+      else uv.setXY(v, 0.02, 0.5);
+    const crestM = new THREE.MeshLambertMaterial({ map: crestT });
+    G.add(mesh(sg.translate(0, PEAK - 1.2 * k5, -0.4), crestM));
+    // the red boom barrier, raised, on its post on the verge beside the road
+    if (!north) {
+      const bxp = -(half + 2),
+        post = mesh(bx(0.5, 1.4, 0.5), lam('#d23b2e'), bxp, 0, D / 2 + 3);
+      G.add(post);
+      const boom = mesh(new THREE.BoxGeometry(0.22, 7, 0.22).translate(0, 3.5, 0), lam('#d23b2e'), bxp, 1.2, D / 2 + 3);
+      boom.rotation.z = -0.55;
+      G.add(boom);
     }
     for (let o = -6; o <= 6; o++) {
       const j = tr.wrap(i + o);
-      tr.limit[j] = Math.min(tr.limit[j], span - 1.6);
-      tr.wall[j] = span - 1.2;
-    } // (the horns' feet are solid)
+      tr.limit[j] = Math.min(tr.limit[j], sp - 1.2);
+      tr.wall[j] = sp - 0.4;
+    } // (the arch's sides are solid)
     for (const sx of [-1, 1]) {
-      const q = tr.beside(i, sx * (span + 10));
-      reserve(q.x, q.z, 13);
+      const q = tr.beside(i, sx * (sp + half) * 0.5);
+      reserve(q.x, q.z, (half - sp) / 2 + 4);
     }
-    if (!north) place('THE MAIN GATE', 'Under the horns', p, f.s, { back: 50, h: 4, lookH: 12 });
+    if (!north) place('THE MAIN GATE', 'Under the arch', p, f.s, { back: 12, h: 4, lookH: 9 });
   }
 
   // the waterfall roundabout: a round pool, a stepped cascade of rock in the middle, ABU's knot on a plinth on top
