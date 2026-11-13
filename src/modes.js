@@ -75,6 +75,17 @@ export function openModes(from) {
 }
 
 // the setup's choices, drawn for the step you're on
+// each card's name and line on one line, brought down in size until it fits the card (a long city on a narrow card)
+function fitCards() {
+  for (const el of document.querySelectorAll(
+    '#modes .q-step:not([hidden]) .q-name, #modes .q-step:not([hidden]) .q-sub',
+  )) {
+    el.style.fontSize = '';
+    let px = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && px > 14) el.style.fontSize = `${(px -= 2)}px`;
+  }
+}
+addEventListener('resize', () => requestAnimationFrame(fitCards));
 function render(name) {
   const on = x => (x ? 'on' : '');
   if (name === 'level')
@@ -126,6 +137,7 @@ function goStep(i, dir = 1) {
     render(name);
     const panel = document.querySelector(`#modes .q-step[data-step="${name}"]`);
     if (dir) stagger(panel.children, { from: dir > 0 ? 'right' : 'left' }, 45);
+    requestAnimationFrame(fitCards);
   }
 }
 function next() {

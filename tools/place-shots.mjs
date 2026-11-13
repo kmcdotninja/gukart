@@ -28,7 +28,7 @@ const PICK = {
   'singapore.river': 'BOAT QUAY',
   'singapore.changi': 'JEWEL',
   'kaduna.abu': 'COMPUTER SCIENCE', // down the corridor between the labs
-  'kaduna.city': 'THE FOOTBRIDGE', // up on the suspension bridge over Murtala Square
+  'kaduna.city': 'THE SQUARE GATE', // the gate of Murtala Muhammed Square, the bridge through it
   'kaduna.zazzau': "THE EMIR'S PALACE", // the horsemen on the square
 };
 // each city's own card: its best-known sight [circuit, shot]
@@ -36,7 +36,7 @@ const CITY_PIC = {
   kano: ['kano.old', 'KOFAR NASSARAWA'],
   doha: ['doha.msheireb', 'THE CORNICHE'],
   singapore: ['singapore.marina', 'THE SKYLINE'],
-  kaduna: ['kaduna.city', 'THE FOOTBRIDGE'],
+  kaduna: ['kaduna.city', 'THE SQUARE GATE'],
 };
 // one fixed picture per mode, whatever circuit is built [circuit, shot]
 const MODE_PIC = {

@@ -542,3 +542,26 @@
     height: 25px;
   }
 }
+
+/* every name and line on a card stays on one line, and comes down in size until it fits (modes.js fitCards) */
+.q-body {
+  min-width: 0;
+}
+.q-name,
+.q-sub {
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* a tall screen (a tablet held upright, a narrow window): the choices stack, each one wide, as on a phone */
+@media (orientation: portrait) and (min-width: 820px) {
+  .q-pick {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .q-card {
+    flex: 1 1 0;
+    height: auto;
+    max-height: 300px;
+  }
+}
