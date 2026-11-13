@@ -29,6 +29,9 @@ const T = await p.evaluate(() => {
 const views = [
   [T.s - 90, 0, 3.8, 'approach'],
   [T.s - 25, 0, 3.8, 'mouth'],
+  [T.s - 55, 0, 3.8, 'front'],
+  [T.s - 40, 70, 25, 'side'],
+  [T.s - 60, 0, 50, 'high'],
   [T.s + 30, 0, 3.8, 'in'],
   [T.s + T.len / 2, 0, 3.8, 'mid'],
   [T.s + T.len - 30, 0, 3.8, 'out'],
@@ -40,7 +43,17 @@ for (const [s, side, ht, name] of views) {
     ([s, side, ht, name]) => {
       const { game, cam, renderer, scene } = window.gukart,
         tr = game.track;
-      if (name === 'air') {
+      if (name === 'high') {
+        const q = tr.point(s, 0),
+          t = tr.point(s + 60, 0);
+        cam.position.set(q.x, ht, q.z);
+        cam.lookAt(t.x, 10, t.z);
+      } else if (name === 'side') {
+        const q = tr.point(s, side),
+          t = tr.point(s + 40, 0);
+        cam.position.set(q.x, ht, q.z);
+        cam.lookAt(t.x, 12, t.z);
+      } else if (name === 'air') {
         const q = tr.point(s, side),
           t = tr.point(s, 0);
         cam.position.set(q.x, ht, q.z);

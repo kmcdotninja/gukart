@@ -13,7 +13,7 @@ import { fbm } from './util.js';
 const LOOK = {
   hill: ['#7d8a4a', '#6f7d43', '#9a8a6e', '#b3a493', '#8e7f74'], // scrub low down, then rock higher up
   rockFrom: 0.45, // how far up (0..1 of the hill's height) bare rock takes over
-  hillH: 34,
+  hillH: 40,
   board: 'DRIVE SAFELY', // the message board over the way in
   exit: 'EXIT',
 };
@@ -329,7 +329,7 @@ export function tunnel(k, f, opts = {}) {
   // (the cutting's sides sloping up from the kerbs), so nothing of it stands on the road or across the mouths.
   {
     const XR = 120,
-      ZR = L / 2 + 95,
+      ZR = L / 2 + 50,
       STEP = 4,
       BAND = HW + 1,
       nx = Math.round((2 * XR) / STEP),
@@ -343,13 +343,28 @@ export function tunnel(k, f, opts = {}) {
       for (let i = 0; i <= nx; i++) {
         const x = -XR + i * STEP,
           z = -ZR + j * STEP,
-          r = Math.hypot(x / XR, z / ZR),
-          nn = fbm(x * 0.03 + 7, z * 0.03 + 3);
-        let h = look.hillH * Math.pow(Math.max(0, 1 - r * r), 1.1) * (0.75 + nn * 0.5);
-        const inside = Math.abs(z) < L / 2 - 1;
-        if (Math.abs(x) < BAND + 4 && inside) h = Math.max(h, CROWN + 3); // over the vault
+          nn = fbm(x * 0.03 + 7, z * 0.03 + 3),
+          // a ridge, not a dome: its full height all along the bore, falling away steeply past each mouth (so the
+          // portal stands in a hillside face with rock rising over it, as real ones do: a dome peaking over the middle
+          // sank below the portals and they stood in front of a dip, looking hollow)
+          fx = Math.pow(Math.max(0, 1 - (x / XR) ** 2), 0.8),
+          dz = Math.abs(z) - L / 2,
+          fz = dz < 0 ? 1 : Math.pow(Math.max(0, 1 - dz / 38), 1.4);
+        let h = look.hillH * fx * fz * (0.8 + nn * 0.4);
+        const face = L / 2 + 1, // the headwalls' faces
+          inside = Math.abs(z) <= face,
+          TOPW = CROWN + 6; // their tops
+        if (Math.abs(x) < HW + 16 && inside) {
+          // over the bore and the headwalls: well clear of the vault, and coming down to sit on each headwall's top edge
+          // over its last 14 m (rock rising straight up behind the portal, no gap of sky between them)
+          h = Math.max(h, CROWN + 9);
+          // (its front edge tucked just under the headwall's top, hidden behind it: you can't see in under the hill)
+          const e = face - Math.abs(z);
+          if (e < 6) h = TOPW - 0.6;
+          else if (e < 20) h = TOPW - 0.6 + (h - TOPW + 0.6) * ((e - 6) / 14);
+        }
         if (!inside) h = Math.min(h, Math.max(0, (Math.abs(x) - BAND) * 1.1)); // the cutting
-        keep.push(!(Math.abs(x) < BAND && Math.abs(z) > L / 2 - 4)); // (none over the road beyond the mouths)
+        keep.push(!(Math.abs(x) < HW + 14 && Math.abs(z) > face)); // (none over the road in front of the mouths)
         pos.push(x, Math.max(0, h) - 0.2, z);
         const u = h / look.hillH;
         c.copy(HC[0])
@@ -370,7 +385,12 @@ export function tunnel(k, f, opts = {}) {
     g.setIndex(idx);
     g = g.toNonIndexed();
     g.computeVertexNormals();
-    const hill = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    // (seen from both sides: where the hill rises behind a portal some of its faces turn away from the road, and drawn from
+    // one side only you saw straight through them, the hill hollow)
+    const hill = new THREE.Mesh(
+      g,
+      new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }),
+    );
     hill.castShadow = hill.receiveShadow = true;
     G.add(hill);
     // nothing else is built on it

@@ -2245,7 +2245,8 @@ export function dressKaduna(k) {
     tunnel(k, f, {
       place,
       look: {
-        hill: ['#8d8c55', '#7b8049', '#a8968a', '#bba99b', '#9d8b7f'],
+        hill: ['#6f7a3e', '#5d6a35', '#857668', '#74665b', '#93836f'], // (scrub, then granite: grey-brown, not pale)
+        rockFrom: 0.55,
         board: 'TUKI LAFIYA', // (drive safely)
         exit: 'FITA',
       },
