@@ -338,13 +338,22 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       cPave = new THREE.Color(sg ? '#b9b8b4' : kd ? '#cdb79a' : '#d9d2c4'),
       cGreen = new THREE.Color(sg ? '#4f8a3a' : kd ? '#7c9a46' : '#8fb35a'),
       cBeach = new THREE.Color(sg ? '#c9c4b8' : kd ? '#9b7a58' : '#f8ecd0');
+    // (road points within 60 m of where it runs down under the water)
+    const nearTube = new Uint8Array(N);
+    for (let i = 0; i < N; i++)
+      if (tr.lowb[i] && P[i].y < -1) for (let o = -30; o <= 30; o++) nearTube[tr.wrap(i + o)] = 1;
     for (let k = 0; k < gp.count; k++) {
       const x = gp.getX(k),
         z = gp.getZ(k),
         d = roadGap(x, z),
         wv = wet[k] ? Math.max(m[k], 0.5) : m[k];
       gp.setY(k, d < W / 2 + 26 && !wet[k] ? -0.35 : lerp(0.15, -7, sstep(0.25, 0.75, wv)));
-      if (doha && wet[k] && d < 90 && tr.lowb[tr.nearest(x, z).i]) gp.setY(k, -27); // deep water round the aquarium tunnel
+      // deep water round an aquarium tunnel (The Pearl's, Singapore's river tube): the bed dug out well below the glass,
+      // so the camera following a kart down into the tube never passes through it (in Singapore it ran through the sand)
+      if (wet[k] && d < 90) {
+        const ni = tr.nearest(x, z).i;
+        if (tr.lowb[ni] && (doha || nearTube[ni])) gp.setY(k, -27);
+      }
       c.copy(cSand)
         .lerp(cGreen, sstep(kd ? 0.32 : 0.6, kd ? 0.62 : 0.75, fbm(x * 0.02 + 3, z * 0.02)) * (kd ? 0.9 : 0.5))
         .lerp(cPave, 1 - sstep(W / 2 + 3, W / 2 + 18, d))
