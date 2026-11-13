@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { canvasTex, starKnot, loopKnot, diamondBand } from './textures.js';
 import { boxM } from './doha.js';
+import { tunnel } from './tunnels.js';
 import { fbm } from './util.js';
 
 const TAU = Math.PI * 2;
@@ -2238,6 +2239,17 @@ export function dressKaduna(k) {
     }
     place('THE ROCK', 'Over the granite', tr.point(sm, 8), sm, { back: 40, h: 5, lookH: 8 });
   }
+
+  // the tunnel through the granite at Zazzau (tunnels.js): its hill granite and scrub, its signs in Hausa
+  for (const f of fOf('tunnel'))
+    tunnel(k, f, {
+      place,
+      look: {
+        hill: ['#8d8c55', '#7b8049', '#a8968a', '#bba99b', '#9d8b7f'],
+        board: 'TUKI LAFIYA', // (drive safely)
+        exit: 'FITA',
+      },
+    });
 
   /* ---------- the land round each circuit ---------- */
   if (CIRC === 'zazzau') {

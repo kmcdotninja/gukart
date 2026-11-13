@@ -190,14 +190,14 @@ export function zazzauTrack(La, Lb) {
     [60, 'kicker'],
     [120, 'items'],
   ]);
-  // up the rock's shoulder, along it, and down
-  t.straight(70, 8, [
-    [0, 'rock', { len: 180 }],
-    [20, 'coins', { lat: 0, n: 7 }],
+  // straight through the granite rock in a tunnel: a cutting into the hill, the portal, 170 m of lit vault, out the far side
+  t.straight(330, 0, [
+    [80, 'hall', { len: 170 }],
+    [80, 'tunnel', { len: 170, name: 'DUTSEN ZARIA TUNNEL' }],
+    [100, 'coins', { lat: 0, n: 10, gap: 7 }],
+    [190, 'items'],
   ]);
-  t.straight(40, 0, [[20, 'items']]);
-  t.straight(70, -8);
-  t.straight(La - 330, 0, [[Math.max(10, La - 370), 'pad', { lat: 0 }]]);
+  t.straight(Math.max(20, La - 480), 0, [[Math.max(5, La - 520), 'pad', { lat: 0 }]]);
   corner(t, 85, 90, 0, [[40, 'coins', { lat: 4, wave: 1 }]]);
   t.straight(Lb, 0, [
     [20, 'walls', { len: Lb * 0.45 }],

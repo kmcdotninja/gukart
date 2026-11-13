@@ -913,6 +913,7 @@ export function buildForks(tr) {
         'zgate',
         'rock',
         'flowerring',
+        'tunnel',
       ].includes(f.type)
     )
       for (let s = f.s - 30; s < f.s + (f.len || 0) + 30; s += seg) blocked[tr.wrap(Math.floor(tr.wrapS(s) / seg))] = 1; // no fork through a city's set pieces
