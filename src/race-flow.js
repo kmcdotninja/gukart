@@ -16,6 +16,7 @@ import { hidePodium } from './podium.js';
 import { setNight } from './scene.js';
 import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tourLevel } from './cup.js';
 import { rivalNames } from './buddy.js';
+import { releaseInput } from './input.js';
 
 // the loading card before a race (Asphalt): the chapter, the goal, pictures of its places, a filling diamond
 export const INTRO = location.hash === '#capture' ? 2.4 : 5.2; // seconds: long enough to read the card and see the grid
@@ -77,6 +78,7 @@ const iOS =
 const raceMode = () => (game.mode === 'cup' ? 'gp' : game.mode);
 export function startRace() {
   hidePodium();
+  releaseInput();
   Sound.init();
   if (isTouch) {
     document.documentElement.requestFullscreen?.().catch(() => {});
@@ -168,6 +170,7 @@ function paintQuitAsk() {
   $('#quitEnd').hidden = !t;
 }
 export function togglePause() {
+  releaseInput(); // (whatever was held going into the pause, or let go during it, starts again from nothing)
   if (game.state === 'race' || game.state === 'count') {
     game.prevState = game.state;
     game.state = 'paused';

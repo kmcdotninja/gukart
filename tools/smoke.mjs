@@ -16,7 +16,7 @@ setTimeout(
   6 * 60 * 1000,
 ).unref();
 const server = await preview({ preview: { port: 4199, strictPort: true, host: '127.0.0.1' }, logLevel: 'silent' });
-const URL = 'http://127.0.0.1:4199/';
+const URL = 'http://127.0.0.1:4199/?gktest'; // (?gktest: the game's handle, to read the steering)
 const browser = await chromium.launch({
   headless: !headed,
   // the Mac's own graphics chip (Metal): software rendering draws the race at about 1 frame a second, too slow to play
@@ -230,6 +230,17 @@ try {
   await expectVisible(page, '#pause', 'settings returns to pause');
   await click(page, '#resumeBtn');
   await expectHidden(page, '#pause', 'resume closes pause');
+  // a turn held when the page loses focus (a tab switch, a call) never gets its keyup: it must not stay held
+  const steer = () => page.evaluate(() => window.gukart.game.race.input.steer);
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(600);
+  const held = await steer();
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.waitForTimeout(600);
+  const released = await steer();
+  await page.keyboard.up('ArrowLeft');
+  if (held > 0.5 && Math.abs(released) < 0.05) pass('a turn held when the page loses focus is let go');
+  else fail(`the steering stayed held after the page lost focus (${held.toFixed(2)} then ${released.toFixed(2)})`);
   await page.keyboard.press('KeyP');
   await expectVisible(page, '#pause', 'pause opens again');
   await click(page, '#quitBtn');

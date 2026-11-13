@@ -45,6 +45,30 @@ const wheel = (v, to, dt) => {
   const rate = to && Math.sign(to) === Math.sign(v || to) && Math.abs(to) > Math.abs(v) ? 2.6 : 6;
   return v + clamp(to - v, -rate * dt, rate * dt);
 };
+// let go of everything: every key, touch and button counts as released, the wheel back to the centre. Called whenever
+// the game pauses or resumes and whenever the page loses focus (a tab switch, a phone call, the app sent to the back):
+// the browser never delivers the keyup or the end of a touch that happens while we're away, so without this a turn held
+// at that moment stayed held after resuming and steered the kart into the wall
+export function releaseInput() {
+  for (const k in keys) keys[k] = false;
+  touchId = null;
+  touchSteer = 0;
+  kbSteer = 0;
+  btnSteer = 0;
+  btnTarget = 0;
+  brakeTouch = false;
+  fireTouch = false;
+  hardT = 0;
+  for (const el of document.querySelectorAll('#leftBtn, #rightBtn, #brakeBtn, #fireBtn, #nitroBtn'))
+    el.classList.remove('on');
+  const inp = game.race?.input;
+  if (inp) {
+    inp.steer = 0;
+    inp.drift = inp.fire = inp.brake = false;
+    inp.firePressed = inp.nitroPressed = inp.driftPressed = false;
+  }
+}
+
 export function readInput(dt) {
   const kb = (keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0);
   // the keys and the phone's arrows turn a steering wheel, not a switch: it winds on steadily (full lock after about
@@ -81,6 +105,9 @@ export function initInput() {
   addEventListener('keyup', e => {
     keys[e.code] = false;
   });
+  addEventListener('blur', releaseInput);
+  addEventListener('pagehide', releaseInput);
+  document.addEventListener('visibilitychange', () => document.hidden && releaseInput());
   canvas.addEventListener('pointerdown', e => {
     if (game.state === 'garage') gDrag = e.clientX;
   });
