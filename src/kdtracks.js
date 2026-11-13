@@ -140,6 +140,7 @@ export function kdTrack(La, Lb) {
   t.straight(Lb, 0, [
     [0, 'citystreet', { len: Lb }],
     [Lb * 0.4, 'coins', { lat: 0, wave: 1 }],
+    [Lb * 0.62, 'flowerring'], // the ring of flowers over Ahmadu Bello Way
   ]);
   return t;
 }

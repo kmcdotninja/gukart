@@ -1837,6 +1837,133 @@ export function dressKaduna(k) {
           for (let n = 0; n < 6; n++) pt(bx(2.6, 1, 1.6), lam(pick(['#8d6a4b', '#a07a52'])), rr(-5, 5), 0, rr(-9, 9));
         }
 
+  // the ring of flowers over Ahmadu Bello Way: a round walkway on columns, high over the road, its two edges heaped
+  // with pink bougainvillea in long planters, white railings, a stair down to the pavement at each corner
+  for (const f of fOf('flowerring')) {
+    const i = tr.idx(f.s),
+      p = tr.point(f.s, 0),
+      G = group(p.x, p.z, head(f.s)),
+      R = W / 2 + 22, // the ring's middle line
+      HW = 2.6, // half the walkway's width
+      Y = 7.2, // the deck's height
+      SEG = 96,
+      deckM = lam('#e9e4da'),
+      railM = lam('#f7f7f4'),
+      planterM = lam('#c9c2b4'),
+      leafM = lam('#3f7a32', { flatShading: true }),
+      PINK = ['#e8336a', '#f04a7c', '#d81b60', '#ff5c8a', '#c2185b'].map(c => lam(c, { flatShading: true }));
+    // the deck: a flat annulus, and its edge a little deeper
+    const ring = new THREE.RingGeometry(R - HW, R + HW, SEG, 1).rotateX(-Math.PI / 2);
+    G.add(mesh(ring.clone().translate(0, Y + 0.5, 0), deckM));
+    const under = new THREE.Mesh(
+      new THREE.RingGeometry(R - HW, R + HW, SEG, 1).rotateX(Math.PI / 2).translate(0, Y - 0.3, 0),
+      deckM,
+    );
+    G.add(under);
+    for (const r of [R - HW, R + HW])
+      G.add(mesh(new THREE.CylinderGeometry(r, r, 0.8, SEG, 1, true).translate(0, Y + 0.1, 0), deckM));
+    // the planters along both edges, the flowers in them, the railings outside them
+    const blobs = new Map(),
+      leaves = [],
+      rails = [],
+      posts = [];
+    for (let k = 0; k < SEG * 2; k++) {
+      const a = (k / (SEG * 2)) * TAU;
+      for (const [r, sd] of [
+        [R - HW + 0.5, -1],
+        [R + HW - 0.5, 1],
+      ]) {
+        const x = Math.cos(a) * r,
+          z = Math.sin(a) * r;
+        if (k % 2 === 0) {
+          const g = new THREE.BoxGeometry(0.9, 0.7, (TAU * r) / SEG + 0.05).rotateY(-a).translate(x, Y + 0.85, z);
+          (blobs.get(planterM) || blobs.set(planterM, []).get(planterM)).push(g);
+        }
+        // a mound of leaves and flowers spilling over the edge
+        leaves.push(
+          new THREE.IcosahedronGeometry(0.75, 0).translate(
+            x + Math.cos(a) * sd * 0.2,
+            Y + 1.45,
+            z + Math.sin(a) * sd * 0.2,
+          ),
+        );
+        const pm = PINK[(k * 7 + (sd > 0 ? 3 : 0)) % PINK.length];
+        for (let b = 0; b < 2; b++) {
+          const off = sd * (0.25 + b * 0.35);
+          (blobs.get(pm) || blobs.set(pm, []).get(pm)).push(
+            new THREE.IcosahedronGeometry(0.55 + (b ? 0 : 0.15), 0).translate(
+              x + Math.cos(a) * off,
+              Y + 1.6 - b * 0.55,
+              z + Math.sin(a) * off,
+            ),
+          );
+        }
+      }
+      // the railing on the inside edge (the outside is heaped with flowers)
+      const r2 = R - HW + 0.05,
+        x2 = Math.cos(a) * r2,
+        z2 = Math.sin(a) * r2;
+      if (k % 4 === 0) posts.push(new THREE.BoxGeometry(0.08, 1.1, 0.08).translate(x2, Y + 1.05, z2));
+    }
+    rails.push(new THREE.TorusGeometry(R - HW + 0.05, 0.05, 4, SEG).rotateX(Math.PI / 2).translate(0, Y + 1.6, 0));
+    for (const [m, list] of [
+      [leafM, leaves],
+      [railM, rails.concat(posts)],
+    ])
+      G.add(mesh(mergeGeometries(list.map(g => (g.index ? g.toNonIndexed() : g))), m));
+    for (const [m, list] of blobs) G.add(mesh(mergeGeometries(list.map(g => (g.index ? g.toNonIndexed() : g))), m));
+    // the columns: round, white, wherever the ring is clear of the road (never over it), a capital under the deck
+    const clearLat = W / 2 + 4;
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * TAU + TAU / 48,
+        x = Math.cos(a) * R,
+        z = Math.sin(a) * R;
+      if (Math.abs(x) < clearLat + 1.2) continue; // (x is across the road in this frame)
+      G.add(mesh(cy(0.7, 0.85, Y - 0.3, 14), railM, x, 0, z));
+    }
+    // the stairs: four flights from the ring down to the pavements, out on the diagonals
+    const stairM = lam('#d9d3c6');
+    for (const a of [TAU / 8, (3 * TAU) / 8, (5 * TAU) / 8, (7 * TAU) / 8]) {
+      const ox = Math.cos(a) * (R + HW),
+        oz = Math.sin(a) * (R + HW),
+        SG = new THREE.Group();
+      SG.position.set(ox, 0, oz);
+      SG.rotation.y = -a + Math.PI / 2;
+      const steps = 16,
+        run = 14;
+      for (let k = 0; k < steps; k++) {
+        const h = Y + 0.5 - ((k + 1) * (Y + 0.5)) / steps;
+        SG.add(mesh(bx(3, h, run / steps + 0.02), stairM, 0, 0, (k + 0.5) * (run / steps)));
+      }
+      for (const sx of [-1.55, 1.55]) {
+        const rl = mesh(new THREE.BoxGeometry(0.08, 0.08, Math.hypot(run, Y)).translate(0, 0, 0), railM);
+        rl.position.set(sx, Y / 2 + 1.5, run / 2);
+        rl.rotation.x = Math.atan2(Y, run);
+        SG.add(rl);
+        for (let k = 0; k <= 4; k++) {
+          const z = (k / 4) * run,
+            h = Y + 0.5 - (z / run) * (Y + 0.5);
+          SG.add(mesh(bx(0.08, 1.1, 0.08), railM, sx, h, z));
+        }
+      }
+      G.add(SG);
+    }
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * TAU,
+        x = Math.cos(a) * (R + 6),
+        z = Math.sin(a) * (R + 6),
+        q = new THREE.Vector3(x, 0, z)
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), head(f.s))
+          .add(new THREE.Vector3(p.x, 0, p.z));
+      if (Math.abs(x) > W / 2 + 6) reserve(q.x, q.z, 10);
+    }
+    for (let o = -12; o <= 12; o++) {
+      const j = tr.wrap(i + o);
+      tr.wall[j] = Math.min(tr.wall[j] || 99, W / 2 + 3); // (the columns stand off the kerb)
+    }
+    place('THE FLOWER RING', 'Under the bougainvillea', p, f.s, { back: 50, h: 4, lookH: 8 });
+  }
+
   /* ======================================================================================================== */
   /* ---------- Zazzau ---------- */
 

@@ -16,8 +16,9 @@
 //  - and the city behind: rain trees and palms down every road, the tall slab flats, condo towers, and more glass
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { canvasTex } from './textures.js';
+import { canvasTex, signTex } from './textures.js';
 import { facade, GLASS, glassTex, boxM, cylM } from './doha.js';
+import { aquarium } from './aquarium.js';
 
 const TAU = Math.PI * 2;
 
@@ -158,6 +159,36 @@ export function dressSingapore(k) {
       reserve(p.x, p.z, W / 2 + 40);
     }
 
+  // where a crossing dives under the river, a glass tube along the bed (the same aquarium as The Pearl's, aquarium.js)
+  for (const f of fOf('lowbridge'))
+    aquarium(k, f, {
+      lam,
+      glow,
+      place,
+      head,
+      swimmers: animated,
+      deck: false,
+      sign: signTex('River Tube', 0, 'singapore'),
+      names: { tube: ['THE RIVER TUBE', 'Under the Singapore River in glass'], bridge: null },
+      // (its own look, not The Pearl's: a round tube in silver hoops on steel rails, deep clear blue, pale sand, bubbles)
+      look: {
+        round: true,
+        hoop: 5,
+        rails: true,
+        rib: '#e6edf4',
+        ribGlow: '#56616e',
+        glass: '#d6ecff',
+        top: '#3fa3e6',
+        bed: '#062a66',
+        haze: '#1d64b0',
+        sand: '#9cc7e2',
+        surf: '#7cc4f2',
+        surfDeep: '#3f8fd0',
+        bubble: 0.45,
+        bubbleCols: 30,
+      },
+    });
+
   /* ---------- the bridges: a deck on piers over the water, railings, lamps; the Helix's spiral round the road ---------- */
   const deckM = lam('#cfd3d8'),
     pierM = lam('#b6bcc4'),
@@ -171,6 +202,7 @@ export function dressSingapore(k) {
         p = tr.point(s, 0),
         a = head(s);
       if (tr.inGap?.[i]) continue; // (a jump across the water: nothing under you there)
+      if (p.y < -0.8) continue; // (where the road dives under the river the glass tube carries it: aquarium.js)
       parts.push(new THREE.BoxGeometry(W + 4, 1.6, 4.2).translate(0, -0.85, 0).rotateY(a).translate(p.x, p.y, p.z));
       for (const sd of [1, -1]) {
         const q = tr.beside(i, sd * (W / 2 + 1.4));

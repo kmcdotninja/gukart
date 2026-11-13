@@ -252,16 +252,28 @@ export function riverTrack(La, Lb) {
   ]);
   corner(t, 60, 90, 0, [[30, 'coins', { lat: 4, wave: 1 }]]);
   t.straight(60);
-  t.straight(120, 0, [
-    [0, 'lowbridge', { len: 120 }],
-    [0, 'cavenagh', { len: 120 }],
-    [40, 'coins', { lat: 0, n: 8 }],
+  // over the river past Cavenagh Bridge, then down: the road dives into a glass tube along the river bed (fish, weed,
+  // the light from the surface above) and climbs out on the far side
+  t.straight(60, 0, [
+    [0, 'lowbridge', { len: 60 + 450 }],
+    [0, 'cavenagh', { len: 60 }],
+    [20, 'coins', { lat: 0, n: 6 }],
   ]);
-  t.straight(350, 0, [
-    [60, 'clocktower'],
-    [70, 'items'],
-    [200, 'coins', { lat: 0, wave: 1 }],
-    [280, 'items'],
+  t.straight(15, -0.9);
+  t.straight(20);
+  t.straight(100, -15.6);
+  t.straight(150, 0, [
+    [10, 'pad', { lat: 0 }],
+    [50, 'items'],
+    [90, 'coins', { lat: 0, wave: 1 }],
+  ]);
+  t.straight(100, 15.6);
+  t.straight(20);
+  t.straight(15, 0.9);
+  t.straight(30);
+  t.straight(90, 0, [
+    [40, 'clocktower'],
+    [60, 'items'],
   ]);
   corner(t, 70, 90, 0, [[40, 'coins', { lat: 4, wave: 1 }]]);
   // along the Padang, two humps that throw you into the air

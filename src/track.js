@@ -5,6 +5,7 @@ import { clamp } from './util.js';
 import { signTex } from './textures.js';
 import * as DQ from './doharoad.js';
 import * as SG from './sgroad.js';
+import { SUBWAYS } from './subways.js';
 
 export const W = 26;
 const V = () => new THREE.Vector3();
@@ -909,6 +910,7 @@ export function buildForks(tr) {
         'mosque',
         'zgate',
         'rock',
+        'flowerring',
       ].includes(f.type)
     )
       for (let s = f.s - 30; s < f.s + (f.len || 0) + 30; s += seg) blocked[tr.wrap(Math.floor(tr.wrapS(s) / seg))] = 1; // no fork through a city's set pieces
@@ -1206,7 +1208,10 @@ export function buildForkRoads(scene, tr, tex) {
       if (dq) {
         wall.emissive.set('#5a5650');
       }
-      for (const sg of [1, -1]) {
+      // a city with its own subway builds it (src/subways.js): Kano's dune ceiling, Kaduna's arcade, Singapore's tube
+      const own = !dq && SUBWAYS[tr.city];
+      if (own) own({ scene, sub: { ...sub, seg: b.seg }, BW, H });
+      for (const sg of own ? [] : [1, -1]) {
         const g2 = strip(sub, [sg * (BW / 2 + 0.3), sg * (BW / 2 + 0.3)], (i, r) => (r ? H : 0));
         const uv = g2.attributes.uv;
         if (!dq)
@@ -1282,7 +1287,7 @@ export function buildForkRoads(scene, tr, tex) {
         mesh(sg, shellM, true);
       }
       // the roof, with an open slot every few metres so daylight comes through
-      if (!dq) {
+      if (!dq && !own) {
         const pos = [],
           idx = [];
         const n2 = sub.M;
@@ -1314,16 +1319,18 @@ export function buildForkRoads(scene, tr, tex) {
           scene.add(l);
         }
       }
-      mesh(
-        strip(sub, [BW / 2 + 26, BW / 2 + 0.3], (i, r) => (r ? H + 0.2 : 0)),
-        new THREE.MeshLambertMaterial({ color: '#d9c49a', map: tex.dirt, side: THREE.DoubleSide }),
-        true,
-      ); // banks of sand either side, up to the roof
-      mesh(
-        strip(sub, [-BW / 2 - 0.3, -BW / 2 - 26], (i, r) => (r ? 0 : H + 0.2)),
-        new THREE.MeshLambertMaterial({ color: '#d9c49a', map: tex.dirt, side: THREE.DoubleSide }),
-        true,
-      );
+      if (!own?.open)
+        mesh(
+          strip(sub, [BW / 2 + 26, BW / 2 + 0.3], (i, r) => (r ? H + 0.2 : 0)),
+          new THREE.MeshLambertMaterial({ color: '#d9c49a', map: tex.dirt, side: THREE.DoubleSide }),
+          true,
+        ); // banks of sand either side, up to the roof
+      if (!own?.open)
+        mesh(
+          strip(sub, [-BW / 2 - 0.3, -BW / 2 - 26], (i, r) => (r ? 0 : H + 0.2)),
+          new THREE.MeshLambertMaterial({ color: '#d9c49a', map: tex.dirt, side: THREE.DoubleSide }),
+          true,
+        );
       const sign = dq
           ? DQ.qaSign(stn + ' STATION')
           : signTex((tr.cityName || 'KANO') + (tr.city === 'singapore' ? ' MRT' : ' SUBWAY'), 0, tr.city),
@@ -1416,12 +1423,15 @@ export function buildForkRoads(scene, tr, tex) {
   nose.position.set(0, 0.6, 0);
   g.add(nose);
   const steel = new THREE.MeshLambertMaterial({ color: '#4a5060' });
+  // (the posts stand clear of both branches: each starts a quarter of the road off the middle and is BW wide, so its
+  // outer kerb reaches past the road's own edge; a post just off the road stood a metre inside a branch's lane)
+  const PX = W / 4 + BW / 2 + 3.5;
   for (const sx of [-1, 1]) {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 8, 0.5), steel);
-    post.position.set(sx * (W / 2 + 2), 4, -6);
+    post.position.set(sx * PX, 4, -6);
     g.add(post);
   }
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(W + 5, 0.7, 0.7), steel);
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(PX * 2 + 1, 0.7, 0.7), steel);
   beam.position.set(0, 7.6, -6);
   g.add(beam);
   for (const f of forks) {
