@@ -404,11 +404,10 @@ export function dressKanoCity(k, h) {
       },
       dA = dir(X.s1),
       dB = dir(X.s2),
+      // clear of every road on the lap, at any height, with room for the tower's own width (and the fork's branches)
       roadsClear = (x, z) => {
-        for (let s1 = f.s - 60; s1 < f.s + f.len + 60; s1 += 2) {
-          const q = tr.point(s1, 0);
-          if (Math.hypot(q.x - x, q.z - z) < W / 2 + 5) return false;
-        }
+        for (let i = 0; i < tr.N; i++) if (Math.hypot(tr.P[i].x - x, tr.P[i].z - z) < W / 2 + 6) return false;
+        for (const fk of tr.forks || []) if (fk.dist(x, z) < 20 / 2 + 6) return false;
         return true;
       };
     const brickM = lam('#ffffff', { map: brickT, emissive: '#2a1408', emissiveMap: brickT }),
@@ -421,11 +420,25 @@ export function dressKanoCity(k, h) {
       [-1, -1],
       [-1, 1],
     ]) {
-      const v = dA.clone().multiplyScalar(sa).add(dB.clone().multiplyScalar(sb)).normalize();
-      let r = 16;
-      while (r < 60 && !roadsClear(X.p.x + v.x * r, X.p.z + v.y * r)) r += 1;
-      const tx = v.x * r,
-        tz = v.y * r,
+      // the quadrant's middle direction first, then swinging either way, nearest first; never on a road: a tower that
+      // finds no clear ground within 50 m is left out (one stood on the road before, where the search gave up)
+      const v0 = dA.clone().multiplyScalar(sa).add(dB.clone().multiplyScalar(sb)).normalize();
+      let spot = null;
+      for (let r = 16; r <= 50 && !spot; r += 1)
+        for (const da of [0, 0.15, -0.15, 0.3, -0.3, 0.45, -0.45]) {
+          const v = v0.clone().rotateAround(new THREE.Vector2(), da);
+          if (roadsClear(X.p.x + v.x * r, X.p.z + v.y * r)) {
+            spot = { v, r };
+            break;
+          }
+        }
+      if (!spot) {
+        towers.push(null);
+        continue;
+      }
+      const v = spot.v,
+        tx = v.x * spot.r,
+        tz = v.y * spot.r,
         tw = mesh(new THREE.BoxGeometry(5, TH, 5).translate(0, TH / 2, 0), brickM, tx, 0, tz);
       tw.rotation.y = Math.atan2(v.x, v.y);
       GE.add(tw);
@@ -466,10 +479,10 @@ export function dressKanoCity(k, h) {
       }
       GE.add(g);
     };
-    truss(towers[0], towers[2], 'K  A  N  O');
-    truss(towers[1], towers[3], 'MUHAMMADU BUHARI ROAD INTERCHANGE');
+    if (towers[0] && towers[2]) truss(towers[0], towers[2], 'K  A  N  O');
+    if (towers[1] && towers[3]) truss(towers[1], towers[3], 'MUHAMMADU BUHARI ROAD INTERCHANGE');
     GE.updateMatrixWorld(true);
-    for (const t2 of towers) {
+    for (const t2 of towers.filter(Boolean)) {
       const w = t2.clone().applyMatrix4(GE.matrixWorld);
       reserve(w.x, w.z, 5);
     }
