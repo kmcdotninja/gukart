@@ -26,6 +26,14 @@ export const GANTRIES = {
     ],
     frame: '#d8dde3',
   },
+  'kano.metro': {
+    style: 'arch',
+    frame: '#f2f2ee',
+    banner: '#8a1f1f',
+    ink: '#ffffff',
+    text: 'KANO CITY GRAND PRIX',
+    num: '1967',
+  },
   'doha.msheireb': { style: 'frame', frame: '#7a1430', banner: '#141014', ink: '#d9b25a', text: 'MSHEIREB GRAND PRIX' },
   'doha.pearl': { style: 'board', board: '#f2efe8', ink: '#0e7c86', text: 'THE PEARL GRAND PRIX', frame: '#c9ced6' },
   'doha.lusail': {

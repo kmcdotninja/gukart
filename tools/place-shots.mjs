@@ -20,6 +20,7 @@ const W = 800,
 const PICK = {
   'kano.old': 'start', // the start arch, the Emir's palace behind
   'kano.dala': 'start', // the start arch from above, the city and the sea behind
+  'kano.metro': 'THE INTERCHANGE', // the clock towers and the steel X over the flyover
   'doha.msheireb': 'start', // the start arch down a Msheireb street
   'doha.pearl': 'THE AQUARIUM TUNNEL', // the glass tube under the marina mouth, fish all round
   'doha.lusail': 'LUSAIL STADIUM',

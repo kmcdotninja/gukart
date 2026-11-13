@@ -2,7 +2,7 @@
 // A track is drawn with a turtle (src/turtle.js): straights, banked arcs, a vertical loop, and features (gates, jumps,
 // pads…) dropped along the way at distances from the start. The two long straights are solved so the circuit closes.
 import { turtle, closer } from './turtle.js';
-import { dalaTrack } from './kano2.js';
+import { dalaTrack, kanoCityTrack } from './kano2.js';
 import { marinaTrack, gardensTrack, riverTrack, changiTrack } from './sgtracks.js';
 import { abuTrack, kdTrack, zazzauTrack } from './kdtracks.js';
 
@@ -315,10 +315,12 @@ export const KADUNA_CIRCUITS = [
   { id: 'zazzau', name: 'Zazzau', track: closer(zazzauTrack), fn: zazzauTrack },
 ];
 
-// Kano is two circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had) and Dala Hill
+// Kano is three circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had), Dala Hill,
+// and Kano City through the modern metropolis
 export const KANO_CIRCUITS = [
   { id: 'old', name: 'Old City', track: closedKano, fn: kanoTrack, rid: 'kano' },
   { id: 'dala', name: 'Dala Hill', track: closer(dalaTrack), fn: dalaTrack },
+  { id: 'metro', name: 'Kano City', track: closer(kanoCityTrack), fn: kanoCityTrack },
 ];
 
 export const CHAPTERS = [

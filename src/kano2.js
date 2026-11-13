@@ -49,3 +49,74 @@ export function dalaTrack(La, Lb) {
   ]); // heading 0°: back to the start
   return t;
 }
+
+// Kano's third circuit, Kano City: the modern metropolis. Off the line on State Road (palms down the middle, keke
+// napep), round the Golden Jubilee monument at the Government House gate, along Ahmadu Bello Way, up onto the red
+// Kwankwasiyya flyover sweeping round over its chequered roundabout, round the fountain at the next roundabout, over
+// the Muhammadu Buhari Interchange (the four brick clock towers, the steel X spelling KANO), past the Kano Club's golf
+// course on the Race Course, round the Ring Road roundabout and back to State Road. Features are dressed by kaduna.js
+// (the modern Nigerian city) and its own pieces; closer() solves La and Lb.
+import { corner } from './sgtracks.js';
+export function kanoCityTrack(La, Lb) {
+  const t = turtle();
+  // State Road
+  t.straight(240, 0, [
+    [0, 'citystreet', { len: 240, palms: 1 }],
+    [40, 'coins', { lat: 0 }],
+    [140, 'items'],
+    [215, 'pad', { lat: 0 }],
+  ]);
+  // round the Golden Jubilee monument at the Government House gate
+  corner(t, 100, 90, 0, [
+    [0, 'govhouse', { len: 160 }],
+    [60, 'coins', { lat: 4, wave: 1 }],
+  ]);
+  // Ahmadu Bello Way, then up onto the red flyover
+  t.straight(200, 0, [
+    [0, 'citystreet', { len: 200 }],
+    [60, 'items'],
+    [120, 'coins', { lat: 0, wave: 1 }],
+  ]);
+  t.straight(100, 11.5, [
+    [0, 'redflyover', { len: 100 + 236 + 100 }],
+    [30, 'coins', { lat: 0, n: 8 }],
+  ]);
+  corner(t, 112, 90, 0, [
+    [0, 'chequered'],
+    [80, 'items'],
+    [150, 'coins', { lat: 4, wave: 1 }],
+  ]);
+  t.straight(100, -11.5);
+  t.straight(60, 0, [
+    [0, 'citystreet', { len: 60 }],
+    [30, 'pad', { lat: 0 }],
+  ]);
+  // over the Muhammadu Buhari Interchange: up onto the flyover, through the clock towers under the steel X, and down
+  t.straight(80, 10.5, [
+    [0, 'buhari', { len: 80 + 120 + 80 }],
+    [20, 'coins', { lat: 0, n: 7 }],
+  ]);
+  t.straight(120, 0, [[50, 'items']]);
+  t.straight(80, -10.5);
+  t.straight(40, 0, [[0, 'citystreet', { len: 40 }]]);
+  // the fountain roundabout, then the Race Course past the golf
+  corner(t, 95, 90, 0, [
+    [0, 'fountain'],
+    [40, 'items'],
+  ]);
+  t.straight(La, 0, [
+    [10, 'golf', { len: Math.max(60, La - 20) }],
+    [La / 2, 'coins', { lat: 0, wave: 1 }],
+    [La - 40, 'pad', { lat: 0 }],
+  ]);
+  // the Ring Road roundabout, then back down State Road
+  corner(t, 100, 90, 0, [
+    [0, 'ringroad'],
+    [60, 'items'],
+  ]);
+  t.straight(Lb, 0, [
+    [0, 'citystreet', { len: Lb, palms: 1 }],
+    [Lb * 0.4, 'items'],
+  ]);
+  return t;
+}

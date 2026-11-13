@@ -17,6 +17,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { canvasTex, starKnot, loopKnot, diamondBand } from './textures.js';
 import { boxM } from './doha.js';
 import { tunnel } from './tunnels.js';
+import { dressKanoCity } from './kanocity.js';
 import { fbm } from './util.js';
 
 const TAU = Math.PI * 2;
@@ -2252,6 +2253,28 @@ export function dressKaduna(k) {
       },
     });
 
+  // Kano City's own landmarks (kanocity.js), on this modern city
+  if (CIRC === 'metro')
+    dressKanoCity(k, {
+      lam,
+      bx,
+      cy,
+      frame,
+      group,
+      mesh,
+      place,
+      board,
+      signBoth,
+      fOf,
+      P,
+      head,
+      inside,
+      white,
+      steelM,
+      tryTree,
+      animated,
+    });
+
   /* ---------- the land round each circuit ---------- */
   if (CIRC === 'zazzau') {
     // old Zaria: earth houses close along the lanes and thick across the city, doum palms and neem between them
@@ -2318,7 +2341,7 @@ export function dressKaduna(k) {
         if (!free(p.x, p.z, 10, W / 2 + 14)) continue;
         reserve(p.x, p.z, 10);
         bungalow(p.x, p.z, a);
-      } else if (CIRC === 'city') {
+      } else if (CIRC === 'city' || CIRC === 'metro') {
         if (!free(p.x, p.z, 12, W / 2 + 18)) continue;
         reserve(p.x, p.z, 12);
         shopBlock(p.x, p.z, a, rr(14, 22), rr(14, 20), rr(3, 7) | 0);
@@ -2329,7 +2352,7 @@ export function dressKaduna(k) {
       }
     }
     // a few towers downtown, and a mosque's dome and minaret among the roofs
-    if (CIRC === 'city') {
+    if (CIRC === 'city' || CIRC === 'metro') {
       for (let n = 0; n < 40; n++) {
         const s = rand() * tr.len,
           sd = rand() < 0.5 ? 1 : -1,

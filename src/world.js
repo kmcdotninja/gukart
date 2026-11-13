@@ -82,7 +82,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const R0 = tr.radius + 150; // island radius
   const city = opts.city || 'kano',
     doha = city === 'doha',
-    kd = city === 'kaduna', // (Kaduna: its river and its ground come from the features too, the old Kano pieces still work)
+    // (Kaduna, and Kano City's metropolis: a modern Nigerian city dressed by kaduna.js; its river and its ground come from
+    // the features too, and the old Kano pieces still work)
+    kd = city === 'kaduna' || opts.gantry === 'kano.metro',
     coast = doha || city === 'singapore' || kd; // (a big modern city on the water: its sea comes from the circuit's features, its own scenery)
   let isLand = () => true;
   const occ = [];
