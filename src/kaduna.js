@@ -2273,6 +2273,7 @@ export function dressKaduna(k) {
       steelM,
       tryTree,
       animated,
+      glow,
     });
 
   /* ---------- the land round each circuit ---------- */

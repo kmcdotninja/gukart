@@ -234,27 +234,53 @@ export function dressKanoCity(k, h) {
     const pl = new THREE.Mesh(mergeAll(pillars), redM);
     pl.castShadow = true;
     scene.add(pl);
-    place('THE RED FLYOVER', 'Over the chequered roundabout', tr.point(f.s + f.len / 2, 0), f.s + f.len / 2, {
+    place('THE RED FLYOVER', 'Round the palm garden, Kofar Nassarawa', tr.point(f.s + f.len / 2, 0), f.s + f.len / 2, {
       back: 40,
       h: 5,
       lookH: 6,
     });
   }
-  // the roundabout under it, its island chequered black and white, a little white kiosk with a red roof on it
+  // the garden the loop sweeps round (as at the Kofar Nassarawa bridge): a round lawn ringed with palms, paths across it,
+  // and in the middle a patterned monument, a white drum banded in blue and gold under a domed cap
   for (const f of fOf('chequered')) {
     const fr = frame(f.s + 120, 1, W / 2 + 40),
-      G = group(fr.x, fr.z, fr.a),
-      chT = canvasTex(256, 256, (x, w, hh) => {
-        for (let i = 0; i < 8; i++)
-          for (let j = 0; j < 8; j++) {
-            x.fillStyle = (i + j) % 2 ? '#111111' : '#f2f2f2';
-            x.fillRect((i * w) / 8, (j * hh) / 8, w / 8, hh / 8);
-          }
-      });
-    G.add(mesh(cy(16, 16, 0.5, 40), lam('#ffffff', { map: chT })));
-    G.add(mesh(cy(4, 4.2, 3, 8), white, 0, 0.5, 0));
-    G.add(mesh(new THREE.ConeGeometry(5, 2.4, 8).translate(0, 4.7, 0), lam('#c62828')));
-    reserve(fr.x, fr.z, 18);
+      G = group(fr.x, fr.z, fr.a);
+    G.add(mesh(cy(24, 24, 0.45, 48), lam('#6fae45')));
+    G.add(mesh(cy(24.4, 24.6, 0.55, 48), lam('#e9e6df')));
+    for (const ry of [0, Math.PI / 2])
+      G.add(mesh(new THREE.BoxGeometry(46, 0.1, 2.2).translate(0, 0.47, 0).rotateY(ry), lam('#d8c7a6')));
+    const monT = canvasTex(256, 256, (x, w, hh) => {
+      x.fillStyle = '#f4f2ec';
+      x.fillRect(0, 0, w, hh);
+      for (const [y, c] of [
+        [0.1, '#1d5fbf'],
+        [0.42, '#d9b25a'],
+        [0.74, '#1d5fbf'],
+      ]) {
+        x.fillStyle = c;
+        x.fillRect(0, hh * y, w, hh * 0.12);
+        x.fillStyle = '#f4f2ec';
+        for (let i = 0; i < 8; i++) {
+          x.beginPath();
+          x.moveTo(i * 32 + 16, hh * (y + 0.01));
+          x.lineTo(i * 32 + 26, hh * (y + 0.06));
+          x.lineTo(i * 32 + 16, hh * (y + 0.11));
+          x.lineTo(i * 32 + 6, hh * (y + 0.06));
+          x.fill();
+        }
+      }
+    });
+    G.add(mesh(cy(4.2, 4.2, 1, 24), lam('#d8d2c6'), 0, 0.45, 0));
+    G.add(mesh(cy(2.6, 3, 6, 24), lam('#ffffff', { map: monT }), 0, 1.45, 0));
+    G.add(mesh(new THREE.SphereGeometry(2.7, 20, 12, 0, TAU, 0, Math.PI / 2), lam('#d9b25a'), 0, 7.45, 0));
+    for (let k2 = 0; k2 < 12; k2++) {
+      const a = (k2 / 12) * TAU,
+        w = new THREE.Vector3(Math.cos(a) * 19, 0, Math.sin(a) * 19)
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), fr.a)
+          .add(new THREE.Vector3(fr.x, 0, fr.z));
+      tryTree(w.x, w.z, 1, 'doum', 1.1, 0);
+    }
+    reserve(fr.x, fr.z, 26);
   }
 
   /* ---------- the fountain roundabout and the Ring Road roundabout ---------- */
@@ -304,16 +330,24 @@ export function dressKanoCity(k, h) {
 
   /* ---------- the Muhammadu Buhari Interchange ---------- */
   for (const f of fOf('buhari')) {
-    const sm = f.s + f.len / 2,
-      i = tr.idx(sm),
-      o = tr.point(sm, 0),
-      G = group(o.x, o.z, head(sm)),
-      deckY = tr.P[i].y;
-    // the roundabout at street level under the flyover: a ring of road, and the cross road passing under
-    const ringM = lam('#3a3a3e');
-    G.add(mesh(new THREE.RingGeometry(26, 40, 48).rotateX(-Math.PI / 2).translate(0, 0.08, 0), ringM));
-    G.add(mesh(new THREE.PlaneGeometry(200, 18).rotateX(-Math.PI / 2).translate(0, 0.07, 0), ringM));
-    G.add(mesh(cy(25.5, 25.8, 0.4, 48), lam('#e9e6df')));
+    // the island the road circles: the middle of the spiral's points (it climbs right round it, 360 degrees)
+    const [o0, oL] = f.spiral || [0, f.len];
+    let cxs = 0,
+      czs = 0,
+      cn = 0;
+    for (let s = f.s + o0; s < f.s + o0 + oL; s += 4) {
+      const q = tr.point(s, 0);
+      cxs += q.x;
+      czs += q.z;
+      cn++;
+    }
+    const o = new THREE.Vector3(cxs / cn, 0, czs / cn),
+      sm = f.s + o0 + oL / 2,
+      G = group(o.x, o.z, head(f.s)),
+      deckY = 11;
+    // the island: paved, ringed in a white kerb, the cross road's underpass beneath shown by its two lit mouths
+    G.add(mesh(cy(30, 30, 0.35, 48), lam('#cfc8bc')));
+    G.add(mesh(cy(30.4, 30.6, 0.6, 48), lam('#e9e6df')));
     // the four brick towers round the flyover: brick, a band of Hausa pattern, a clock on each face, KANO down one side
     const brickT = canvasTex(256, 1024, (x, w, hh) => {
       x.fillStyle = '#8a4a2e';
@@ -357,8 +391,8 @@ export function dressKanoCity(k, h) {
       [1, 1],
       [-1, 1],
     ]) {
-      const tx = sx * (W / 2 + 7),
-        tz = sz * 16,
+      const tx = sx * 11,
+        tz = sz * 11,
         tw = mesh(new THREE.BoxGeometry(5, TH, 5).translate(0, TH / 2, 0), brickM, tx, 0, tz);
       tw.rotation.y = Math.PI / 4 + (sx * sz > 0 ? 0 : Math.PI / 2);
       G.add(tw);
@@ -402,7 +436,7 @@ export function dressKanoCity(k, h) {
     truss(towers[0], towers[2], 'K  A  N  O');
     truss(towers[1], towers[3], 'MUHAMMADU BUHARI ROAD INTERCHANGE');
     // the flag, high over it all, on its own pole beside the roundabout
-    G.add(mesh(cy(0.25, 0.35, 40, 8), steelM, W / 2 + 22, 0, -30));
+    G.add(mesh(cy(0.25, 0.35, 40, 8), steelM, 0, 0, 22));
     const flagT = canvasTex(96, 64, (x, w, hh) => {
       x.fillStyle = '#008751';
       x.fillRect(0, 0, w, hh);
@@ -413,19 +447,180 @@ export function dressKanoCity(k, h) {
       new THREE.PlaneGeometry(6, 4).translate(3, 0, 0),
       new THREE.MeshLambertMaterial({ map: flagT, side: THREE.DoubleSide }),
     );
-    flag.position.set(W / 2 + 22, 37.5, -30);
+    flag.position.set(0, 37.5, 22);
     G.add(flag);
     h.animated.push(t => (flag.rotation.y = Math.sin(t * 1.3) * 0.25));
-    for (const [x, z] of [
-      [0, 0],
-      [W / 2 + 22, -30],
-    ]) {
-      const w = new THREE.Vector3(x, 0, z)
-        .applyAxisAngle(new THREE.Vector3(0, 1, 0), head(sm))
-        .add(new THREE.Vector3(o.x, 0, o.z));
-      reserve(w.x, w.z, x ? 4 : 44);
+    reserve(o.x, o.z, 34);
+    place('THE INTERCHANGE', 'Round the clock towers, 360 degrees', { x: o.x, z: o.z }, sm, {
+      back: 60,
+      h: 6,
+      lookH: 14,
+    });
+  }
+
+  /* ---------- Nassarawa GRA: walled compounds and modern villas along a leafy avenue ---------- */
+  const villaWall = ['#f1ebdf', '#e4dccb', '#d9d6cf', '#efe6d2'].map(c => lam(c)),
+    carCols = ['#f4f4f2', '#1c1c1e', '#8a8f96', '#7a1f1f', '#1f3f7a'].map(c => lam(c)),
+    VL = ['#ffd49a', '#ffe6bd'];
+  // the modern Nassarawa duplex, from photographs of new houses there: a two-storey box in beige, cream or white, thin
+  // roof slabs overhanging it, a tall strip of dark grey cladding with vertical fins, tall narrow windows, a glass
+  // balcony over the porch; the compound paved in grey interlocking stones behind a high wall and a dark laser-cut gate
+  const paveT = canvasTex(128, 128, (x, w, hh) => {
+    x.fillStyle = '#b9b6ae';
+    x.fillRect(0, 0, w, hh);
+    for (let r = 0; r < 8; r++)
+      for (let c = 0; c < 8; c++) {
+        x.fillStyle = (r + c) % 3 ? '#c8c5bd' : '#a9a69e';
+        x.fillRect(c * 16 + 1, r * 16 + 1, 14, 14);
+      }
+  });
+  paveT.wrapS = paveT.wrapT = THREE.RepeatWrapping;
+  const gateT = canvasTex(128, 64, (x, w, hh) => {
+    x.fillStyle = '#1e1f22';
+    x.fillRect(0, 0, w, hh);
+    x.fillStyle = '#c8a45a';
+    for (let c = 0; c < 8; c++)
+      for (let r = 0; r < 3; r++) {
+        x.beginPath();
+        x.arc(c * 16 + 8, r * 20 + 12, 4, 0, TAU);
+        x.fill();
+      }
+  });
+  const gateM = lam('#ffffff', { map: gateT }),
+    cladM = lam('#3c3f44'),
+    slabM = lam('#f6f4ef'),
+    railGlass = new THREE.MeshPhongMaterial({ color: '#cfe6f2', transparent: true, opacity: 0.45, shininess: 90 }),
+    BODY = ['#dcc9a8', '#efe4cc', '#f4f3ef', '#e6d6b8'];
+  const tallWin = canvasTex(128, 128, (x, w, hh) => {
+    x.fillStyle = '#ffffff';
+    x.fillRect(0, 0, w, hh);
+    for (let r = 0; r < 2; r++)
+      for (let c = 0; c < 3; c++) {
+        x.fillStyle = '#222a33';
+        x.fillRect(c * 42 + 14, r * 64 + 10, 14, 44);
+        x.fillStyle = 'rgba(255,255,255,.3)';
+        x.fillRect(c * 42 + 14, r * 64 + 10, 3, 44);
+      }
+  });
+  tallWin.wrapS = tallWin.wrapT = THREE.RepeatWrapping;
+  const tallLit = canvasTex(128, 128, (x, w, hh) => {
+    x.fillStyle = '#000';
+    x.fillRect(0, 0, w, hh);
+    for (let r = 0; r < 2; r++)
+      for (let c = 0; c < 3; c++)
+        if (Math.random() < 0.55) {
+          x.fillStyle = VL[(r + c) % 2];
+          x.fillRect(c * 42 + 14, r * 64 + 10, 14, 44);
+        }
+  });
+  tallLit.wrapS = tallLit.wrapT = THREE.RepeatWrapping;
+  const bodyMs = BODY.map(c => {
+    const m = lam(c, { map: tallWin, emissiveMap: tallLit, emissive: '#000000' });
+    h.glow?.(m, null, '#ffffff', 0.9);
+    return m;
+  });
+  // a box whose windows repeat every 4 m across and up a floor (3.6 m)
+  const boxW = (w, hh, d) => {
+    const g = new THREE.BoxGeometry(w, hh, d),
+      uv = g.attributes.uv,
+      n = g.attributes.normal;
+    for (let v = 0; v < uv.count; v++) {
+      if (Math.abs(n.getY(v)) > 0.5) {
+        uv.setXY(v, 0.02, 0.02);
+        continue;
+      }
+      const ax = Math.abs(n.getX(v)) > 0.5 ? d : w;
+      uv.setXY(v, (uv.getX(v) * ax) / 4, (uv.getY(v) * hh) / 7.2);
     }
-    place('THE INTERCHANGE', 'Muhammadu Buhari: under the KANO X', tr.point(sm, 0), sm, { back: 45, h: 4, lookH: 14 });
+    return g.translate(0, hh / 2, 0);
+  };
+  const compound = (x, z, a, big) => {
+    const G = group(x, z, a),
+      pw = big ? 30 : 24,
+      pd = big ? 32 : 26, // the plot, across and back from the road (its +z faces the road)
+      wm = villaWall[(rand() * villaWall.length) | 0];
+    // the paved compound, the wall round it, the gate in the road side
+    paveT.repeat.set(pw / 4, pd / 4);
+    G.add(
+      mesh(new THREE.PlaneGeometry(pw, pd).rotateX(-Math.PI / 2).translate(0, 0.22, 0), lam('#ffffff', { map: paveT })),
+    );
+    for (const [w2, d2, ox, oz] of [
+      [0.4, pd, -pw / 2, 0],
+      [0.4, pd, pw / 2, 0],
+      [pw, 0.4, 0, -pd / 2],
+    ])
+      G.add(mesh(bx(w2, 3, d2), wm, ox, 0, oz));
+    for (const sx of [-1, 1]) G.add(mesh(bx(pw / 2 - 3, 3, 0.4), wm, sx * (pw / 4 + 1.5), 0, pd / 2));
+    for (const sx of [-1, 1]) G.add(mesh(bx(0.8, 3.4, 0.8), cladM, sx * 3.1, 0, pd / 2));
+    G.add(mesh(new THREE.BoxGeometry(5.4, 2.8, 0.15).translate(0, 1.4, 0), gateM, 0, 0, pd / 2));
+    // the house: a ground floor and an upper floor stepped a little, thin slabs over each, the cladding strip with fins
+    const vw = big ? 16 : 13,
+      vd = big ? 12 : 10,
+      vz = -pd / 2 + vd / 2 + 3,
+      bm = bodyMs[(rand() * bodyMs.length) | 0],
+      step = rr(-1.5, 1.5);
+    G.add(mesh(boxW(vw, 3.6, vd), bm, 0, 0, vz));
+    G.add(mesh(boxW(vw - 2, 3.6, vd - 1), bm, step, 3.6, vz - 0.5));
+    G.add(mesh(bx(vw + 2.4, 0.3, vd + 2), slabM, 0, 3.6, vz + 0.6)); // the slab between the floors, overhanging
+    G.add(mesh(bx(vw + 1.6, 0.35, vd + 1.6), slabM, step, 7.2, vz)); // the roof slab
+    const cx = (rand() < 0.5 ? -1 : 1) * (vw / 2 - 1.6);
+    G.add(mesh(bx(2.4, 8.4, 0.5), cladM, cx, 0, vz + vd / 2 + 0.2)); // the cladding strip, up past the roof
+    for (let f2 = -0.9; f2 <= 0.9; f2 += 0.45)
+      G.add(mesh(bx(0.08, 6, 0.25), lam('#6a6e74'), cx + f2, 1.4, vz + vd / 2 + 0.55)); // its fins
+    // the porch, the glass balcony over it
+    G.add(mesh(bx(4.4, 0.3, 2.4), slabM, -cx * 0.5, 3.3, vz + vd / 2 + 1.2));
+    G.add(
+      mesh(new THREE.BoxGeometry(4.4, 1.1, 0.06).translate(0, 0.55, 0), railGlass, -cx * 0.5, 3.6, vz + vd / 2 + 2.35),
+    );
+    // a car on the paving
+    const cm = carCols[(rand() * carCols.length) | 0],
+      carX = rr(-pw / 2 + 4, pw / 2 - 4);
+    G.add(mesh(bx(1.9, 0.9, 4.4), cm, carX, 0.35, pd / 2 - 6));
+    G.add(mesh(bx(1.7, 0.6, 2.4), lam('#1f2c3a'), carX, 1.25, pd / 2 - 6.3));
+    // a palm in the corner
+    tryTree(
+      ...new THREE.Vector3(pw / 2 - 2.5, 0, pd / 2 - 2.5)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), a)
+        .add(new THREE.Vector3(x, 0, z))
+        .toArray()
+        .filter((_, i2) => i2 !== 1),
+      1,
+      'doum',
+      1,
+      0,
+    );
+    return G;
+  };
+  for (const f of fOf('gra')) {
+    for (let s = f.s; s < f.s + f.len; s += 34)
+      for (const sd of [1, -1]) {
+        const off = W / 2 + rr(23, 26),
+          i = tr.idx(s),
+          p = tr.beside(i, sd * off),
+          big = rand() < 0.4;
+        if (!k.free(p.x, p.z, big ? 19 : 16, W / 2 + 4)) continue;
+        reserve(p.x, p.z, big ? 22 : 19);
+        // face the road: the plot's +z toward it
+        const a = Math.atan2(tr.P[i].x - p.x, tr.P[i].z - p.z);
+        compound(p.x, p.z, a, big);
+        // a second row behind
+        const q = tr.beside(i, sd * (off + 36));
+        if (k.free(q.x, q.z, 17, W / 2 + 30)) {
+          reserve(q.x, q.z, 20);
+          compound(q.x, q.z, Math.atan2(tr.P[i].x - q.x, tr.P[i].z - q.z), rand() < 0.4);
+        }
+      }
+    // the avenue's trees and palms, close to the kerb, the crowns over the pavement
+    for (let s = f.s; s < f.s + f.len; s += 12)
+      for (const sd of [1, -1]) {
+        const p = P(s + rr(-2, 2), sd * (W / 2 + rr(7, 10)));
+        tryTree(p.x, p.z, 1.5, rand() < 0.45 ? 'doum' : rand() < 0.5 ? 'mahogany' : 'neem', rr(1, 1.25), W / 2 + 4);
+      }
+    place('NASSARAWA GRA', 'The leafy avenue between the villas', tr.point(f.s + 60, 0), f.s + 60, {
+      back: 30,
+      h: 4,
+      lookH: 5,
+    });
   }
 
   /* ---------- the Kano Club golf course on the Race Course ---------- */
@@ -477,8 +672,18 @@ export function dressKanoCity(k, h) {
       }
     }
     // the clubhouse: white, a green roof, a veranda on posts, its name
-    const cl = frame(f.s + f.len * 0.3, sd, W / 2 + 26),
-      G = group(cl.x, cl.z, cl.a);
+    // (somewhere clear of the sky bridge out over the course)
+    let cl = null;
+    for (const u of [0.1, 0.85, 0.3, 0.6]) {
+      const c2 = frame(f.s + f.len * u, sd, W / 2 + 26);
+      if (k.free(c2.x, c2.z, 17, W / 2 + 12)) {
+        cl = c2;
+        cl.u = u;
+        break;
+      }
+    }
+    if (!cl) continue;
+    const G = group(cl.x, cl.z, cl.a);
     G.add(mesh(bx(14, 6, 28), white));
     G.add(
       mesh(
@@ -503,7 +708,7 @@ export function dressKanoCity(k, h) {
       0.2,
     );
     reserve(cl.x, cl.z, 18);
-    place('KANO CLUB', 'The golf course on the Race Course', { x: cl.x, z: cl.z }, f.s + f.len * 0.3, {
+    place('KANO CLUB', 'The golf course on the Race Course', { x: cl.x, z: cl.z }, f.s + f.len * cl.u, {
       back: 40,
       lookH: 4,
     });

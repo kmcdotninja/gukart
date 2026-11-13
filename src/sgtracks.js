@@ -12,7 +12,7 @@ const MIN_R = 80;
 // a true circle (round the Cloud Forest's mountain, Jewel's vortex) with eased ends: the curvature ramps up over the
 // first `ramp` degrees and down over the last, the circle of radius R between them (its features go in `list`, at its
 // start). Returns the lengths: the whole thing, and the true circle.
-function spiral(t, R, deg, dy, list, ramp = 30) {
+export function spiral(t, R, deg, dy, list, ramp = 30) {
   const n = 6,
     rr = (ramp * Math.PI) / 180,
     Lr = 2 * rr * R, // a ramp from straight to 1/R turns half as much as the same length of circle

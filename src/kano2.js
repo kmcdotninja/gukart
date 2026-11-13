@@ -56,7 +56,7 @@ export function dalaTrack(La, Lb) {
 // the Muhammadu Buhari Interchange (the four brick clock towers, the steel X spelling KANO), past the Kano Club's golf
 // course on the Race Course, round the Ring Road roundabout and back to State Road. Features are dressed by kaduna.js
 // (the modern Nigerian city) and its own pieces; closer() solves La and Lb.
-import { corner } from './sgtracks.js';
+import { corner, spiral } from './sgtracks.js';
 export function kanoCityTrack(La, Lb) {
   const t = turtle();
   // State Road
@@ -71,11 +71,24 @@ export function kanoCityTrack(La, Lb) {
     [0, 'govhouse', { len: 160 }],
     [60, 'coins', { lat: 4, wave: 1 }],
   ]);
-  // Ahmadu Bello Way, then up onto the red flyover
+  // Nassarawa GRA: a leafy avenue between walled compounds and modern villas, jinking left and right, two humps to fly
+  t.straight(50, 0, [
+    [0, 'gra', { len: 50 + 120 + 70 + 120 + 90 }],
+    [20, 'coins', { lat: 0, n: 6 }],
+  ]);
+  corner(t, 85, -35, 0, [[30, 'items']]);
+  t.straight(35, 3.5, [[5, 'coins', { lat: 0, n: 5 }]]);
+  t.straight(35, -3.5);
+  corner(t, 85, 35, 0, [[40, 'coins', { lat: 3, wave: 1 }]]);
+  t.straight(35, 3.5);
+  t.straight(35, -3.5, [[20, 'items']]);
+  t.straight(30, 0, [[10, 'pad', { lat: 0 }]]);
+  // Ahmadu Bello Way, a jump over the storm drain, then up onto the red flyover
   t.straight(200, 0, [
     [0, 'citystreet', { len: 200 }],
-    [60, 'items'],
-    [120, 'coins', { lat: 0, wave: 1 }],
+    [40, 'items'],
+    [70, 'kicker'],
+    [140, 'coins', { lat: 0, wave: 1 }],
   ]);
   t.straight(100, 11.5, [
     [0, 'redflyover', { len: 100 + 236 + 100 }],
@@ -91,13 +104,20 @@ export function kanoCityTrack(La, Lb) {
     [0, 'citystreet', { len: 60 }],
     [30, 'pad', { lat: 0 }],
   ]);
-  // over the Muhammadu Buhari Interchange: up onto the flyover, through the clock towers under the steel X, and down
-  t.straight(80, 10.5, [
-    [0, 'buhari', { len: 80 + 120 + 80 }],
-    [20, 'coins', { lat: 0, n: 7 }],
+  // the Muhammadu Buhari Interchange: in at street level and all the way round the four clock towers, 360 degrees, the
+  // ramp rising as it goes, until you're high enough to cross over the way you came in on the flyover; then down
+  const R = 48,
+    spl = 2 * ((30 * Math.PI) / 180) * R * 2 + ((360 - 60) * Math.PI * R) / 180; // the whole spiral's length
+  t.straight(40, 0, [
+    [0, 'buhari', { len: 40 + spl + 60 + 100, spiral: [40, spl] }],
+    [10, 'coins', { lat: 0, n: 5 }],
   ]);
-  t.straight(120, 0, [[50, 'items']]);
-  t.straight(80, -10.5);
+  spiral(t, R, 360, 11, [
+    [((300 * Math.PI) / 180) * R * 0.3, 'items'],
+    [((300 * Math.PI) / 180) * R * 0.6, 'coins', { lat: 4, wave: 1 }],
+  ]);
+  t.straight(60, 0, [[30, 'pad', { lat: 0 }]]);
+  t.straight(100, -11);
   t.straight(40, 0, [[0, 'citystreet', { len: 40 }]]);
   // the fountain roundabout, then the Race Course past the golf
   corner(t, 95, 90, 0, [
@@ -106,6 +126,7 @@ export function kanoCityTrack(La, Lb) {
   ]);
   t.straight(La, 0, [
     [10, 'golf', { len: Math.max(60, La - 20) }],
+    [40, 'fork', { len: Math.min(220, La - 90), tunnel: 'in' }], // (the sky bridge out over the golf, or the dune subway)
     [La / 2, 'coins', { lat: 0, wave: 1 }],
     [La - 40, 'pad', { lat: 0 }],
   ]);
