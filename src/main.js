@@ -6,7 +6,7 @@ import { Feedback } from './feedback.js';
 import { perfHud } from './perf.js';
 import { Tilt } from './tilt.js';
 import * as THREE from 'three';
-import { buildTextures } from './textures.js';
+import { buildTextures, logoReady } from './textures.js';
 import { LAPS, WEAPONS } from './race.js';
 import { VEHICLES, clearance } from './buddy.js';
 import { Music } from './music.js';
@@ -318,6 +318,7 @@ async function boot() {
   ]).catch(() => {});
   await step(18, 'PAINTING THE WALLS');
   const tex = buildTextures();
+  await logoReady; // (the logo goes on the boards round the track)
   game.TEX = tex;
   await step(32, 'LAYING THE ROAD');
   game.baseKids = new Set(scene.children); // the lights and the like: everything else in the scene belongs to the circuit

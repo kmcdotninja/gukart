@@ -7,6 +7,21 @@ export const setAniso = a => {
   aniso = a;
 };
 
+// the Gukart logo (public/gukart-logo.svg), for the boards round the track: loaded once at boot (main.js waits for it
+// before building a circuit). drawLogo() draws it h pixels tall, centred on (cx, cy); false if it isn't there yet
+export const LOGO = typeof Image === 'undefined' ? null : new Image();
+export const logoReady = LOGO
+  ? new Promise(r => {
+      LOGO.onload = LOGO.onerror = r;
+      LOGO.src = '/gukart-logo.svg';
+    })
+  : Promise.resolve();
+export function drawLogo(x, cx, cy, h) {
+  if (!LOGO?.complete || !LOGO.naturalWidth) return false;
+  const w = (h * 627) / 237;
+  x.drawImage(LOGO, cx - w / 2, cy - h / 2, w, h);
+  return true;
+}
 export function canvasTex(w, h, draw, { repeat = false } = {}) {
   const c = document.createElement('canvas');
   c.width = w;

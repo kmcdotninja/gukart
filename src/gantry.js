@@ -10,7 +10,7 @@
 // over them, the pit wall in the circuit's colours, its name painted big on the run-off (Shanghai's).
 // Built in its own frame: x across the road, z along it (the grid is at -z), y up; world.js sets it on the start line.
 import * as THREE from 'three';
-import { canvasTex } from './textures.js';
+import { canvasTex, drawLogo } from './textures.js';
 
 const FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 
@@ -110,6 +110,7 @@ export function buildGantry(key, title, W) {
       x.fillStyle = bg;
       x.fillRect(0, 0, w, h);
       deco?.(x, w, h);
+      if (text === 'GUKART' && drawLogo(x, w / 2, h / 2, Math.min(h * 0.78, ((w * 0.8) / 627) * 237))) return; // (the logo, not the word)
       x.fillStyle = ink;
       let px = h * 0.62;
       x.font = `900 italic ${px}px ${FONT}`;
@@ -212,8 +213,7 @@ export function buildGantry(key, title, W) {
           x.fillText(T.num || '', 150, h / 2 + 4);
           x.fillText(T.num || '', w - 150, h / 2 + 4);
           x.font = `700 ${h * 0.16}px ${FONT}`;
-          x.fillText('GUKART', 150, h * 0.86);
-          x.fillText('GUKART', w - 150, h * 0.86);
+          for (const lx of [150, w - 150]) drawLogo(x, lx, h * 0.86, h * 0.2) || x.fillText('GUKART', lx, h * 0.86);
         },
         0.62,
       ),
@@ -349,7 +349,7 @@ export function buildGantry(key, title, W) {
     x.font = `900 italic 52px ${FONT}`;
     x.textAlign = 'center';
     x.textBaseline = 'middle';
-    x.fillText('GUKART', w / 2, h / 2);
+    drawLogo(x, w / 2, h / 2, h * 0.62) || x.fillText('GUKART', w / 2, h / 2);
   });
   face(scr, 3.4, 2, X - 3.2, low - 1.3, 0, 0.9);
   // the start lights: a black housing, five pods of two lamps facing the grid (-z)
@@ -394,13 +394,16 @@ export function pitStraight(key, title, W, tr, add) {
     ink = T.ink || (T.panels && T.panels[1][2]) || '#ffffff',
     name = (T.text || title || 'GUKART').replace(' GRAND PRIX', '');
   const lam = c => new THREE.MeshLambertMaterial({ color: c });
-  const wallT = canvasTex(1024, 64, (x, w, h) => {
+  // (the circuit's name and the Gukart logo in turn along the wall)
+  const wallT = canvasTex(2048, 128, (x, w, h) => {
     x.fillStyle = bg;
     x.fillRect(0, 0, w, h);
     x.fillStyle = ink;
-    x.font = `900 italic 46px ${FONT}`;
+    x.font = `900 italic 92px ${FONT}`;
     x.textBaseline = 'middle';
-    for (let k = 0; k < 4; k++) x.fillText(k % 2 ? 'GUKART' : name, 20 + k * 256, h / 2 + 2);
+    for (let k = 0; k < 4; k++)
+      if (k % 2) drawLogo(x, k * 512 + 200, h / 2, h * 0.86) || x.fillText('GUKART', 40 + k * 512, h / 2 + 4);
+      else x.fillText(name, 40 + k * 512, h / 2 + 4);
   });
   wallT.wrapS = THREE.RepeatWrapping;
   const wallM = new THREE.MeshLambertMaterial({
