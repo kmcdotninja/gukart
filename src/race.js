@@ -425,7 +425,6 @@ function finishArch(tr) {
 export class Race {
   constructor(scene, tr, tex, quality, ev) {
     this.level = LEVELS.normal;
-    this.sens = store.get('steerSens', 1);
     this.scene = scene;
     this.tr = tr;
     this.tex = tex;
@@ -670,10 +669,6 @@ export class Race {
   setLevel(l) {
     this.level = l || LEVELS.normal;
   }
-  // how much the player's steering turns them (Settings: STEERING, 50% to 150%)
-  setSens(v) {
-    this.sens = v;
-  }
   reset() {
     for (const k of this.karts || []) k.stHard = null; // (the crew's cars are matched to yours afresh each race)
     const tr = this.tr;
@@ -686,7 +681,6 @@ export class Race {
         s: tr.len - (8 + row * 9 + col * 4),
         lat: col ? -5 : 5,
         rh: 0,
-        yawCmd: 0,
         lap: -1,
         prog: 0,
         speed: 0,
@@ -1222,21 +1216,8 @@ export class Race {
       const rh0 = k.rh;
       if (k.spin <= 0) {
         const grip = clamp(Math.abs(k.speed) / 16, 0, 1) * Math.sign(k.speed || 1) * (grounded ? 1 : 0.35);
-        // (Settings: STEERING scales the player's turning; 100% is the original feel)
-        const calm = k === P && !k.ai ? this.sens : 1;
-        const turn =
-          steer * TURN * st.turn * calm * (k.drift ? 1.2 : 1) * grip * (k === P && this.upg.has('grip') ? 1.08 : 1);
-        if (k === P && !k.ai) {
-          // the player's kart has weight: it eases into a turn and out of it (about a sixth of a second) rather than
-          // snapping to full yaw the instant the wheel moves
-          k.yawCmd = (k.yawCmd || 0) + (turn - (k.yawCmd || 0)) * Math.min(1, dt * 7);
-          k.rh += k.yawCmd * dt;
-        } else k.rh += turn * dt;
-      } else k.yawCmd = 0;
-      // hands off the wheel, the player's kart lines itself back up with the road (like a real car's wheel coming back to
-      // centre): a tap is a nudge across the road, not a heading that carries on into the wall
-      if (k === P && !k.ai && !k.drift && k.spin <= 0 && grounded && Math.abs(k.steer) < 0.08)
-        k.rh *= 1 - Math.min(1, dt * 1.8);
+        k.rh += steer * TURN * st.turn * (k.drift ? 1.2 : 1) * grip * (k === P && this.upg.has('grip') ? 1.08 : 1) * dt;
+      }
       // how fast it's really turning: the front wheels, the steering wheel and the body's lean all follow this, not the raw input
       k.yawRate += ((k.rh - rh0) / Math.max(dt, 1e-3) - k.yawRate) * Math.min(1, dt * 10);
       const wantA = k.drift

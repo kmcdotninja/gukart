@@ -240,7 +240,6 @@ export function dressKaduna(k) {
     roofRust = lam('#9b5a3a'),
     concrete = lam('#cfc8bc'),
     white = lam('#f4f2ec'),
-    abuGreen = lam('#1f7a3e'),
     darkM = lam('#262a30'),
     steelM = new THREE.MeshStandardMaterial({ color: '#7e8790', metalness: 0.6, roughness: 0.45 }),
     railWhite = lam('#f7f7f4'),
@@ -450,11 +449,76 @@ export function dressKaduna(k) {
   /* ======================================================================================================== */
   /* ---------- ABU Zaria ---------- */
 
-  // the ABU gates, as the Main Gate stands: one cream masonry facade across the way in, a great round arch over the
-  // road, its top edge rising to a peak where the university's green crest sits, AHMADU BELLO UNIVERSITY in green
-  // letters across its face, a smaller arch each side for people on foot (lined in green), lower wings out to the
-  // ends, and a red boom barrier raised beside the road. (The North Gate is the same, a little smaller)
-  const gateCream = lam('#ecd78f', { emissive: '#3d3520' });
+  // ABU's Main Gate: one cream masonry facade across the way in, a great round arch over the road, a green band right
+  // across its top with AHMADU BELLO UNIVERSITY in white, the university's green crest standing on top, a smaller arch
+  // each side for people on foot (lined in green), lower wings out to the ends, a red boom barrier raised beside the road
+  const gateCream = lam('#efd986', { emissive: '#5a4c26' }), // (lit a little from within: it reads cream in its own shade)
+    gateGreen = lam('#1f7a3e', { emissive: '#0c2a16' }),
+    deepGreen = '#17603a';
+  // an arch-shaped opening: straight jambs up to `spring`, a semicircle over
+  const archPath = (P2, cx, hw, spring, back = false) => {
+    if (!back) {
+      P2.moveTo(cx - hw, 0);
+      P2.lineTo(cx - hw, spring);
+      P2.absarc(cx, spring, hw, Math.PI, 0, true);
+      P2.lineTo(cx + hw, 0);
+      P2.lineTo(cx - hw, 0);
+    } else {
+      P2.moveTo(cx + hw, 0);
+      P2.lineTo(cx + hw, spring);
+      P2.absarc(cx, spring, hw, 0, Math.PI, false);
+      P2.lineTo(cx - hw, 0);
+    }
+    return P2;
+  };
+  // words on a see-through plane, both faces of a wall
+  const lettering = (G, draw, w, h, x, y, zf, cw = 2048) => {
+    const t = canvasTex(cw, Math.round((cw * h) / w), (x2, W2, H2) => {
+      x2.clearRect(0, 0, W2, H2);
+      draw(x2, W2, H2);
+    });
+    const m = new THREE.MeshLambertMaterial({ map: t, transparent: true, depthWrite: false, emissive: '#000000' });
+    for (const sz of [-1, 1]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+      pl.position.set(x, y, sz * zf);
+      if (sz < 0) pl.rotation.y = Math.PI;
+      G.add(pl);
+    }
+  };
+  // the crest: ABU's green badge, a peaked top, a cream border, the knot on it
+  const crestMesh = (cw, chh) => {
+    const sh = new THREE.Shape();
+    sh.moveTo(-cw / 2, 0);
+    sh.lineTo(cw / 2, 0);
+    sh.lineTo(cw / 2, chh * 0.62);
+    sh.lineTo(0, chh);
+    sh.lineTo(-cw / 2, chh * 0.62);
+    sh.lineTo(-cw / 2, 0);
+    const T = canvasTex(256, 300, (x, w, h) => {
+      x.fillStyle = '#f3e7b8';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = deepGreen;
+      x.beginPath();
+      x.moveTo(14, h - 14);
+      x.lineTo(w - 14, h - 14);
+      x.lineTo(w - 14, h * 0.38 + 8);
+      x.lineTo(w / 2, 16);
+      x.lineTo(14, h * 0.38 + 8);
+      x.closePath();
+      x.fill();
+      loopKnot(x, w / 2, h * 0.6, w * 0.28, ['rgba(0,30,10,.5)', 'rgba(255,255,255,.4)', '#f3e7b8']);
+    });
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.9, bevelEnabled: false });
+    const uv = g.attributes.uv,
+      nrm = g.attributes.normal;
+    for (let v = 0; v < uv.count; v++)
+      if (Math.abs(nrm.getZ(v)) > 0.5) uv.setXY(v, (uv.getX(v) + cw / 2) / cw, uv.getY(v) / chh);
+      else uv.setXY(v, 0.02, 0.5);
+    return mesh(
+      g.translate(0, 0, -0.45),
+      new THREE.MeshLambertMaterial({ map: T, emissive: '#222222', emissiveMap: T }),
+    );
+  };
   for (const f of fOf('abugate')) {
     const i = tr.idx(f.s),
       p = tr.point(f.s, 0),
@@ -467,56 +531,43 @@ export function dressKaduna(k) {
       PA = 4.4 * k5, // a walkway arch's width
       WING = 3 * k5,
       half = sp + PIER + PA + WING,
-      SIDE = 18, // the wall's height at the main arch's sides
-      PEAK = 22, // and at the peak
       WT = 7.5 * k5, // the wings' height
-      D = 3.6;
+      D = 3.6,
+      SPRING = 1;
     const xa = sp + PIER, // where the wings start
       pc = xa + PA / 2; // a walkway arch's middle
+    const CROWN = SPRING + sp; // the main arch's crown
+    const NAME = north ? ['AHMADU BELLO', 'NORTH GATE'] : ['AHMADU BELLO', 'UNIVERSITY'];
+    // the facade's outline, by design
     const sh = new THREE.Shape();
     sh.moveTo(-half, 0);
     sh.lineTo(-half, WT);
     sh.lineTo(-xa, WT);
-    sh.lineTo(-xa, SIDE);
-    sh.quadraticCurveTo(-xa * 0.45, SIDE + (PEAK - SIDE) * 0.55, 0, PEAK);
-    sh.quadraticCurveTo(xa * 0.45, SIDE + (PEAK - SIDE) * 0.55, xa, SIDE);
+    const top = CROWN + 6; // the wall's top
+    sh.lineTo(-xa, top);
+    sh.lineTo(xa, top);
     sh.lineTo(xa, WT);
     sh.lineTo(half, WT);
     sh.lineTo(half, 0);
     sh.lineTo(-half, 0);
-    // the openings: a round arch over the road (springing at 1 m), a smaller one in each wing
-    const archHole = (cx, hw, spring) => {
-      const h = new THREE.Path();
-      h.moveTo(cx - hw, 0);
-      h.lineTo(cx - hw, spring);
-      h.absarc(cx, spring, hw, Math.PI, 0, true);
-      h.lineTo(cx + hw, 0);
-      h.lineTo(cx - hw, 0);
-      return h;
-    };
-    sh.holes.push(archHole(0, sp, 1));
-    for (const sx of [-1, 1]) sh.holes.push(archHole(sx * pc, PA / 2 - 0.5, 2.6 * k5));
+    sh.holes.push(archPath(new THREE.Path(), 0, sp, SPRING));
+    for (const sx of [-1, 1]) sh.holes.push(archPath(new THREE.Path(), sx * pc, PA / 2 - 0.5, 2.6 * k5));
     G.add(
       mesh(
-        new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: false, curveSegments: 24 }).translate(0, 0, -D / 2),
+        new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: false, curveSegments: 28 }).translate(0, 0, -D / 2),
         gateCream,
       ),
     );
+    // a plinth along the foot of the walls either side, a shade deeper (not across the road)
+    const plinthM = lam('#d9c070', { emissive: '#4a3e1e' });
+    for (const sx of [-1, 1]) G.add(mesh(bx(half - sp + 0.3, 0.7, D + 0.3), plinthM, (sx * (half + sp)) / 2, 0, 0));
     // the green lining of each walkway arch
     for (const sx of [-1, 1]) {
-      const r = new THREE.Shape(),
-        hw = PA / 2 - 0.5,
-        cx = sx * pc,
-        sprg = 2.6 * k5;
-      r.moveTo(cx - hw, 0);
-      r.lineTo(cx - hw, sprg);
-      r.absarc(cx, sprg, hw, Math.PI, 0, true);
-      r.lineTo(cx + hw, 0);
-      r.lineTo(cx + hw - 0.35, 0);
-      r.lineTo(cx + hw - 0.35, sprg);
-      r.absarc(cx, sprg, hw - 0.35, 0, Math.PI, false);
-      r.lineTo(cx - hw + 0.35, 0);
-      r.lineTo(cx - hw, 0);
+      const hw = PA / 2 - 0.5,
+        r = archPath(new THREE.Shape(), sx * pc, hw, 2.6 * k5);
+      r.lineTo(sx * pc + hw - 0.4, 0);
+      archPath(r, sx * pc, hw - 0.4, 2.6 * k5, true);
+      r.lineTo(sx * pc - hw, 0);
       G.add(
         mesh(
           new THREE.ExtrudeGeometry(r, { depth: D + 0.2, bevelEnabled: false, curveSegments: 16 }).translate(
@@ -524,68 +575,41 @@ export function dressKaduna(k) {
             0,
             -(D + 0.2) / 2,
           ),
-          abuGreen,
+          gateGreen,
         ),
       );
     }
-    // the name in green letters across the face, under the crest, both sides
-    const nameT = canvasTex(2048, 160, (x, w, h) => {
-      x.clearRect(0, 0, w, h);
-      x.fillStyle = '#1f7a3e';
-      x.font = `700 ${h * 0.72}px "Barlow", "Arial", sans-serif`;
-      x.textBaseline = 'middle';
-      x.textAlign = 'right';
-      x.fillText(north ? 'AHMADU BELLO' : 'AHMADU BELLO', w * 0.43, h * 0.55);
-      x.textAlign = 'left';
-      x.fillText(north ? 'NORTH GATE' : 'UNIVERSITY', w * 0.57, h * 0.55);
-    });
-    const nameM = new THREE.MeshLambertMaterial({ map: nameT, transparent: true, depthWrite: false });
-    const nw = 26,
-      ny = 16.4;
-    for (const sz of [-1, 1]) {
-      const pl = new THREE.Mesh(new THREE.PlaneGeometry(nw, (nw * 160) / 2048), nameM);
-      pl.position.set(0, ny, sz * (D / 2 + 0.03));
-      if (sz < 0) pl.rotation.y = Math.PI;
-      G.add(pl);
-    }
-    // the crest on the peak: a green shield with a white border, the knot on it, standing on the wall's top
-    const cw = 4.6 * k5,
-      chh = 5.4 * k5;
-    const shield = new THREE.Shape();
-    shield.moveTo(-cw / 2, chh);
-    shield.lineTo(-cw / 2, chh * 0.42);
-    shield.quadraticCurveTo(-cw / 2, chh * 0.08, 0, 0);
-    shield.quadraticCurveTo(cw / 2, chh * 0.08, cw / 2, chh * 0.42);
-    shield.lineTo(cw / 2, chh);
-    shield.lineTo(-cw / 2, chh);
-    const crestT = canvasTex(256, 300, (x, w, h) => {
-      x.fillStyle = '#ffffff';
-      x.fillRect(0, 0, w, h);
-      x.fillStyle = '#1f7a3e';
-      x.beginPath();
-      x.moveTo(12, 12);
-      x.lineTo(w - 12, 12);
-      x.lineTo(w - 12, h * 0.58);
-      x.quadraticCurveTo(w - 12, h * 0.92, w / 2, h - 10);
-      x.quadraticCurveTo(12, h * 0.92, 12, h * 0.58);
-      x.closePath();
-      x.fill();
-      loopKnot(x, w / 2, h * 0.46, w * 0.3, ['rgba(0,30,10,.5)', 'rgba(255,255,255,.4)', '#f4f2ec']);
-    });
-    // (the shape's UVs are in metres: scale them to the texture)
-    const sg = new THREE.ExtrudeGeometry(shield, { depth: 0.8, bevelEnabled: false });
-    const uv = sg.attributes.uv,
-      nrm = sg.attributes.normal;
-    for (let v = 0; v < uv.count; v++)
-      if (Math.abs(nrm.getZ(v)) > 0.5) uv.setXY(v, (uv.getX(v) + cw / 2) / cw, uv.getY(v) / chh);
-      else uv.setXY(v, 0.02, 0.5);
-    const crestM = new THREE.MeshLambertMaterial({ map: crestT });
-    G.add(mesh(sg.translate(0, PEAK - 1.2 * k5, -0.4), crestM));
+    // a green band right across, the name big in white on it, a thin cream line either edge
+    const by = CROWN + 1.3,
+      bh = 3.4;
+    G.add(mesh(bx(xa * 2 + 0.2, bh, D + 0.16), gateGreen, 0, by, 0));
+    lettering(
+      G,
+      (x, w, h) => {
+        x.fillStyle = '#ffffff';
+        x.font = `700 ${h * 0.66}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText(`${NAME[0]} ${NAME[1]}`, w / 2, h * 0.54);
+        x.fillStyle = '#efd986';
+        x.fillRect(0, h * 0.04, w, h * 0.04);
+        x.fillRect(0, h * 0.92, w, h * 0.04);
+      },
+      xa * 2,
+      bh,
+      0,
+      by + bh / 2,
+      D / 2 + 0.12,
+    );
+    const crestY = top;
+    // the crest, standing on the top
+    const cr = crestMesh(4.4 * k5, 5.6 * k5);
+    cr.position.y = crestY;
+    G.add(cr);
     // the red boom barrier, raised, on its post on the verge beside the road
     if (!north) {
-      const bxp = -(half + 2),
-        post = mesh(bx(0.5, 1.4, 0.5), lam('#d23b2e'), bxp, 0, D / 2 + 3);
-      G.add(post);
+      const bxp = -(half + 2);
+      G.add(mesh(bx(0.5, 1.4, 0.5), lam('#d23b2e'), bxp, 0, D / 2 + 3));
       const boom = mesh(new THREE.BoxGeometry(0.22, 7, 0.22).translate(0, 3.5, 0), lam('#d23b2e'), bxp, 1.2, D / 2 + 3);
       boom.rotation.z = -0.55;
       G.add(boom);

@@ -14,7 +14,7 @@ const hump = (t, L, h, list) => {
 // round the waterfall roundabout, up Senate Avenue in a tunnel of trees to the terracotta Senate tower, an S past
 // Kashim Ibrahim Library, along Physical Sciences and straight through the Department of Computer Science (in at the
 // door, down the corridor between the labs, out the far end), past the Long Halls of Education, the halls of residence
-// and the Social Centre, a jump over the storm drain, and home through the North Gate
+// and the Social Centre, and a jump over the storm drain
 export function abuTrack(La, Lb) {
   const t = turtle();
   t.straight(230, 0, [
@@ -67,7 +67,6 @@ export function abuTrack(La, Lb) {
   t.straight(Lb, 0, [
     [0, 'abuway', { len: Lb }],
     [Lb * 0.4, 'items'],
-    [Lb - 110, 'abugate', { name: 'NORTH GATE', north: 1 }],
   ]);
   return t;
 }

@@ -41,10 +41,6 @@ function holdButton(el, on, off) {
       off();
     });
 }
-const wheel = (v, to, dt) => {
-  const rate = to && Math.sign(to) === Math.sign(v || to) && Math.abs(to) > Math.abs(v) ? 2.6 : 6;
-  return v + clamp(to - v, -rate * dt, rate * dt);
-};
 // let go of everything: every key, touch and button counts as released, the wheel back to the centre. Called whenever
 // the game pauses or resumes and whenever the page loses focus (a tab switch, a phone call, the app sent to the back):
 // the browser never delivers the keyup or the end of a touch that happens while we're away, so without this a turn held
@@ -71,20 +67,15 @@ export function releaseInput() {
 
 export function readInput(dt) {
   const kb = (keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0);
-  // the keys and the phone's arrows turn a steering wheel, not a switch: it winds on steadily (full lock after about
-  // 0.4 s held, so a tap is a nudge) and springs back to the centre quicker when let go
-  kbSteer = wheel(kbSteer, kb, dt);
+  // (the original, crisp steering: the arrows and keys reach full lock almost at once and let go quicker still)
+  kbSteer += (kb - kbSteer) * Math.min(1, dt * (kb ? 9 : 14));
   const inp = game.race.input;
-  btnSteer = wheel(btnSteer, btnTarget, dt);
+  btnSteer += (btnTarget - btnSteer) * Math.min(1, dt * (btnTarget ? 7 : 14));
   inp.steer = clamp(kbSteer + touchSteer + btnSteer + (Tilt.on ? Tilt.value() : 0), -1, 1);
   // on a phone, holding a turn at speed drifts by itself (let go of the turn to fire the boost)
   const hard = Math.abs(btnSteer + touchSteer + (Tilt.on ? Tilt.value() : 0)) > 0.85 && game.race.player.speed > 28;
   hardT = hard ? hardT + dt : 0;
-  // (a deliberate hold of most of a second, not every ordinary turn, and the slide it starts is no tighter than a normal
-  // full turn: a phone button is all-or-nothing, so it can't ease the drift off before the wall)
-  const auto = hardT > 0.75;
-  inp.drift = !!(keys.Space || keys.ShiftLeft || keys.ShiftRight || auto);
-  if (auto && !kb) inp.steer *= 0.45;
+  inp.drift = !!(keys.Space || keys.ShiftLeft || keys.ShiftRight || hardT > 0.35);
   inp.fire = !!(keys.KeyF || keys.KeyE || keys.KeyJ || fireTouch);
   inp.brake = !!(keys.ArrowDown || keys.KeyS || brakeTouch);
 }

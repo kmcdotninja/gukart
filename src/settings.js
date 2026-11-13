@@ -44,11 +44,7 @@ export function initSettings() {
     const paint = () => {
       const v = $('#setVol'),
         e = $('#setEng'),
-        mu = $('#setMus'),
-        se = $('#setSens');
-      se.value = game.race.sens;
-      fill(se);
-      $('#setSensO').textContent = pct(game.race.sens);
+        mu = $('#setMus');
       mu.value = Music.vol;
       fill(mu);
       $('#setMusO').textContent = pct(Music.vol);
@@ -93,11 +89,6 @@ export function initSettings() {
         Sound.toggle();
         paintSound();
       }
-      paint();
-    });
-    $('#setSens').addEventListener('input', e => {
-      game.race.setSens(+e.target.value);
-      store.set('steerSens', +e.target.value);
       paint();
     });
     $('#setMus').addEventListener('input', e => {
