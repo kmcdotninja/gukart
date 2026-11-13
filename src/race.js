@@ -1862,8 +1862,13 @@ export class Race {
       this.tq.multiply(this.yq);
       if (snap || !dt) m.root.quaternion.copy(this.tq);
       else m.root.quaternion.slerp(this.tq, Math.min(1, dt * (k.fly ? 6 : 22)));
-      // tyre marks while drifting or on the sand
-      if (dt && !k.fly && (k.drift || k.offroad) && Math.abs(k.speed) > 8) {
+      // how hard the tyres are working through a turn (0..1): turning hard at speed. It changes nothing about the
+      // handling; you hear it (a squeal), see it (dark marks on the tarmac) and feel it in the body
+      k.corner = k.fly
+        ? 0
+        : clamp((Math.abs(k.yawRate) - 0.9) / 0.8, 0, 1) * clamp((Math.abs(k.speed) - 20) / 25, 0, 1);
+      // tyre marks while drifting, on the sand, or leaning hard on the tyres through a turn
+      if (dt && !k.fly && (k.drift || k.offroad || k.corner > 0.55) && Math.abs(k.speed) > 8) {
         k.markD += Math.abs(k.speed) * dt;
         if (k.markD > 0.9) {
           k.markD = 0;
@@ -1885,7 +1890,8 @@ export class Race {
         }
       }
       const sp = clamp(Math.abs(k.speed) / MAX, 0, 1);
-      m.body.rotation.z = lerp(m.body.rotation.z, clamp(k.yawRate * Math.abs(k.speed) * 0.0035, -0.11, 0.11), e); // leans out of the corner
+      // (it leans out of the corner a little: firm springs, not a soft car rolling over on its tyres)
+      m.body.rotation.z = lerp(m.body.rotation.z, clamp(k.yawRate * Math.abs(k.speed) * 0.002, -0.065, 0.065), e);
       // flips and tricks turn the whole vehicle; the body alone leans, pitches and bounces on its suspension
       m.rig.rotation.x = k.tumble > 0 ? k.tumbleA : 0;
       m.rig.rotation.y = k.trickA;
@@ -1900,11 +1906,12 @@ export class Race {
       );
       k.prevSpeed = k.speed;
       k.sqT += dt || 0;
-      const land = -k.squash * 0.5 * Math.exp(-k.sqT * 6) * Math.cos(k.sqT * 18);
+      // a landing: one short firm dip and it's settled (stiff suspension), not a long wobble
+      const land = -k.squash * 0.32 * Math.exp(-k.sqT * 10) * Math.cos(k.sqT * 22);
       m.body.position.y =
         (k.fly
           ? 0
-          : Math.sin((this.clock || 0) * 30 + k.n) * 0.02 * sp +
+          : Math.sin((this.clock || 0) * 30 + k.n) * 0.012 * sp +
             (k.offroad
               ? (Math.sin((this.clock || 0) * 47 + k.n) * 0.06 + Math.sin((this.clock || 0) * 13) * 0.04) * sp
               : 0)) + land;

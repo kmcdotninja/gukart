@@ -470,8 +470,10 @@ export function buildRoad(scene, tr, tex) {
             [sg * (W / 2 + 11.5), 0.05],
             [i => sg * foot(i), drop],
           ],
+          // (it carries on up the low ends of a bridge, so the road climbs out of the ground on a bank and meets the
+          // deck where it's well up: it used to stop dead at the foot of the ramp, a cut face of earth beside the road)
           k =>
-            elevated[k] ||
+            (elevated[k] && Math.max(tr.P[k].y, tr.P[(k + 1) % N].y) > 3.5) ||
             inGap[k] ||
             tr.trench[k] ||
             tr.lowb[k] ||
@@ -938,7 +940,21 @@ export function buildForks(tr) {
     for (let a = 0; a < N; a++) {
       if (a * seg < len * 0.3 || a * seg > len * 0.6) continue; // after the race has settled: from about a third of the way round
       let b = a;
-      while (b < N - 1 && b * seg < len * 0.7 && plain(b) && !blocked[b] && clear(b, 1) && clear(b, -1)) b++;
+      // (and the bend one way only: over an S-bend the two ways and the closed road between them tangled, and sent karts
+      // off the edge at ABU)
+      let bend = 0;
+      while (
+        b < N - 1 &&
+        b * seg < len * 0.7 &&
+        plain(b) &&
+        !blocked[b] &&
+        clear(b, 1) &&
+        clear(b, -1) &&
+        !(bend && Math.sign(tr.K[b]) !== bend && Math.abs(tr.K[b]) > 0.002)
+      ) {
+        if (!bend && Math.abs(tr.K[b]) > 0.002) bend = Math.sign(tr.K[b]);
+        b++;
+      }
       if ((b - a) * seg > (best ? best.L : 0)) best = { a, b, L: (b - a) * seg };
       a = b;
     }

@@ -216,6 +216,7 @@ function frame(now) {
         brake: game.race.input.brake,
         air: p.fly && p.airT > 0.12,
         drift: !!p.drift,
+        corner: p.corner || 0, // (how hard the tyres are working through a turn: a squeal)
         boost: p.boost > 0,
         steer: Math.max(-1, Math.min(1, p.wheelA * 2)),
         running: true,

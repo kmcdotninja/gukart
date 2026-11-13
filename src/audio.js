@@ -563,7 +563,11 @@ export const Sound = {
     const lv = o.level ?? 1; // (the home screen plays the engine well down, under the music)
     this.voice.update({ ...o, gain: o.running ? lv : 0 }, dt);
     this.sqG.gain.setTargetAtTime(
-      o.running ? ((o.drift ? 0.045 : 0) + (o.brake && o.speed > 0.25 ? 0.03 : 0)) * Math.min(1, o.speed * 2) * lv : 0,
+      o.running
+        ? ((o.drift ? 0.045 : 0) + (o.brake && o.speed > 0.25 ? 0.03 : 0) + (o.corner || 0) * 0.032) *
+            Math.min(1, o.speed * 2) *
+            lv
+        : 0,
       t,
       0.06,
     );

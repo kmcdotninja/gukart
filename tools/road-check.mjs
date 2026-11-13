@@ -54,9 +54,25 @@ const r = await p.evaluate(async () => {
   const CELL = 20,
     grid = new Map(),
     always = [];
+  // (a mesh drawn many times over, a town's houses or its trees, goes into the grid copy by copy as a box: tested
+  // against every ray, thousands of copies made one circuit take most of an hour)
+  const boxes = new Map(),
+    M4 = new THREE.Matrix4();
   for (const o of objs) {
     if (o.isInstancedMesh) {
-      always.push(o);
+      o.geometry.computeBoundingBox();
+      for (let n = 0; n < o.count; n++) {
+        o.getMatrixAt(n, M4);
+        const bb = o.geometry.boundingBox.clone().applyMatrix4(M4.premultiply(o.matrixWorld));
+        const sz = bb.getSize(new THREE.Vector3());
+        if (Math.max(sz.x, sz.y, sz.z) < 3) continue;
+        const entry = { box: bb, mesh: o, id: n };
+        for (let cx = Math.floor(bb.min.x / CELL); cx <= Math.floor(bb.max.x / CELL); cx++)
+          for (let cz = Math.floor(bb.min.z / CELL); cz <= Math.floor(bb.max.z / CELL); cz++) {
+            const k = cx + ',' + cz;
+            (boxes.get(k) || boxes.set(k, []).get(k)).push(entry);
+          }
+      }
       continue;
     }
     const bb = new THREE.Box3().setFromObject(o);
@@ -80,6 +96,20 @@ const r = await p.evaluate(async () => {
       for (let dz = -1; dz <= 1; dz++)
         for (const o of grid.get(Math.floor(x / CELL) + dx + ',' + (Math.floor(z / CELL) + dz)) || []) set.add(o);
     return [...set];
+  };
+  const hitPt = new THREE.Vector3();
+  const nearBoxes = (x, z) => {
+    const out = [],
+      seen = new Set();
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dz = -1; dz <= 1; dz++)
+        for (const e of boxes.get(Math.floor(x / CELL) + dx + ',' + (Math.floor(z / CELL) + dz)) || []) {
+          if (seen.has(e)) continue;
+          seen.add(e);
+          if (RC.ray.intersectBox(e.box, hitPt) && hitPt.distanceTo(RC.ray.origin) <= RC.far)
+            out.push({ object: e.mesh, instanceId: e.id, point: hitPt.clone(), face: null, box: true });
+        }
+    return out;
   };
   const hits = new Map();
   // the ways a kart can drive: the main road (not the closed stretch at a fork), and each branch of a fork
@@ -119,7 +149,7 @@ const r = await p.evaluate(async () => {
             new THREE.Vector3(T.x, T.y, T.z).normalize(),
           );
           RC.far = 4;
-          for (const x of RC.intersectObjects(near(P.x, P.z), false)) {
+          for (const x of [...RC.intersectObjects(near(P.x, P.z), false), ...nearBoxes(P.x, P.z)]) {
             const n = x.face ? x.face.normal.clone().transformDirection(x.object.matrixWorld) : null;
             if (n && Math.abs(n.dot(new THREE.Vector3(T.x, T.y, T.z).normalize())) < 0.35) continue; // grazing a side wall along the road
             if (x.instanceId != null) {

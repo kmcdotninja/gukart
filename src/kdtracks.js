@@ -45,7 +45,7 @@ export function abuTrack(La, Lb) {
     [40, 'coins', { lat: 3, n: 7 }],
     [95, 'items'],
   ]);
-  hump(t, 50, 4);
+  t.straight(50); // (no hump here: it threw karts up into the corridor's ceiling)
   t.straight(210, 0, [
     [20, 'hall', { len: 170 }],
     [20, 'compsci', { len: 170 }],
@@ -59,7 +59,8 @@ export function abuTrack(La, Lb) {
     [20, 'longhalls', { len: 200 }],
     [240, 'hostels', { len: Math.max(60, La - 300) }],
     [140, 'coins', { lat: 0, wave: 1 }],
-    [La * 0.55, 'kicker'],
+    [La * 0.3, 'kicker'],
+    [La * 0.55, 'fork', { len: 160, tunnel: 'in' }], // (on the straight well after the jump: the arcade or the sky bridge)
     [La * 0.75, 'items'],
     [La - 40, 'pad', { lat: 0 }],
   ]);

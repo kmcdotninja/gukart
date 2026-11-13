@@ -789,7 +789,7 @@ export function dressKaduna(k) {
       a = head(mid),
       RW = W / 2 + 0.5, // the glass partitions, right at the road's edge
       HW = W / 2 + 18, // the outer walls
-      CH = 11; // the ceiling
+      CH = 14; // the ceiling (high: room over a kart and the camera following it)
     const G = group(o.x, o.z, a);
     G.position.set(o.x, 0, o.z);
     const ab = new Map(),
