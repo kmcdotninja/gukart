@@ -46,7 +46,13 @@ export function setNight(on) {
   // end, the towers blaze, so the light is brighter and warmer and the haze is a lit purple rather than black
   // Singapore's is a Las Vegas night: the sky and the streets dark, so the city's lights (every window, the LED edges
   // of the towers, the floodlit landmarks, the Supertrees) blaze against it in colour. The contrast is the point
-  const city = on && (chapter.id === 'doha' || chapter.id === 'singapore' || chapter.id === 'kaduna'), // (Kaduna: a big city's glow too)
+  // (Kaduna and Kano City, the metropolis, glow like Doha: a big city's night, the sky lit from below, the streets bright)
+  const city =
+      on &&
+      (chapter.id === 'doha' ||
+        chapter.id === 'singapore' ||
+        chapter.id === 'kaduna' ||
+        (chapter.id === 'kano' && game.circuit?.id === 'metro')),
     neon = on && chapter.id === 'singapore';
   sun.color.set(on ? (neon ? '#8f9cff' : city ? '#b4bfff' : '#8fa8ff') : '#ffe2b8');
   sun.intensity = on ? (neon ? 0.85 : city ? 1.5 : 1.0) : 3.6;

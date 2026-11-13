@@ -237,7 +237,7 @@ export function dressKaduna(k) {
         for (let l = 0; l < 44; l += 3) x.fillRect(c * 42 + 6, 80 + l, 32, 1);
       }
     });
-    return glow(lam('#ffffff', { map: t }), litOf(128, 128, shopCells, 0.4), '#ffffff', 0.8);
+    return glow(lam('#ffffff', { map: t }), litOf(128, 128, shopCells, 0.7), '#ffffff', 1.25);
   });
   const roofZinc = lam('#9aa1a6'),
     roofRust = lam('#9b5a3a'),
@@ -2336,11 +2336,12 @@ export function dressKaduna(k) {
       if (tr.elevated[i]) continue;
       const a = head(s) + (rand() < 0.3 ? rr(-0.4, 0.4) : 0),
         roll = rand();
-      if (roll < (CIRC === 'abu' ? 0.5 : 0.35)) {
+      if (roll < (CIRC === 'abu' ? 0.5 : CIRC === 'metro' ? 0.25 : 0.35)) {
         if (!free(p.x, p.z, 4, W / 2 + 8)) continue;
         reserve(p.x, p.z, 4);
         tree(p.x, p.z, pick(['neem', 'neem', 'mango', 'mahogany', 'doum']), rr(0.9, 1.2));
-      } else if (roll < 0.8) {
+      } else if (roll < (CIRC === 'metro' ? 0.5 : 0.8)) {
+        // (Kano City: more of it built up in lit shop blocks and flats)
         if (!free(p.x, p.z, 10, W / 2 + 14)) continue;
         reserve(p.x, p.z, 10);
         bungalow(p.x, p.z, a);
