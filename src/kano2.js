@@ -118,6 +118,15 @@ export function kanoCityTrack(La, Lb) {
   ]);
   t.straight(60, 0, [[30, 'pad', { lat: 0 }]]);
   t.straight(100, -11);
+  // straight on into Kano Railway Station: in under the arches of the old station front, through the concourse and
+  // along the platform under the long steel canopy, a train standing beside you, and out the far end
+  t.straight(320, 0, [
+    [30, 'hall', { len: 270 }],
+    [30, 'railway', { len: 270 }],
+    [60, 'coins', { lat: 0, n: 10, gap: 7 }],
+    [160, 'items'],
+    [240, 'pad', { lat: 0 }],
+  ]);
   t.straight(40, 0, [[0, 'citystreet', { len: 40 }]]);
   // the fountain roundabout, then the Race Course past the golf
   corner(t, 95, 90, 0, [
