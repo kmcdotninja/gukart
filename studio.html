@@ -3,26 +3,142 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800&display=swap">
   <title>Gukart Vehicle Studio</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&display=swap">
   <style>
-    html, body { margin: 0; height: 100%; background: #0b1330; color: #f4f7ff; font: italic 700 15px/1.4 'Barlow Condensed', 'Arial Narrow', sans-serif; }
-    #bar { position: fixed; top: 0; left: 0; right: 0; display: flex; gap: 8px; padding: 10px; z-index: 2; align-items: center; }
-    #bar a { color: #f4f7ff; padding: 6px 12px; border: 1px solid #6fd3ff66; text-decoration: none; }
-    #bar a.on { background: #ff6a00; border-color: #ff6a00; }
-    #hits { margin-left: auto; color: #ffc400; }
-    canvas { display: block; width: 100vw; height: 100vh; }
-    canvas { cursor: grab; touch-action: none; }
-    canvas:active { cursor: grabbing; }
-    .lbl { position: fixed; color: #9fb0dc; font-size: 11px; display: flex; gap: 8px; align-items: center; }
-    button { font: inherit; color: #f4f7ff; background: #0b133099; border: 1px solid #6fd3ff66; padding: 2px 8px; cursor: pointer; }
-    button:hover { border-color: #6fd3ff; }
-    #resetAll { font-size: 15px; padding: 6px 12px; }
+    /* the Sound Studio's look (sound.html): navy glass cards with cut corners, orange slanted tags, stripe sliders */
+    :root { --navy: #0b1330; --navy-2: #131f4a; --glass: rgba(12, 21, 54, .8); --line: #6fd3ff; --line-dim: rgba(111, 211, 255, .45); --orange: #ff6a00; --orange-2: #ff9a3c; --hazard: #ffc400; --white: #f4f7ff; --muted: #9fb0dc; --race: 'Barlow Condensed', 'Arial Narrow', sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #060a1c; color: var(--white); font-family: var(--race); }
+    button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 16px 16px 40px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 340px; }
+    @media (max-width: 960px) { .page { grid-template-columns: 1fr; } }
+    header { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    h1 { margin: 0; font-style: italic; font-weight: 900; font-size: 36px; letter-spacing: .02em; line-height: 1; }
+    h1 span { color: var(--orange); }
+    .slant { clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+    .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tabs button { height: 40px; padding: 0 20px; font-style: italic; font-weight: 800; font-size: 18px; background: var(--navy-2); }
+    .tabs button.on { background: var(--orange); }
+    .card { --cut: 14px; position: relative; background: var(--glass); border: 1.5px solid var(--line-dim); clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+    .tag { display: inline-flex; align-items: center; gap: 10px; height: 28px; padding: 0 30px 0 14px; margin: -1px 0 12px -1px; background: var(--orange); font-style: italic; font-weight: 800; font-size: 18px; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+    .tag i { width: 6px; height: 100%; background: rgba(255, 255, 255, .9); transform: skewX(-28deg); }
+    .pad { padding: 0 14px 14px; }
+    main, .side { display: grid; gap: 14px; align-content: start; min-width: 0; }
+
+    /* the stage */
+    .stage { aspect-ratio: 16 / 9; min-height: 300px; overflow: hidden; background: #0a1028; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+    .stage canvas:active { cursor: grabbing; }
+    .stage .tag { position: absolute; top: 0; left: 0; margin: 0; z-index: 2; }
+    .powname { position: absolute; left: 18px; bottom: 16px; z-index: 2; pointer-events: none; }
+    .powname small { display: block; font-style: italic; font-weight: 800; font-size: 15px; letter-spacing: .1em; color: var(--hazard); }
+    .powname b { display: block; font-style: italic; font-weight: 900; font-size: 56px; line-height: .9; text-shadow: 0 4px 24px rgba(0, 0, 0, .5); }
+    .timeline { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; z-index: 2; background: rgba(255, 255, 255, .08); }
+    .timeline i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--orange), var(--hazard)); }
+    .hint { position: absolute; right: 18px; bottom: 18px; z-index: 2; font-style: italic; font-weight: 700; font-size: 13px; letter-spacing: .1em; color: rgba(255, 255, 255, .45); }
+    @media (max-width: 640px) { .powname b { font-size: 38px; } .hint { display: none; } }
+
+    /* the big button */
+    .go { position: relative; width: 100%; height: 66px; font-style: italic; font-weight: 900; font-size: 30px; background: linear-gradient(100deg, var(--orange), var(--orange-2)); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18); clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+    .go::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 40%; background: repeating-linear-gradient(-62deg, rgba(255, 255, 255, .22) 0 9px, transparent 9px 22px); -webkit-mask: linear-gradient(90deg, transparent, #000 75%); mask: linear-gradient(90deg, transparent, #000 75%); }
+    .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+    .btn2, .btn3 { height: 46px; font-style: italic; font-weight: 800; font-size: 19px; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
+    .btn2 { background: var(--white); color: var(--navy); } .btn3 { background: var(--navy-2); }
+
+    /* the power card: its line, then its numbers */
+    .pline { margin: 0 0 14px; font-style: italic; font-weight: 700; font-size: 20px; line-height: 1.3; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .chips span { height: 30px; display: inline-flex; align-items: center; padding: 0 16px; background: var(--navy-2); font-style: italic; font-weight: 800; font-size: 16px; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+    .chips span b { color: var(--hazard); margin-left: 6px; }
+
+    /* sliders: the stripe bar */
+    .sliders { display: grid; gap: 10px; }
+    .sl { display: grid; grid-template-columns: 130px 1fr 54px; align-items: center; gap: 10px; }
+    .sl span { font-style: italic; font-weight: 700; font-size: 16px; }
+    .sl output { font-style: italic; font-weight: 700; font-size: 15px; text-align: right; color: var(--hazard); }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; margin: 0; background: transparent; transform: skewX(-24deg); cursor: pointer; --v: 50%; }
+    input[type=range]::-webkit-slider-runnable-track { height: 10px; background: linear-gradient(90deg, transparent var(--v), #1b2552 var(--v)), repeating-linear-gradient(-62deg, #ff6a00 0 8px, #ff9a3c 8px 14px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+    input[type=range]::-moz-range-track { height: 10px; background: linear-gradient(90deg, transparent var(--v), #1b2552 var(--v)), repeating-linear-gradient(-62deg, #ff6a00 0 8px, #ff9a3c 8px 14px); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 5px; height: 20px; margin-top: -5px; border: 0; border-radius: 0; background: #fff3dc; box-shadow: 0 0 10px #ffd29a, 0 0 18px #ff9a3c; }
+    input[type=range]::-moz-range-thumb { width: 5px; height: 20px; border: 0; border-radius: 0; background: #fff3dc; box-shadow: 0 0 10px #ffd29a, 0 0 18px #ff9a3c; }
+
+    /* the line-up: every vehicle's numbers side by side, this one lit */
+    .lineup { display: grid; gap: 4px; }
+    .lineup .lr { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center; font-style: italic; font-weight: 700; font-size: 14px; color: var(--muted); }
+    .lineup .bars { display: flex; gap: 3px; align-items: end; height: 26px; }
+    .lineup .bars i { flex: 1; background: #24305f; }
+    .lineup .bars i.me { background: var(--orange); }
+
+    .ident h2 { margin: 0; font-style: italic; font-weight: 900; font-size: 40px; line-height: 1; }
+    .ident p { margin: 6px 0 12px; font-style: italic; font-weight: 700; font-size: 17px; color: var(--muted); }
+    .note { font-style: italic; font-weight: 700; font-size: 14px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+    .fit { font-style: italic; font-weight: 700; font-size: 16px; }
+    .fit.ok { color: #7dffa6; } .fit.bad { color: #ff8f8f; }
   </style>
 </head>
 <body>
-  <div id="bar"></div>
-  <canvas id="c"></canvas>
+  <div class="page">
+    <header>
+      <h1>VEHICLE <span>STUDIO</span></h1>
+      <nav class="tabs" id="veh"></nav>
+    </header>
+
+    <main>
+      <section class="card stage">
+        <div class="tag"><span>LIVE</span><i></i><i></i></div>
+        <div class="powname"><small>SPECIAL POWER</small><b id="powName">ZIP</b></div>
+        <div class="hint">DRAG TO TURN THE CAR</div>
+        <div class="timeline"><i id="tl"></i></div>
+        <canvas id="gl"></canvas>
+      </section>
+      <button class="go" id="play">PLAY THE POWER</button>
+
+      <section class="card">
+        <div class="tag"><span>SPECIAL POWER</span><i></i><i></i></div>
+        <div class="pad">
+          <p class="pline" id="powLine"></p>
+          <div class="chips" id="powChips"></div>
+          <div class="sliders" id="powSl"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="tag"><span>HANDLING</span><i></i><i></i></div>
+        <div class="pad">
+          <div class="sliders" id="statSl"></div>
+          <p class="note">The same numbers the race uses: 1 is the Kart. Each vehicle further up the price ladder is a little faster; the bars below compare all eight.</p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section class="card ident">
+        <div class="tag"><span>VEHICLE</span><i></i><i></i></div>
+        <div class="pad">
+          <h2 id="vName">KART</h2>
+          <p id="vNote"></p>
+          <div class="chips" id="vChips"></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="tag"><span>LINE-UP</span><i></i><i></i></div>
+        <div class="pad"><div class="lineup" id="lineup"></div></div>
+      </section>
+      <section class="card">
+        <div class="tag"><span>FIT</span><i></i><i></i></div>
+        <div class="pad"><div class="fit" id="fit"></div><p class="note">Any part of the car that reaches into Buddy's head.</p></div>
+      </section>
+      <section class="card">
+        <div class="tag"><span>SAVE</span><i></i><i></i></div>
+        <div class="pad">
+          <div class="row"><button class="btn2" id="save">SAVE TO GAME</button><button class="btn3" id="reset">RESET</button></div>
+          <div class="row" style="margin-top:8px"><button class="btn3" id="copy">COPY NUMBERS</button></div>
+          <p class="note" id="msg">Saved numbers are used by the game in this browser. COPY gives them to paste into src/vehicles.js for everyone.</p>
+        </div>
+      </section>
+    </aside>
+  </div>
   <script type="module" src="/src/studio.js"></script>
 </body>
 </html>

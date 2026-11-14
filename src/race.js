@@ -180,19 +180,9 @@ export const WEAPONS = {
   fire: { name: 'Fire', ammo: 1, color: '#ff4d1f' }, // rare: sets you on fire the moment it lands (fire mode, below)
   shield: { name: 'Shield', ammo: 1, color: '#4fe3ff' }, // goes up the moment it lands: blocks everything for 10 s, or 3 big hits
 };
-// how each vehicle drives
-// (in the garage's order, which is also the price ladder: the further down, the faster and the stronger, and the more
-// it costs. Each keeps its own character too: the Kart still corners best, the heavy ones still turn the slowest)
-export const VSTATS = {
-  kart: { top: 1, acc: 1, turn: 1, off: 0.55, mass: 1 }, // the best grip, the lightest
-  buggy: { top: 1, acc: 1.06, turn: 0.98, off: 0.85, mass: 1.2 }, // quick off the line, happy off the road
-  rail: { top: 1.012, acc: 1.12, turn: 0.97, off: 0.9, mass: 1.1 }, // the fastest away so far, light
-  muscle: { top: 1.028, acc: 1.06, turn: 0.95, off: 0.7, mass: 1.4 }, // straight-line speed
-  monster: { top: 1.036, acc: 1.04, turn: 0.93, off: 0.97, mass: 1.8 }, // the heavy hitter
-  raider: { top: 1.046, acc: 1.1, turn: 0.96, off: 1, mass: 1.5 }, // goes anywhere at full speed
-  roadster: { top: 1.06, acc: 1.14, turn: 0.98, off: 0.8, mass: 1.3 }, // the fastest on tarmac yet
-  brute: { top: 1.07, acc: 1.12, turn: 0.95, off: 1, mass: 1.9 }, // the fastest and the heaviest of all
-};
+// how each vehicle drives: src/vehicles.js (the vehicles' single source of truth, tuned in the Vehicle Studio)
+export { VSTATS } from './vehicles.js';
+import { VSTATS } from './vehicles.js';
 const DRIFT_COL = ['#ffffff', '#6fd3ff', '#ff9a1f', '#d65cff'];
 const FLAME_COL = ['#ff9a1f', '#6fd3ff', '#ff9a1f', '#d65cff', '#ff3b1f', '#9fe4ff', '#ffd23a'];
 const Y = new THREE.Vector3(0, 1, 0);
