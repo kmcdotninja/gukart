@@ -37,6 +37,7 @@ import { initModes } from './modes.js';
 import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
 import { initSchool, schoolUpdate, offerSchool } from './school.js';
+import { initPhoto } from './photo.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
@@ -55,6 +56,7 @@ initModes();
 initWorldmap();
 initRaceFlow();
 initSchool();
+initPhoto();
 
 // ---- the frame loop
 let last = performance.now();
@@ -139,10 +141,11 @@ function frame(now) {
   }
   updateFireworks(dt);
   if (['menu', 'tomap', 'map'].includes(game.state) && game.race.karts.some(k => k.finished)) attract();
-  game.race.update(
-    dt,
-    ['race', 'finish', 'podium', 'results', 'menu', 'tomap', 'map'].includes(game.state) ? 'race' : 'idle',
-  );
+  if (game.state !== 'photo')
+    game.race.update(
+      dt,
+      ['race', 'finish', 'podium', 'results', 'menu', 'tomap', 'map'].includes(game.state) ? 'race' : 'idle',
+    );
   updatePodium(dt);
   game.world.update(dt, game.clock, cam);
 

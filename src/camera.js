@@ -9,6 +9,7 @@ import { mapPan } from './worldmap.js';
 import { INTRO } from './race-flow.js';
 import { game } from './game.js';
 import { podium } from './podium.js';
+import { W } from './track.js';
 
 export const camPos = new THREE.Vector3(0, 400, 600),
   camLook = new THREE.Vector3(),
@@ -75,14 +76,17 @@ export function updateCamera(dt) {
       want.set(C.x + Math.cos(a) * R, tr.radius * 0.36, C.z + Math.sin(a) * R);
       wantLook.set(C.x - Math.cos(a) * R * 0.15, 0, C.z - Math.sin(a) * R * 0.15);
     } else {
+      // each place filmed by a drone circling it on its clear side (src/race-flow.js droneSpot), sinking a little as
+      // it sweeps round, the place in the middle of the frame
       const p = sh.p,
-        back = (p.back || 30) + 34 - e2 * 26,
-        q = tr.point(p.s - back, p.lat || 0);
-      want.set(q.x, q.y + (p.h || 4) + 10 - e2 * 5, q.z);
-      wantLook.set(p.x, (p.y || 0) + (p.lookH || 8), p.z);
+        D = p.cine,
+        a = D.a + (u - 0.5) * 0.55,
+        ty = (p.y || 0) + (p.lookH || 8);
+      want.set(p.x + Math.cos(a) * D.r, ty + D.h - u * 4, p.z + Math.sin(a) * D.r);
+      wantLook.set(p.x, ty, p.z);
     }
     wantUp.set(0, 1, 0);
-    rate = t < 0.06 || i !== f.ci ? 80 : 6; // (a clean cut to each new shot, then a smooth glide)
+    rate = t < 0.06 || i !== f.ci ? 80 : sh.kind === 'place' ? 10 : 6; // (a clean cut to each new shot, then a smooth glide)
     f.ci = i;
   } else if (game.state === 'intro') {
     // a slow drone sweep down the starting grid, from high in front of the gate to low behind the pack
@@ -296,22 +300,85 @@ export function updateCamera(dt) {
     wantLook.copy(podium.at).setY(podium.at.y + (solo ? (cam.aspect < 1 ? -0.6 : 0.9) : 2.1));
     wantUp.set(0, 1, 0);
     rate = t < 0.15 ? 60 : 3; // a cut to it, then the drift
-  } else if (game.state === 'results' || game.state === 'garage') {
+  } else if (game.state === 'photo') {
+    // PHOTO MODE: the moment frozen, the camera round your kart where you drag it (yaw, pitch) and as near as you pinch
+    const ph = game.photo;
+    game.race.frameOf(k, F);
+    const a = k.rh + ph.yaw,
+      lift = k.m.V.cam,
+      d = ph.dist + lift;
+    fwd.copy(F.t).multiplyScalar(Math.cos(a)).addScaledVector(F.l, Math.sin(a));
+    want
+      .copy(kp)
+      .addScaledVector(fwd, d * Math.cos(ph.pitch))
+      .addScaledVector(F.u, 1 + d * Math.sin(ph.pitch));
+    wantLook.copy(kp).addScaledVector(F.u, 1 + lift * 0.5);
+    wantUp.set(0, 1, 0);
+    rate = 14;
+  } else if (game.state === 'results') {
+    // after the race, behind the results: your kart drives on and the camera cuts between angles like a TV replay. By
+    // the track as you come past, low at the wheels off your nose, swinging round you, then the crane shot from above
+    const R = (game.replay ||= { i: -1, t: 0, s0: 0, side: 1 }),
+      tr = game.track,
+      SHOT = [4.6, 3.8, 4.6, 4];
+    R.t += dt;
+    let cut = false;
+    if (R.i < 0 || R.t > SHOT[R.i]) {
+      R.i = (R.i + 1) % SHOT.length;
+      R.t = 0;
+      R.s0 = k.s;
+      R.side = k.lat > 0 ? -1 : 1; // (the far side of the road from you)
+      cut = true;
+    }
+    game.race.frameOf(k, F);
+    const lift = k.m.V.cam,
+      u = R.t / SHOT[R.i];
+    if (R.i === 0) {
+      // trackside: a camera standing at the road's edge ahead; you come up and sweep past it
+      tr.point(R.s0 + 55, R.side * (W / 2 - 2.5), 1.4 + lift * 0.5, want);
+      wantLook.copy(kp).addScaledVector(F.u, 1 + lift * 0.5);
+    } else if (R.i === 1) {
+      // low off the nose, looking back at you: the hero shot, drifting a little round
+      const a = 0.25 * R.side + u * 0.3 * R.side;
+      fwd.copy(F.t).multiplyScalar(Math.cos(a)).addScaledVector(F.l, Math.sin(a));
+      want
+        .copy(kp)
+        .addScaledVector(fwd, 6.5 + lift)
+        .addScaledVector(F.u, 0.9 + lift * 0.4);
+      wantLook.copy(kp).addScaledVector(F.u, 1.1 + lift * 0.5);
+    } else if (R.i === 2) {
+      // swinging round you from the side to the back
+      const a = Math.PI * (0.45 + u * 0.5) * R.side;
+      fwd.copy(F.t).multiplyScalar(Math.cos(a)).addScaledVector(F.l, Math.sin(a));
+      want
+        .copy(kp)
+        .addScaledVector(fwd, 8 + lift)
+        .addScaledVector(F.u, 2.4 + lift);
+      wantLook.copy(kp).addScaledVector(F.u, 1.2 + lift * 0.6);
+    } else {
+      // the crane: high behind you, rising, looking on down the road past you
+      want
+        .copy(kp)
+        .addScaledVector(F.t, -(12 + lift * 2))
+        .addScaledVector(F.u, 6 + u * 4 + lift);
+      wantLook.copy(kp).addScaledVector(F.t, 10).addScaledVector(F.u, 1);
+    }
+    wantUp.set(0, 1, 0);
+    rate = cut ? 80 : R.i === 0 ? 30 : 8;
+  } else if (game.state === 'garage') {
     game.race.frameOf(k, F);
     const a = k.rh + 0.5 * Math.sin(game.clock * 0.25);
     fwd.copy(F.t).multiplyScalar(Math.cos(a)).addScaledVector(F.l, Math.sin(a));
     const lift = k.m.V.cam,
-      far = game.state === 'garage' ? 9 + lift * 2 : 7 + lift;
+      far = 9 + lift * 2;
     want
       .copy(kp)
       .addScaledVector(fwd, far)
       .addScaledVector(F.u, 2.6 + lift);
     wantLook.copy(kp).addScaledVector(F.u, 1.4 + lift * 0.6);
-    if (game.state === 'garage') wantLook.addScaledVector(F.u, -2.2 - lift); // sit the vehicle above the garage panel
+    wantLook.addScaledVector(F.u, -2.2 - lift); // sit the vehicle above the garage panel
     wantUp.copy(F.u);
-    // after a time trial or a free drive your kart is still rolling on: keep pace with it (a slow follow let it drive
-    // right into the camera, so you saw the inside of Buddy's fur)
-    rate = game.state === 'results' ? 9 : 2;
+    rate = 2;
   } else if (fpOn) {
     // FIRST PERSON: from Buddy's eyes (he's hidden, so it's the wheel and the kart's nose in front of you), looking down
     // the road, the horizon tilting with the banking and turning right over in a loop-the-loop
@@ -433,14 +500,17 @@ export function updateCamera(dt) {
   } else if (cam.view?.enabled) cam.clearViewOffset();
   const racing = game.state === 'race' || game.state === 'count' || game.state === 'finish';
   const base = cam.aspect < 1 ? clamp(48 / cam.aspect, 62, 84) : 62;
+  const placeShot = game.state === 'flyby' && game.flyby?.shots[game.flyby.ci]?.kind === 'place';
   const fov =
     game.state === 'tomap' || game.state === 'map'
       ? 50
-      : game.state === 'menu'
-        ? cam.aspect < 1
-          ? 62
-          : 44
-        : base + (racing ? clamp(k.speed, 0, 90) * 0.12 + (k.boost > 0 ? 8 : 0) : 0);
+      : placeShot && cam.aspect >= 1
+        ? 50 // (a longer lens on a place: it fills the frame)
+        : game.state === 'menu'
+          ? cam.aspect < 1
+            ? 62
+            : 44
+          : base + (racing ? clamp(k.speed, 0, 90) * 0.12 + (k.boost > 0 ? 8 : 0) : 0);
   cam.fov += (fov - cam.fov) * Math.min(1, dt * 4);
   cam.updateProjectionMatrix();
   const up = game.state === 'tomap' || game.state === 'map';

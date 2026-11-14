@@ -171,12 +171,14 @@ export const events = {
       }, t * 1000);
       t += Math.min(d, 1.2);
     }
-    // then the podium, and the results card in over the podium about two and a half seconds later (the podium keeps
-    // celebrating behind it). A tap skips ahead at any step
+    // then (on the Final) the podium, and the results card in over it about two and a half seconds later (the podium
+    // keeps celebrating behind it); any other race, the results. A tap skips ahead at any step
     const toPodium = () => {
       if (game.state !== 'finish') return;
       if (shown) hide(el, null, -1);
-      if (game.mode === 'tt') return showResults();
+      // the podium is for the World Tour's Final; any other race goes straight to the results, the camera following
+      // your kart on as it drives away behind them (src/camera.js)
+      if (game.mode === 'tt' || !game.final) return showResults();
       game.state = 'podium';
       // top three: the podium, you in it wearing YOU; further back: just you, let down
       const rk = game.race.rank(),

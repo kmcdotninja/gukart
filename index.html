@@ -324,7 +324,21 @@
       <div class="row">
         <button class="btn" id="menuBtn">HOME</button>
         <button class="btn" id="retryBtn" hidden>RETRY</button>
+        <button class="btn photo-btn" id="photoBtn" aria-label="Photo mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.6-2.2A1.5 1.5 0 0 1 9.8 4h4.4a1.5 1.5 0 0 1 1.2.8L17 7h3a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 4 7zm8 10.5a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4z"/></svg>PHOTO</button>
       </div>
+    </div>
+  </section>
+
+  <!-- photo mode (src/photo.js): the moment frozen, drag the camera round your kart, SNAP to save the picture -->
+  <section id="photo" hidden>
+    <button class="sq-btn ph-back" id="photoBack" aria-label="Back to the results"><svg class="ic flip" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button>
+    <p class="ph-hint">DRAG TO MOVE</p>
+    <button class="ph-snap" id="photoSnap" aria-label="Take the picture"><i></i></button>
+    <div class="ph-flash" id="photoFlash"></div>
+    <!-- the Polaroid it printed: drops in tilted, SAVE to share or download it, the cross to take another -->
+    <div class="ph-print" id="phPrint" hidden>
+      <img id="phPrintImg" alt="Your photo">
+      <div class="row"><button class="btn" id="phClose">ANOTHER</button><button class="btn primary" id="phSave">SAVE</button></div>
     </div>
   </section>
 

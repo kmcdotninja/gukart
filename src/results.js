@@ -11,6 +11,7 @@ import { earn } from './chest.js';
 // Free drive has no finish line: ending the drive banks the coins
 export function endDrive() {
   game.state = 'results';
+  game.replay = null; // (the replay behind the results starts from its first shot)
   game.race.player.ai = true;
   game.resultsTimer = 0;
   const p = game.race.player,
@@ -41,6 +42,7 @@ export function endDrive() {
 export function showResults() {
   if (game.state !== 'finish' && game.state !== 'podium') return;
   game.state = 'results';
+  game.replay = null; // (the replay behind the results starts from its first shot)
   $('#results .tag span').textContent = `${game.PLACE}`;
   $('.place-big').hidden = game.mode !== 'gp' && game.mode !== 'cup';
   $('#standings').className = game.mode === 'tt' ? 'standings laps' : 'standings';

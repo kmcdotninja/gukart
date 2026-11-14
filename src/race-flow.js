@@ -12,7 +12,8 @@ import { custom } from './garage-screen.js';
 import { TT, FREE } from './timetrial.js';
 import { endDrive } from './results.js';
 import { hidePodium } from './podium.js';
-import { setNight } from './scene.js';
+import { setNight, scene, cam } from './scene.js';
+import * as THREE from 'three';
 import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tourLevel } from './cup.js';
 import { rivalNames } from './buddy.js';
 import { releaseInput } from './input.js';
@@ -39,6 +40,37 @@ export function raceIntro(then) {
     raceIntro(then);
   });
 }
+// where the drone films a place from: circling it about 45 to 60 m out and 16 m up, on a side where nothing stands
+// between it and the place (a ray from the camera to the place, against the city), as near as it can be to the way
+// the place's own picture looks at it (from the road behind). Worked out once per place, when its introduction starts
+const ray = new THREE.Raycaster();
+function droneSpot(p) {
+  const tr = game.track,
+    T = new THREE.Vector3(p.x, (p.y || 0) + (p.lookH || 8), p.z),
+    from = tr.point(p.s - (p.back || 30), p.lat || 0),
+    a0 = Math.atan2(from.z - p.z, from.x - p.x),
+    hide = [...game.race.all.map(k => k.m.root)].filter(o => o.visible);
+  hide.forEach(o => (o.visible = false));
+  let best = null;
+  for (const r of [48, 62])
+    for (let j = 0; j < 16; j++) {
+      const a = a0 + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * (Math.PI / 8),
+        h = 16,
+        C = new THREE.Vector3(p.x + Math.cos(a) * r, T.y + h, p.z + Math.sin(a) * r),
+        dir = T.clone().sub(C),
+        d = dir.length();
+      ray.set(C, dir.normalize());
+      ray.camera = cam; // (three needs one to test sprites)
+      ray.far = d - 10;
+      const hit = ray.intersectObjects(scene.children, true).find(x => x.object.visible && !x.object.isSprite);
+      if (!hit) {
+        best = { a, r, h };
+        break;
+      }
+    }
+  hide.forEach(o => (o.visible = true));
+  return best || { a: a0, r: 48, h: 26 }; // (no clear side: from higher, over what's in the way)
+}
 function circuitFlyby(then) {
   const tr = game.track,
     key = 'introSeen.' + game.RID,
@@ -48,6 +80,7 @@ function circuitFlyby(then) {
   store.set(key, true);
   if (location.hash === '#capture') return then(); // (pictures and recordings go straight to the race)
   game.race.reset(); // the grid lines up; the roads are empty
+  for (const p of pick) p.cine ||= droneSpot(p);
   const km = (tr.len / 1000).toFixed(1).replace('.0', ''),
     cname = (game.circuit?.name || chapter.name).toUpperCase(), // (the circuit's own name: no "KANO · KANO CITY")
     shots = [
