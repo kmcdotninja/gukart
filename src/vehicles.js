@@ -26,91 +26,91 @@ export const STAT_INFO = {
   mass: { name: 'WEIGHT', min: 0.8, max: 2.2, step: 0.05 },
 };
 
-// each vehicle's special power: what it's called, a line on what it does, how long it takes to charge, and the
-// numbers that shape it (each with its name and range, for the studio). The motion itself is powerPose below.
+// each vehicle's special power: a knockout, once a race (ready after the opening seconds), each delivered its own way
+// and each taking rivals out (flipped, spun, blown off the road, lifted), and every one a burst of speed while it runs
+// (its SPEED). What it's called, a line on what it does, who
+// it hits, and the numbers that shape it (each with its name and range, for the studio). Its motion is powerPose below;
+// what it does to the rivals is said in `hits` and acted out by the studio and the game.
 export const POWERS_BASE = {
-  kart: {
-    name: 'ZIP',
-    line: 'A burst of speed with grip like glue: take the corner flat out',
-    charge: 16,
-    p: {
-      dur: [1.8, 'HOW LONG (S)', 0.5, 4, 0.1],
-      boost: [1.35, 'SPEED', 1, 2, 0.05],
-      grip: [1.6, 'GRIP', 1, 2.5, 0.05],
-    },
-  },
-  buggy: {
-    name: 'BOUNCE',
-    line: 'A huge hop with a spin: over rockets, mines and anyone in the way',
-    charge: 15,
-    p: {
-      height: [6, 'HEIGHT (M)', 2, 12, 0.5],
-      dur: [1.3, 'AIR TIME (S)', 0.6, 2.5, 0.1],
-      spins: [1, 'SPINS', 0, 3, 1],
-    },
-  },
-  rail: {
-    name: 'ROOSTER TAIL',
-    line: 'Paddle tyres throw up a wall of sand: whoever is behind slows right down',
-    charge: 18,
-    p: {
-      dur: [3, 'HOW LONG (S)', 1, 6, 0.5],
-      reach: [16, 'REACH (M)', 6, 30, 1],
-      slow: [0.6, 'SLOWS TO', 0.3, 0.9, 0.05],
-    },
-  },
-  muscle: {
-    name: 'BURNOUT',
-    line: 'Wheels spinning in a cloud of smoke, then a launch down the straight',
-    charge: 20,
-    p: {
-      smoke: [0.9, 'SMOKE (S)', 0.3, 2, 0.1],
-      dur: [2.4, 'LAUNCH (S)', 1, 4, 0.1],
-      boost: [1.55, 'SPEED', 1.1, 2.2, 0.05],
-    },
-  },
   monster: {
-    name: 'STOMP',
-    line: 'Up, and down hard: the shockwave spins out everyone close',
-    charge: 22,
+    name: 'EARTHQUAKE',
+    line: 'It leaps and slams down: the ground shakes in a wave that rolls out and flips every rival it reaches',
+    hits: 'EVERYONE NEAR',
     p: {
-      height: [5, 'HEIGHT (M)', 2, 10, 0.5],
-      dur: [1.1, 'AIR TIME (S)', 0.6, 2, 0.1],
-      radius: [18, 'SHOCKWAVE (M)', 8, 30, 1],
-    },
-  },
-  raider: {
-    name: 'FLOODLIGHTS',
-    line: 'The lamp bar blazes: the rivals ahead are dazzled and wobble off line',
-    charge: 18,
-    p: {
-      dur: [2.5, 'HOW LONG (S)', 1, 5, 0.5],
-      reach: [60, 'REACH (M)', 20, 100, 5],
-      wobble: [1, 'DAZZLE', 0.3, 2, 0.1],
+      height: [5, 'JUMP (M)', 2, 10, 0.5],
+      air: [1, 'AIR TIME (S)', 0.6, 2, 0.1],
+      radius: [45, 'WAVE (M)', 15, 80, 1],
+      boost: [1.4, 'SPEED', 1.1, 2.2, 0.05],
     },
   },
   roadster: {
     name: 'SKY ROCKET',
-    line: 'Four thrusters drop out from under the car and blast it off the road; it rolls right over in the air and lands far ahead',
-    charge: 25,
+    line: 'Four thrusters blast it into the sky: it flies flat out for a few seconds, flipping and turning over the pack, then drops back down and the blast flips anyone close',
+    hits: 'WHERE IT LANDS',
     p: {
       height: [14, 'HEIGHT (M)', 6, 30, 1],
-      dur: [3.2, 'FLIGHT (S)', 1.5, 5, 0.1],
-      rolls: [1, 'BARREL ROLLS', 0, 3, 1],
-      boost: [1.5, 'SPEED', 1, 2.2, 0.05],
+      dur: [4, 'FLIGHT (S)', 2, 6, 0.1],
+      boost: [2, 'SPEED IN THE AIR', 1.2, 3, 0.05],
+      rolls: [1, 'FLIPS', 0, 3, 1],
+      turns: [1, 'TURNS', 0, 2, 1],
+      blast: [14, 'LANDING BLAST (M)', 5, 30, 1],
+    },
+  },
+  kart: {
+    name: 'SUPERSONIC',
+    line: 'It breaks the sound barrier: a sonic boom, double speed, and every rival it passes is blown off the road',
+    hits: 'ANYONE IT PASSES',
+    p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [2, 'SPEED', 1.4, 3, 0.1], wake: [8, 'WAKE (M)', 3, 15, 1] },
+  },
+  buggy: {
+    name: "SURF'S UP",
+    line: 'A huge wave rises under it: the buggy rides the crest and the wave washes every rival it catches off the road',
+    hits: 'ANYONE IT CATCHES',
+    p: {
+      dur: [4, 'HOW LONG (S)', 2, 6, 0.5],
+      height: [5, 'WAVE (M)', 3, 9, 0.5],
+      boost: [1.6, 'SPEED', 1.2, 2.4, 0.1],
+    },
+  },
+  rail: {
+    name: 'HARMATTAN',
+    line: 'It whips up a sandstorm that rolls down the road ahead: every rival inside loses its way and spins out',
+    hits: 'EVERYONE AHEAD',
+    p: {
+      dur: [4, 'HOW LONG (S)', 2, 6, 0.5],
+      reach: [80, 'REACH (M)', 30, 150, 5],
+      boost: [1.35, 'SPEED', 1.1, 2.2, 0.05],
+    },
+  },
+  muscle: {
+    name: 'FIRE TRAIL',
+    line: 'Its tyres lay a burning trail: any rival who drives into the flames spins out',
+    hits: 'ANYONE BEHIND',
+    p: {
+      dur: [4, 'LAYING IT (S)', 2, 6, 0.5],
+      burn: [6, 'BURNS FOR (S)', 3, 12, 0.5],
+      boost: [1.45, 'SPEED', 1.1, 2.2, 0.05],
+    },
+  },
+  raider: {
+    name: 'DUST DEVIL',
+    line: 'It sends a whirlwind racing down the track after the leader: it catches them, lifts them and spins them',
+    hits: 'THE LEADER',
+    p: {
+      speed: [45, 'WHIRLWIND (M/S)', 20, 80, 1],
+      lift: [10, 'LIFT (M)', 4, 20, 1],
+      boost: [1.35, 'SPEED', 1.1, 2.2, 0.05],
     },
   },
   brute: {
-    name: 'RAM',
-    line: 'Armour glowing, it cannot be stopped: anyone it touches is knocked flying',
-    charge: 22,
-    p: {
-      dur: [3, 'HOW LONG (S)', 1, 6, 0.5],
-      boost: [1.3, 'SPEED', 1, 1.8, 0.05],
-      knock: [1.6, 'KNOCK', 1, 3, 0.1],
-    },
+    name: 'BULLDOZER',
+    line: 'A plough blade unfolds on the front: for a few seconds every rival in front of it is flipped out of the way',
+    hits: 'ANYONE IN FRONT',
+    p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [1.4, 'SPEED', 1.1, 2, 0.05] },
   },
 };
+// (once a race, ready this many seconds after the start)
+export const READY_AFTER = 30;
 
 // the numbers as they are now (the defaults with anything saved in the studio laid over them)
 const saved = id => store.get('vehicleTune.' + id, null) || {};
@@ -123,7 +123,7 @@ export function applyTunes() {
     VSTATS[id] = { ...VSTATS_BASE[id], ...(t.stats || {}) };
     const p = {};
     for (const [k, v] of Object.entries(b.p)) p[k] = t.power?.[k] ?? v[0];
-    POWERS[id] = { name: b.name, line: b.line, charge: t.charge ?? b.charge, ...p };
+    POWERS[id] = { name: b.name, line: b.line, hits: b.hits, ...p };
   }
 }
 applyTunes();
@@ -131,78 +131,39 @@ applyTunes();
 const ease = u => u * u * (3 - 2 * u);
 const clamp01 = u => Math.max(0, Math.min(1, u));
 // a power's motion, t seconds after it's fired: how high the vehicle is (y), how it's turned (pitch nose up, roll,
-// yaw), squashed (squash, 1 = none), how much faster (boost, 1 = none) and which effects are on. Shared by the studio
-// and the game, so what you see in the studio is what happens in a race. Returns null once it's over.
+// yaw), squashed (squash, 1 = none), how much faster (boost, 1 = none) and which effects are on (fx). Shared by the
+// studio and the game, so what you see in the studio is what happens in a race. Returns null once it's over.
 export function powerPose(id, t, P = POWERS[id]) {
   const o = { y: 0, pitch: 0, roll: 0, yaw: 0, squash: 1, boost: 1, fx: {} };
   switch (id) {
-    case 'kart': {
-      if (t > P.dur) return null;
-      o.boost = P.boost;
-      o.pitch = -0.04;
-      o.fx.sparkle = 1;
-      o.fx.flame = 1;
-      return o;
-    }
-    case 'buggy': {
-      if (t > P.dur) return null;
-      const u = t / P.dur;
-      o.y = 4 * P.height * u * (1 - u);
-      o.yaw = ease(u) * Math.PI * 2 * P.spins;
-      o.pitch = 0.25 * Math.cos(u * Math.PI);
-      o.squash = u > 0.92 ? 0.85 : 1;
-      return o;
-    }
-    case 'rail': {
-      if (t > P.dur) return null;
-      o.yaw = Math.sin(t * 9) * 0.06;
-      o.pitch = 0.05;
-      o.fx.sand = 1;
-      return o;
-    }
-    case 'muscle': {
-      if (t > P.smoke + P.dur) return null;
-      if (t < P.smoke) {
-        o.pitch = 0.05 + Math.sin(t * 60) * 0.01;
-        o.squash = 0.96;
-        o.fx.smoke = 1;
-        o.boost = 0.4;
-      } else {
-        const u = (t - P.smoke) / P.dur;
-        o.pitch = 0.22 * (1 - ease(clamp01(u * 2.5)));
-        o.boost = P.boost;
-        o.fx.flame = 1;
-        o.fx.smoke = u < 0.3 ? 1 : 0;
-      }
-      return o;
-    }
     case 'monster': {
-      if (t > P.dur + 0.5) return null;
-      if (t <= P.dur) {
-        const u = t / P.dur;
-        o.y = 4 * P.height * u * (1 - u) * (u > 0.5 ? 1.15 - 0.15 * u : 1);
-        o.pitch = 0.2 * Math.cos(u * Math.PI);
+      if (t > P.air + 1.6) return null;
+      if (t <= P.air) {
+        const u = t / P.air;
+        o.y = 4 * P.height * u * (1 - u);
+        o.pitch = 0.25 * Math.cos(u * Math.PI);
+        o.boost = P.boost;
       } else {
-        const v = (t - P.dur) / 0.5;
-        o.squash = 1 - 0.25 * Math.sin(v * Math.PI);
-        o.fx.ring = v; // the shockwave, spreading
+        const v = (t - P.air) / 1.6;
+        o.squash = 1 - 0.3 * Math.max(0, Math.sin(Math.min(1, v * 4) * Math.PI));
+        o.boost = P.boost;
+        o.fx.quake = v; // the shaking wave, rolling out from 0 to the full radius
       }
-      return o;
-    }
-    case 'raider': {
-      if (t > P.dur) return null;
-      o.pitch = -0.03;
-      o.fx.lights = Math.min(1, t * 6) * (0.8 + 0.2 * Math.sin(t * 30));
       return o;
     }
     case 'roadster': {
-      if (t > P.dur) return null;
+      if (t > P.dur + 0.9) return null;
+      if (t > P.dur) {
+        o.fx.land = (t - P.dur) / 0.9; // the landing blast
+        return o;
+      }
       const u = t / P.dur,
         up = ease(clamp01(u / 0.25)),
         down = ease(clamp01((u - 0.72) / 0.28));
       o.y = P.height * (up - down);
       o.pitch = 0.35 * Math.sin(clamp01(u / 0.3) * Math.PI) - 0.25 * Math.sin(clamp01((u - 0.7) / 0.3) * Math.PI);
-      o.roll = ease(clamp01((u - 0.3) / 0.38)) * Math.PI * 2 * P.rolls;
+      o.roll = ease(clamp01((u - 0.28) / 0.22)) * Math.PI * 2 * P.rolls; // a flip...
+      o.yaw = ease(clamp01((u - 0.48) / 0.22)) * Math.PI * 2 * (P.turns || 0); // ...then a turn, nose round and back
       o.boost = P.boost;
       o.fx.flame = 1;
       o.fx.rocket = 1;
@@ -212,11 +173,54 @@ export function powerPose(id, t, P = POWERS[id]) {
       o.fx.thrust = u < 0.28 ? 1 : u > 0.7 ? 0.9 : 0.45;
       return o;
     }
+    case 'kart': {
+      if (t > P.dur) return null;
+      o.boost = P.boost;
+      o.pitch = -0.05;
+      o.fx.sonic = t; // the boom at the start, the streaks all through
+      o.fx.flame = 1;
+      return o;
+    }
+    case 'buggy': {
+      if (t > P.dur) return null;
+      const u = t / P.dur,
+        w = Math.min(1, u / 0.15, (1 - u) / 0.15); // the wave rising, riding, falling away
+      o.fx.wave = w;
+      o.y = P.height * 0.62 * ease(w);
+      o.pitch = -0.18 * w;
+      o.roll = Math.sin(t * 3) * 0.06 * w;
+      o.boost = 1 + (P.boost - 1) * w;
+      return o;
+    }
+    case 'rail': {
+      if (t > P.dur) return null;
+      o.yaw = Math.sin(t * 9) * 0.05;
+      o.boost = P.boost;
+      o.fx.storm = Math.min(1, t * 2, (P.dur - t) * 2);
+      o.fx.sand = 1;
+      return o;
+    }
+    case 'muscle': {
+      if (t > P.dur) return null;
+      o.boost = P.boost;
+      o.pitch = 0.05;
+      o.fx.fire = 1;
+      o.fx.smoke = t < 0.5 ? 1 : 0;
+      return o;
+    }
+    case 'raider': {
+      if (t > 3.6) return null;
+      o.fx.devil = t; // the whirlwind, sent off down the road
+      o.pitch = t < 0.4 ? -0.08 : 0;
+      o.boost = P.boost;
+      o.fx.flame = 1;
+      return o;
+    }
     case 'brute': {
       if (t > P.dur) return null;
-      o.pitch = -0.06;
       o.boost = P.boost;
-      o.fx.glow = 0.7 + 0.3 * Math.sin(t * 12);
+      o.pitch = -0.05;
+      o.fx.blade = Math.min(1, t / 0.35, (P.dur - t) / 0.35);
       o.fx.flame = 1;
       return o;
     }

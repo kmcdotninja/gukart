@@ -2,7 +2,7 @@
 // and pictured mid-way, to check the stage and the panels
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-const [out, list = 'roadster,monster,raider,rail'] = process.argv.slice(2);
+const [out, list = 'monster,roadster,kart,buggy,rail,muscle,raider,brute'] = process.argv.slice(2);
 const server = await createServer({ server: { port: 4194, strictPort: true, host: '127.0.0.1' }, logLevel: 'silent' });
 await server.listen();
 const b = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
