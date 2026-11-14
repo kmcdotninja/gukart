@@ -36,6 +36,7 @@ import { initGarageScreen } from './garage-screen.js';
 import { initModes } from './modes.js';
 import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
+import { initSchool, schoolUpdate, offerSchool } from './school.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
@@ -53,6 +54,7 @@ initGarageScreen();
 initModes();
 initWorldmap();
 initRaceFlow();
+initSchool();
 
 // ---- the frame loop
 let last = performance.now();
@@ -176,6 +178,7 @@ function frame(now) {
     }
     drawMap();
     coachUpdate(dt);
+    schoolUpdate(dt);
     {
       const Fk = game.track.forks || [],
         d = Fk.length ? Fk[0].sA - p.s : -1,
@@ -391,7 +394,10 @@ async function boot() {
     }
     show($('#menu'), -1);
   } // arriving from the map: down out of the sky onto the new city
-  else show($('#menu'));
+  else {
+    show($('#menu'));
+    offerSchool(); // (the first time the game opens: the Driving School, once)
+  }
   if (CAPTURE) {
     last = 0;
     window.gukart.ready = true; // the capture script steps frame() itself

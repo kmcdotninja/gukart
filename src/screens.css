@@ -1720,3 +1720,88 @@ body.onfire #hud::before {
 #setCtrl {
   margin-top: 8px;
 }
+#setSchool {
+  margin-top: 8px;
+}
+
+/* ---- the Driving School (src/school.js): the offer and the end card, big and simple; the lessons along the top as a
+   row of slanted steps, lit as you go */
+.sch-card {
+  text-align: center;
+}
+.sch-big {
+  margin: 14px 0 2px;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(30px, 9vw, 44px);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--white);
+}
+.sch-sub {
+  margin: 6px 0 16px;
+  font-family: var(--race);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--hazard);
+}
+.sch-card .row {
+  margin-top: 10px;
+}
+.school-bar {
+  position: fixed;
+  z-index: 7;
+  top: calc(var(--st, 0px) + 64px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.school-bar b {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: var(--white);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.sch-steps {
+  display: flex;
+  gap: 5px;
+}
+.sch-steps i {
+  width: 30px;
+  height: 8px;
+  background: rgba(11, 19, 48, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transform: skewX(-20deg);
+  transition: background 0.25s ease;
+}
+.sch-steps i.on {
+  background: rgba(255, 255, 255, 0.85);
+}
+.sch-steps i.done {
+  background: var(--orange);
+  border-color: var(--orange);
+}
+/* in the school, the race's own counters are put away: no position, no lap progress, no clock */
+/* (on a phone, in the HEAT meter's place, clear of the counters along the top) */
+@media (orientation: portrait) {
+  .school-bar {
+    top: calc(var(--st, 0px) + 112px);
+  }
+}
+#hud[data-mode='school'] #heat,
+#hud[data-mode='school'] #posBig,
+#hud[data-mode='school'] .progress,
+#hud[data-mode='school'] #timer {
+  display: none;
+}

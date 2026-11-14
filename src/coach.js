@@ -27,22 +27,32 @@ function coachShow(step) {
   coach.step = step;
   coach.t = 0;
   coach.done = 0;
-  const c = COACH[step],
-    el = coach.el;
+  const c = COACH[step];
+  coachPoint(Tilt.on && step === 'steer' ? 'TILT YOUR PHONE TO STEER' : isTouch ? c.touch : c.keys, c.at, c.btn); // (our own strings: they carry the arrow icons)
+}
+// a prompt pointing at a control: on a phone, the hand over its button (lit up); with tilt steering or a keyboard, or
+// with nothing to point at, up in the sky, clear of your kart and the road ahead. (The Driving School uses it too)
+export function coachPoint(html, at, btn = []) {
+  const el = coach.el;
   document.querySelectorAll('.hint').forEach(b => b.classList.remove('hint'));
-  coach.text.innerHTML = Tilt.on && step === 'steer' ? 'TILT YOUR PHONE TO STEER' : isTouch ? c.touch : c.keys; // (our own strings: they carry the arrow icons)
+  coach.text.innerHTML = html;
   el.classList.toggle('swipe', false);
-  if (isTouch && !(Tilt.on && c.at === '#steerPad')) {
-    const r = $(c.at).getBoundingClientRect();
+  const point = isTouch && at && !(Tilt.on && at === '#steerPad');
+  if (point) {
+    const r = $(at).getBoundingClientRect();
     el.style.left = r.left + r.width / 2 + 'px';
-    el.style.top = r.top - (c.at === '#steerPad' ? 190 : 96) + 'px';
-    c.btn.forEach(q => $(q).classList.add('hint'));
+    el.style.top = r.top - (at === '#steerPad' ? 190 : 96) + 'px';
+    btn.forEach(q => $(q).classList.add('hint'));
   } else {
     el.style.left = '50%';
     el.style.top = '19%';
-  } // up in the sky, clear of your kart and the road ahead
-  el.querySelector('.hand').style.display = isTouch ? '' : 'none';
+  }
+  el.querySelector('.hand').style.display = point ? '' : 'none';
   el.hidden = false;
+}
+export function coachHide() {
+  coach.el.hidden = true;
+  document.querySelectorAll('.hint').forEach(b => b.classList.remove('hint'));
 }
 function coachEnd() {
   if (!coach.step) return;
@@ -53,7 +63,7 @@ function coachEnd() {
   document.querySelectorAll('.hint').forEach(b => b.classList.remove('hint'));
 }
 export function coachUpdate(dt) {
-  if (!coach.seen) return;
+  if (!coach.seen || game.school) return;
   const p = game.race.player,
     inp = game.race.input;
   if (!coach.step) {

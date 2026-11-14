@@ -52,6 +52,7 @@ export function initSettings() {
       Sound.init();
       from = src;
       paint();
+      $('#setSchool').hidden = src.id !== 'menu'; // (the Driving School is started from home, not mid-race)
       if (src.id === 'pause') swap(src, $('#settings'), 1);
       else {
         hide(src);
@@ -143,7 +144,7 @@ export function paintControls() {
       <path d="M290 70 a120 120 0 0 1 0 160" stroke="${O}" stroke-width="5" fill="none" stroke-linecap="round"/>
       ${label(180, 290, 'TILT TO STEER', 'middle', 26)}</svg>`;
   } else if (isTouch) {
-    // the race screen: the arrows low in each corner, FIRE over the left one, the brake over the right, nitro above it
+    // the race screen: the arrows low in each corner, FIRE over the left one, nitro over the right (phones have no brake)
     const btn = (x, y, w, h, inner, name, lx, ly, anchor) =>
       `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16" fill="rgba(11,19,48,.75)" stroke="${O}" stroke-width="3"/>${inner}${label(lx, ly, name, anchor)}`;
     pic = `<svg viewBox="0 0 360 560" class="ctrl-svg" role="img" aria-label="The race screen's buttons">
@@ -154,8 +155,7 @@ export function paintControls() {
       ${label(180, 504, 'STEER', 'middle', 26)}
       <path d="M108 496 L132 496 M252 496 L228 496" stroke="${INK}" stroke-width="2"/>
       ${btn(22, 360, 76, 76, `<text x="60" y="406" ${F} font-size="20" fill="${INK}" text-anchor="middle">FIRE</text>`, '', 108, 404, 'start')}
-      ${btn(254, 362, 84, 70, `<g fill="${INK}" opacity=".8"><rect x="268" y="380" width="56" height="5" rx="2"/><rect x="268" y="392" width="56" height="5" rx="2"/><rect x="268" y="404" width="56" height="5" rx="2"/></g>`, 'BRAKE', 244, 404, 'end')}
-      ${btn(266, 272, 64, 64, `<rect x="289" y="284" width="18" height="40" rx="7" fill="${INK}" opacity=".85"/>`, 'NITRO', 256, 310, 'end')}
+      ${btn(262, 360, 76, 76, `<rect x="291" y="374" width="18" height="48" rx="7" fill="${INK}" opacity=".85"/>`, 'NITRO', 252, 404, 'end')}
     </svg>`;
   } else {
     // the keys: the arrows (nitro, brake, steer), Space (drift, and tricks in the air), F (fire), P (pause)

@@ -16,6 +16,7 @@ import { setNight } from './scene.js';
 import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tourLevel } from './cup.js';
 import { rivalNames } from './buddy.js';
 import { releaseInput } from './input.js';
+import { endSchool, schoolReset } from './school.js';
 
 export const INTRO = 2.4; // seconds: the drone sweep down the grid before the countdown
 // The circuit's introduction (F1 TV): the camera orbits over the whole circuit with its name and what the race is for,
@@ -164,7 +165,7 @@ export function startRace() {
   // the rivals' names: a World Tour keeps the ones it drew at its start; any other race draws new ones
   game.race.setNames(game.mode === 'cup' ? cupOf()?.names : rivalNames());
   Sound.quiet = false;
-  $('#hud').dataset.mode = raceMode();
+  $('#hud').dataset.mode = game.school ? 'school' : raceMode();
   TT.last = -1;
   TT.laps = [];
   TT.rec = [];
@@ -175,7 +176,7 @@ export function startRace() {
     TT.ghost = store.get('ghost.' + game.RID, null);
     game.race.makeGhost(game.vehicle, custom(game.vehicle));
   }
-  $('#quitBtn').textContent = game.mode === 'free' ? 'END DRIVE' : 'QUIT'; // (quitting goes back to the chapters)
+  $('#quitBtn').textContent = game.school ? 'LEAVE SCHOOL' : game.mode === 'free' ? 'END DRIVE' : 'QUIT'; // (quitting goes back to the chapters)
   $('#restartBtn').textContent = game.mode === 'free' ? 'START AGAIN' : 'RESTART RACE';
   $('#againBtn').textContent = game.mode === 'free' ? 'DRIVE AGAIN' : 'RACE AGAIN';
   $('#menuBtn').textContent = 'HOME';
@@ -199,6 +200,7 @@ export function startRace() {
   coach.seen = store.get('coach', {});
   coach.step = null;
   coach.el.hidden = true;
+  if (game.school) schoolReset(); // (the Driving School starts again from its first lesson)
 }
 export function attract() {
   hidePodium();
@@ -209,6 +211,8 @@ export function attract() {
   Sound.quiet = true;
   for (let i = 0; i < 140; i++) game.race.update(0.05, 'race'); // run it on a few seconds so the pack has spread out
 }
+// home, from outside (the Driving School)
+export const goHome = () => toMenu();
 // home again. After a race you finished, day turns to night (or night to day), so everyone gets to race both
 function toMenu(raced = false) {
   if (raced === true) setNight(!game.night);
@@ -288,7 +292,11 @@ export function initRaceFlow() {
   });
   // quitting a race asks first (Free Drive's END DRIVE just ends it: it shows your drive, nothing is lost)
   $('#quitBtn').addEventListener('click', () => {
-    if (game.mode === 'free' && game.state === 'paused') {
+    if (game.school) {
+      // (leaving the Driving School: just home)
+      endSchool();
+      toMenu();
+    } else if (game.mode === 'free' && game.state === 'paused') {
       $('#hud').style.visibility = '';
       $('#pause').hidden = true;
       endDrive();

@@ -757,8 +757,8 @@ export class Race {
     this.arch.visible = false;
     for (const b of this.boxes) {
       b.t = 0;
-      b.m.visible = b.m.userData.glow.visible = this.mode === 'gp';
-    } // weapon crates are for racing the crew only
+      b.m.visible = b.m.userData.glow.visible = this.mode === 'gp' || !!this.school;
+    } // weapon crates are for racing the crew only (and the Driving School)
     for (const c of this.coins) c.t = 0;
     for (const n of this.nitros || []) {
       n.t = 0;
@@ -851,6 +851,7 @@ export class Race {
         break;
       }
     }
+    if (this.school) pick = 'rocket'; // (the Driving School's crates: something to fire)
     if (k === this.player) {
       k.rolling = 0.9;
       k.pending = pick;
@@ -1530,7 +1531,7 @@ export class Race {
       }
 
     // ---- pickups
-    for (const b of this.mode === 'gp' ? this.boxes : []) {
+    for (const b of this.mode === 'gp' || this.school ? this.boxes : []) {
       if (b.t > 0) {
         b.t -= dt;
         b.m.visible = b.m.userData.glow.visible = b.t <= 0;

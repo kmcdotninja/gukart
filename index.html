@@ -239,6 +239,24 @@
   </section>
 
   <!-- quitting: a check first, in the pause card's place; BACK returns to pause -->
+  <!-- the Driving School (src/school.js): offered once when the game first opens; its lessons along the top; the end -->
+  <section id="schoolAsk" class="sheet" hidden>
+    <div class="panel card sch-card">
+      <div class="tag"><span>DRIVING SCHOOL</span><i></i><i></i></div>
+      <p class="sch-big">NEW TO GUKART?</p>
+      <p class="sch-sub">ONE MINUTE TO LEARN</p>
+      <div class="row"><button class="btn" id="schoolSkip">SKIP</button><button class="btn primary" id="schoolGo">START</button></div>
+    </div>
+  </section>
+  <div class="school-bar" id="schoolBar" hidden><b>DRIVING SCHOOL</b><span class="sch-steps" id="schSteps"></span></div>
+  <section id="schoolDone" class="sheet" hidden>
+    <div class="panel card sch-card">
+      <div class="tag"><span>DRIVING SCHOOL</span><i></i><i></i></div>
+      <p class="sch-big">YOU'RE READY</p>
+      <div class="row"><button class="btn" id="schoolHome">HOME</button><button class="btn primary" id="schoolRace">RACE</button></div>
+    </div>
+  </section>
+
   <section id="quitAsk" class="sheet" hidden>
     <div class="panel card">
       <div class="tag"><span>QUIT RACE?</span><i></i><i></i></div>
@@ -270,6 +288,7 @@
         <div class="set-row"><b>VIEW</b><div class="seg" id="setView"><button data-v="chase">CHASE</button><button data-v="fp" aria-label="First person (cockpit)">COCKPIT</button></div></div>
         <div class="set-row"><b>VIBRATION</b><div class="seg" id="setHap"><button data-h="1">ON</button><button data-h="0">OFF</button></div></div>
         <button class="btn" id="setCtrl" type="button">CONTROLS</button>
+        <button class="btn" id="setSchool" type="button">DRIVING SCHOOL</button>
       </div>
     </div>
   </section>
