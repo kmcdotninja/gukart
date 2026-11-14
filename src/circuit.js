@@ -104,6 +104,11 @@ export async function swapCircuit(id, then = '') {
   swapping = true;
   const veil = $('#swapVeil');
   veil.querySelector('b').textContent = c.name.toUpperCase();
+  // a picture of the circuit you're switching to behind its name (public/places, by day or night)
+  veil.style.setProperty(
+    '--ld-pic',
+    `url("/places/${chapter.id}-${c.id}${store.get('night', false) ? '-night' : ''}.jpg")`,
+  );
   veil.hidden = false;
   veil.classList.add('in');
   await new Promise(r => setTimeout(r, 220)); // the veil fades up before the work starts

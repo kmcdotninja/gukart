@@ -180,6 +180,17 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   );
 
   /* ---------- sky, sea, island ---------- */
+  // The day sky, each city its own: deep blue overhead to a pale horizon that matches the haze (so the far city melts
+  // into the sky), big sunlit cumulus drifting over it, and the sun's glow. `cover` is how much of the sky is cloud.
+  //  Kano: the harmattan, a dusty gold haze and soft, thinner clouds.  Doha: a hot clear blue, a few clouds.
+  //  Kaduna: greener, brighter, big fair-weather cumulus.  Singapore: the tropics, tall clouds building up.
+  const SKY_DAY = {
+    kano: { top: '#2f6cc0', mid: '#94bde2', hz: '#ead9bd', cover: 0.5, lit: '#fffaf1', shade: '#c2bcb6' },
+    doha: { top: '#2766cc', mid: '#8dbcec', hz: '#ece4d4', cover: 0.36, lit: '#ffffff', shade: '#c8c9cf' },
+    kaduna: { top: '#2869c6', mid: '#8bbbe8', hz: '#dfe6e6', cover: 0.56, lit: '#ffffff', shade: '#b4bbc5' },
+    singapore: { top: '#2461c0', mid: '#86b5e6', hz: '#dbe5ee', cover: 0.62, lit: '#ffffff', shade: '#a9b2c2' },
+  };
+  const skyDay = SKY_DAY[city] || SKY_DAY.kano;
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(3000, 32, 16),
     new THREE.ShaderMaterial({
@@ -188,17 +199,54 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       fog: false,
       vertexShader:
         'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-      // a harmattan sky: deep blue overhead, dusty gold at the horizon
       uniforms: {
         uNight: { value: 0 },
         uCity: { value: coast ? 1 : 0 },
         uMoon: { value: new THREE.Vector3(0.5, 0.45, -0.74).normalize() },
+        uSun: { value: new THREE.Vector3(-0.6, 0.55, 0.45).normalize() }, // (the sun light's own direction, buddy.js SUN)
+        uTime: { value: 0 },
+        uTop: { value: new THREE.Color(skyDay.top) },
+        uMid: { value: new THREE.Color(skyDay.mid) },
+        uHz: { value: new THREE.Color(skyDay.hz) },
+        uLit: { value: new THREE.Color(skyDay.lit) },
+        uShade: { value: new THREE.Color(skyDay.shade) },
+        uCover: { value: skyDay.cover },
       },
-      fragmentShader: `uniform float uNight; uniform float uCity; uniform vec3 uMoon; varying vec3 vP;
+      fragmentShader: `uniform float uNight; uniform float uCity; uniform vec3 uMoon; uniform vec3 uSun; uniform float uTime;
+      uniform vec3 uTop; uniform vec3 uMid; uniform vec3 uHz; uniform vec3 uLit; uniform vec3 uShade; uniform float uCover;
+      varying vec3 vP;
       float h3(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-      void main(){ float h = vP.y;
-      vec3 top = vec3(.2,.47,.82), mid = vec3(.55,.76,.93), hz = vec3(.99,.84,.62);
-      vec3 c = mix(hz, mid, smoothstep(0., .2, h)); c = mix(c, top, smoothstep(.2, .75, h)); if (h < 0.) c = hz;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+        return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
+      float fbm(vec2 p){ float v = 0., a = .5; for (int i = 0; i < 5; i++){ v += a * noise(p); p = p * 2.03 + vec2(17.1, 9.2); a *= .5; } return v; }
+      // cumulus: big round heaps (the low octaves) with cauliflower edges (the detail, pushed about by the heaps)
+      // (fbm sits around .5: the threshold slides with uCover, so cover .5 makes roughly half the sky cloud)
+      float cloud(vec2 p){ float b = fbm(p * .6); float d = fbm(p * 2.4 + b * 2.4);
+        float v = b * .72 + d * .42; float th = .74 - uCover * .44; return smoothstep(th, th + .06, v); }
+      void main(){ float h = vP.y; vec3 d = normalize(vP);
+      vec3 c = mix(uHz, uMid, smoothstep(0., .22, h)); c = mix(c, uTop, smoothstep(.22, .8, h)); if (h < 0.) c = uHz;
+      // the sun: a soft wide glow, a brighter halo, a small hot disc
+      float sd = max(dot(d, uSun), 0.);
+      c += vec3(1., .86, .62) * (pow(sd, 8.) * .18 + pow(sd, 90.) * .35) + vec3(1., .97, .9) * smoothstep(.9993, .9997, sd);
+      // the clouds: a layer overhead seen in perspective (bigger above, thinning into the haze at the horizon), drifting
+      if (h > 0.) {
+        // (the +.2 keeps the far clouds from squashing flat against the horizon: they stay heaps all the way down)
+        vec2 cp = d.xz / (h + .2) * 1.0 + vec2(uTime * .006, uTime * .0025);
+        float dens = cloud(cp);
+        if (dens > .001) {
+          vec2 toSun = normalize(uSun.xz);
+          // lit from the sun's side: more cloud between here and the sun puts this part in its own shade; the
+          // underside (where the heap thins at its edge) greys too
+          float shadow = cloud(cp + toSun * .3);
+          // a heap's base: just below (further out, towards the horizon) the cloud runs out, so this is its flat grey bottom
+          float base = 1. - cloud(cp * 1.07);
+          vec3 cc = mix(uLit, uShade, clamp(shadow * .35 + base * .4 + (1. - dens) * .15, 0., 1.) * .8);
+          cc += vec3(1., .9, .72) * pow(sd, 12.) * .35 * (1. - dens * .6); // a silver edge on the clouds near the sun
+          float fade = smoothstep(.0, .1, h);
+          c = mix(c, mix(uHz, cc, smoothstep(.0, .35, h) * .35 + .65), dens * fade * .96);
+        }
+      }
       // night: inky blue overhead, a faint warm city glow at the horizon, stars, the moon
       vec3 n = mix(vec3(.16,.12,.2), vec3(.04,.07,.17), smoothstep(0., .25, h)); n = mix(n, vec3(.01,.02,.07), smoothstep(.25, .8, h));
       vec3 q = floor(vP * 260.); float st = step(.9965, h3(q)) * smoothstep(.05, .3, h) * (.6 + .4 * h3(q + 7.));
@@ -1711,8 +1759,11 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       dk.night?.(n);
       for (const [m, k] of gateGlow) m.emissiveIntensity = n * k;
     },
+    // the day haze: the sky's own horizon colour, so the far city fades into the sky rather than into a band
+    skyFog: skyDay.hz,
     update(dt, t, cam) {
       sky.position.copy(cam.position);
+      sky.material.uniforms.uTime.value = t; // (the clouds drift)
       dk.update?.(t);
       waterTex.offset.x = t * 0.004;
       waterTex.offset.y = t * 0.002;

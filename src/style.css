@@ -2336,8 +2336,8 @@ body:has(#garage:not([hidden])) #menu {
 }
 .speedo {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 112px;
+  height: 112px;
   display: grid;
   place-items: center;
 }
@@ -2346,26 +2346,53 @@ body:has(#garage:not([hidden])) #menu {
   inset: 0;
   width: 100%;
   height: 100%;
-  transform: rotate(135deg);
+  overflow: visible;
 }
-.gauge circle {
-  fill: rgba(8, 12, 30, 0.55);
-  stroke-width: 7;
-  stroke-dasharray: 245 400;
-  stroke-linecap: round;
+/* the dark face, so the number reads over any sky or street */
+.gauge .g-face {
+  fill: rgba(7, 12, 34, 0.78);
+  stroke: rgba(111, 211, 255, 0.35);
+  stroke-width: 1;
 }
-.gauge .g-fg {
+/* the speed segments: dim until lit, orange when lit, the last five white-hot */
+.gauge .seg {
   fill: none;
-  stroke: var(--white);
-  stroke-dashoffset: 245;
-  transition: stroke-dashoffset 0.12s linear;
+  stroke: rgba(255, 255, 255, 0.13);
+  stroke-width: 9;
+  transition: stroke 0.12s ease;
 }
-.gauge .g-bg {
-  stroke: rgba(255, 255, 255, 0.18);
+.gauge .seg.on {
+  stroke: #ff7a1a;
 }
-.speedo.boost .g-fg {
-  stroke: var(--orange);
-  filter: drop-shadow(0 0 6px var(--orange));
+.gauge .seg.hot.on {
+  stroke: #ffd29a;
+}
+.speedo.boost .seg.on {
+  stroke: #fff3dc;
+  filter: drop-shadow(0 0 4px #ff8a2a);
+}
+/* the nitro tank: a cyan arc inside the segments, glowing when there's enough for a boost */
+.gauge .g-nbg,
+.gauge .g-n {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 193.2 400;
+}
+.gauge .g-nbg {
+  stroke: rgba(111, 211, 255, 0.16);
+}
+.gauge .g-n {
+  stroke: var(--line);
+  stroke-dashoffset: 193.2;
+  opacity: 0.6;
+  transition:
+    stroke-dashoffset 0.25s ease,
+    opacity 0.2s ease;
+}
+.speedo.n-ready .g-n {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px var(--line));
 }
 .sp-num {
   position: relative;
@@ -2379,7 +2406,7 @@ body:has(#garage:not([hidden])) #menu {
   font-family: var(--race);
   font-style: italic;
   font-weight: 800;
-  font-size: 28px;
+  font-size: 34px;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   width: 100%;
@@ -2884,8 +2911,14 @@ body:has(#garage:not([hidden])) #menu {
 
 @media (min-width: 820px) {
   .speedo {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
+  }
+  .sp-num b {
+    font-size: 44px;
+  }
+  .sp-num .mono {
+    font-size: 13px;
   }
 }
 @media (min-width: 900px) {
@@ -2916,11 +2949,11 @@ body:has(#garage:not([hidden])) #menu {
     display: none;
   }
   .speedo {
-    width: 84px;
-    height: 84px;
+    width: 100px;
+    height: 100px;
   }
   .sp-num b {
-    font-size: 24px;
+    font-size: 30px;
   }
   .hud-tc {
     width: min(28vw, 130px);
@@ -3550,7 +3583,11 @@ body:has(#garage:not([hidden])) #menu {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: #0b1330;
+  /* the circuit's picture (set by src/circuit.js), darkened low down so its name reads over it */
+  background:
+    linear-gradient(to top, rgba(11, 19, 48, 0.95) 8%, rgba(11, 19, 48, 0.35) 55%, rgba(11, 19, 48, 0.15)),
+    var(--ld-pic, none) center / cover no-repeat,
+    #0b1330;
   opacity: 0;
   transition: opacity 220ms ease;
   pointer-events: none;
@@ -3661,6 +3698,13 @@ body.tilt-steer .steer-pad {
 #loading.travel .ld-frame,
 #loading.travel .ld-classic-logo {
   display: none;
+}
+/* travelling: the circuit you're off to fills the screen behind its name (index.html sets --ld-pic) */
+#loading.travel {
+  background:
+    linear-gradient(to top, rgba(11, 19, 48, 0.95) 8%, rgba(11, 19, 48, 0.35) 55%, rgba(11, 19, 48, 0.15)),
+    var(--ld-pic, none) center / cover no-repeat,
+    #0b1330;
 }
 #loading .ld-travel {
   display: flex;
@@ -3837,4 +3881,11 @@ body.tilt-steer .steer-pad {
   #flyby.cap-in .fb-cap {
     animation: none;
   }
+}
+/* (the loading words over a circuit's picture: a soft shadow so they read on any of them) */
+#swapVeil span,
+#swapVeil b,
+#loading .ld-travel span,
+#loading .ld-travel b {
+  text-shadow: 0 3px 18px rgba(5, 9, 24, 0.75);
 }

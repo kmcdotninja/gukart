@@ -24,7 +24,11 @@ export function travelTo(id, then = '', circ = null) {
   store.set('city', id);
   if (want) store.set('circuit.' + id, want);
   store.set('afterBoot', then);
-  store.set('travelTo', { name: (c.circuits ? c.circuits.find(x => x.id === want).name : c.name).toUpperCase(), then }); // the loader says what's coming (index.html)
+  store.set('travelTo', {
+    name: (c.circuits ? c.circuits.find(x => x.id === want).name : c.name).toUpperCase(),
+    then,
+    pic: `/places/${id}${want ? '-' + want : ''}${store.get('night', false) ? '-night' : ''}.jpg`, // (the circuit you're off to)
+  }); // the loader says what's coming, over a picture of it (index.html)
   location.reload();
   return true;
 }

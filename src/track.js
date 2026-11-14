@@ -2,7 +2,7 @@
 // spiral, over the flyover, upside down through the loop. Corners are banked from their curvature.
 import * as THREE from 'three';
 import { clamp } from './util.js';
-import { signTex } from './textures.js';
+import { signTex, canvasTex } from './textures.js';
 import * as DQ from './doharoad.js';
 import * as SG from './sgroad.js';
 import { SUBWAYS } from './subways.js';
@@ -345,6 +345,77 @@ const vscale = (g, s) => {
   return g;
 };
 
+// Road arrows: chevrons painted on the road pointing the way into a jump or a fork (paint only: they change nothing about
+// how the road drives). Orange like our stripes; a fork's subway side in our cyan, matching its sign
+const chevTexes = {};
+function chevronTex(col) {
+  return (chevTexes[col] ||= canvasTex(256, 256, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    x.fillStyle = col;
+    x.beginPath(); // a fat chevron pointing up the texture (the way you drive)
+    x.moveTo(w * 0.5, h * 0.08);
+    x.lineTo(w * 0.96, h * 0.6);
+    x.lineTo(w * 0.72, h * 0.6);
+    x.lineTo(w * 0.5, h * 0.36);
+    x.lineTo(w * 0.28, h * 0.6);
+    x.lineTo(w * 0.04, h * 0.6);
+    x.closePath();
+    x.fill();
+  }));
+}
+// `count` chevrons every `step` metres from s0, centred `lat` metres off the middle, `wide` metres across; they fade
+// in towards the feature so the last one is the boldest
+function paintChevrons(scene, tr, s0, count, step, lat, wide, col) {
+  const geo = new THREE.PlaneGeometry(wide, wide * 1.15).rotateX(-Math.PI / 2); // (long: they're seen low and far)
+  for (let i = 0; i < count; i++) {
+    const F = tr.frame(s0 + i * step, tr.newFrame()),
+      m = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({
+          map: chevronTex(col),
+          transparent: true,
+          opacity: 0.75 + (0.25 * i) / Math.max(1, count - 1),
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -6, // (over the bend guide's paint where the two meet)
+          polygonOffsetUnits: -6,
+        }),
+      );
+    // (the plane's -z runs up the texture: point it the way the road goes)
+    m.matrix
+      .makeBasis(F.l.clone().negate(), F.u, F.t.clone().negate())
+      .setPosition(F.p.clone().addScaledVector(F.u, 0.1).addScaledVector(F.l, lat));
+    m.matrixAutoUpdate = false;
+    m.renderOrder = 5;
+    scene.add(m);
+  }
+}
+// a warning gantry over the road at s: two posts, a beam, and one of our signs (Doha's in its own bilingual style)
+function warnGantry(scene, tr, s, text) {
+  const dq = tr.city === 'doha',
+    F = tr.frame(s, tr.newFrame()),
+    g = new THREE.Group();
+  g.position.copy(F.p);
+  g.rotation.y = Math.atan2(F.t.x, F.t.z);
+  const steel = new THREE.MeshLambertMaterial({ color: dq ? '#e4e5e8' : '#4a5060' });
+  for (const sx of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 8.4, 0.6), steel);
+    post.position.set(sx * (W / 2 + 3), 4.2, 0);
+    post.castShadow = true;
+    g.add(post);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(W + 7, 0.8, 0.8), steel);
+  beam.position.y = 8;
+  g.add(beam);
+  const sp = new THREE.Mesh(
+    new THREE.PlaneGeometry(dq ? 12 : 16, dq ? 3.05 : 2.6),
+    new THREE.MeshBasicMaterial({ map: dq ? DQ.qaSign(text) : signTex(text, 0, tr.city) }),
+  );
+  sp.position.set(0, dq ? 6.4 : 6.6, -0.45);
+  sp.rotation.y = Math.PI;
+  g.add(sp);
+  scene.add(g);
+}
 export function buildRoad(scene, tr, tex) {
   const { N, elevated, inGap } = tr;
   const add = (g, mat, shadow = true) => {
@@ -727,7 +798,11 @@ export function buildRoad(scene, tr, tex) {
     side: THREE.DoubleSide,
     emissive: tr.city === 'singapore' ? '#5a5e68' : '#000000',
   });
-  const off = k => !elevated[k];
+  const off = k => !elevated[k],
+    edgeGlow = new THREE.MeshBasicMaterial({
+      color: tr.city === 'doha' ? '#ffd99a' : '#6fd3ff',
+      side: THREE.DoubleSide,
+    });
   for (const s of [1, -1]) {
     const e = s * (W / 2 + 0.2),
       o = s * (W / 2 + 0.9);
@@ -747,6 +822,19 @@ export function buildRoad(scene, tr, tex) {
       ),
       rail,
     ); // barrier: inner face, top, outer face down the deck side
+    // a glowing line along the barrier's inner face, near the top: the raised road's edge reads at speed, and lights up
+    // at night (cyan; Doha's warm gold)
+    add(
+      strip(
+        tr,
+        [
+          [e - s * 0.03, 0.95],
+          [e - s * 0.03, 1.2],
+        ],
+        off,
+      ),
+      edgeGlow,
+    );
   }
   add(
     strip(
@@ -791,6 +879,9 @@ export function buildRoad(scene, tr, tex) {
   const kickMat = new THREE.MeshLambertMaterial({ map: tex.kicker, side: THREE.DoubleSide }),
     water = new THREE.MeshPhongMaterial({ color: '#1a6fb0', shininess: 90, specular: '#bfe8ff' });
   for (const k of tr.kickers) {
+    // the road says it's coming: JUMP AHEAD over the road, then orange chevrons up to the ramp
+    warnGantry(scene, tr, k.s - 70, 'JUMP AHEAD');
+    paintChevrons(scene, tr, k.s - 48, 5, 8, 0, W * 0.42, '#ff6a00');
     const F = tr.frame(k.s, tr.newFrame()),
       g = new THREE.BufferGeometry(),
       w = W / 2,
@@ -1157,6 +1248,17 @@ export function buildForkRoads(scene, tr, tex) {
           rail,
           true,
         );
+      // the sky bridge's edges glow too, as the flyovers' do
+      const glowM = new THREE.MeshBasicMaterial({
+        color: tr.city === 'doha' ? '#ffd99a' : '#6fd3ff',
+        side: THREE.DoubleSide,
+      });
+      for (const sg of [1, -1])
+        mesh(
+          strip(sub, [sg * (BW / 2 + 0.17), sg * (BW / 2 + 0.17)], (i, r) => [0.95, 1.2][r]),
+          glowM,
+          true,
+        );
       mesh(strip(sub, [BW / 2 + 0.9, -BW / 2 - 0.9], -1.6), under, true);
       const pilG = new THREE.CylinderGeometry(1.1, 1.4, 1, 10).translate(0, 0.5, 0),
         pilM = new THREE.MeshLambertMaterial({ color: '#d7d9e0' });
@@ -1435,6 +1537,13 @@ export function buildForkRoads(scene, tr, tex) {
         scene.add(g);
       }
     }
+  }
+  // the road says the split is coming: SPLIT AHEAD well before it, then a row of chevrons into each way (the sky bridge's
+  // orange, the subway's cyan, as on their signs)
+  if (forks.length) {
+    warnGantry(scene, tr, forks[0].sA - 95, 'SPLIT AHEAD');
+    for (const f of forks)
+      paintChevrons(scene, tr, forks[0].sA - 52, 5, 9, f.off, W * 0.3, f.tunnel ? '#6fd3ff' : '#ff6a00');
   }
   // the split: a striped crash barrier nose in the middle of the road, and signs over each way
   const b = forks[0],

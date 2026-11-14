@@ -226,6 +226,9 @@ export const events = {
   nitro(v) {
     $('#nLiq').style.transform = `translateY(${(46 * (1 - Math.max(0, Math.min(1, v)))).toFixed(1)}px)`;
     $('#nitroBtn').classList.toggle('ready', v >= 0.3);
+    // the meter's inner arc: the tank, glowing when there's enough for a boost
+    $('#gNitro').style.strokeDashoffset = (NLEN * (1 - Math.max(0, Math.min(1, v)))).toFixed(1);
+    speedoEl.classList.toggle('n-ready', v >= 0.3);
   },
 };
 
@@ -245,14 +248,34 @@ export const QUIET = {
   fire() {},
   nitro() {},
 };
-// the round speed gauge: its arc fills with speed and glows orange on a boost
-const gArc = $('#gArc'),
+// the speed meter: 24 segments round three quarters of a circle (from bottom left, clockwise) light up with speed, the
+// last few white-hot; on a boost every lit one glows. The nitro tank is the cyan arc inside (ev.nitro)
+const SEGS = 24,
   speedoEl = document.querySelector('.speedo'),
-  GLEN = 245;
+  segs = (() => {
+    const g = $('#gSegs'),
+      r = 52,
+      step = 270 / SEGS,
+      at = a => [60 + r * Math.cos((a * Math.PI) / 180), 60 + r * Math.sin((a * Math.PI) / 180)].map(v => v.toFixed(2));
+    g.innerHTML = Array.from({ length: SEGS }, (_, i) => {
+      const a0 = 135 + i * step + 1.4,
+        a1 = 135 + (i + 1) * step - 1.4,
+        [x0, y0] = at(a0),
+        [x1, y1] = at(a1);
+      return `<path class="seg${i >= SEGS - 5 ? ' hot' : ''}" d="M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}"/>`;
+    }).join('');
+    return [...g.children];
+  })();
+let lit = -1;
 export function gauge(kmh, boost) {
-  gArc.style.strokeDashoffset = (GLEN * (1 - clamp(kmh / 320, 0, 1))).toFixed(1);
+  const n = Math.round(clamp(kmh / 320, 0, 1) * SEGS);
+  if (n !== lit) {
+    segs.forEach((s, i) => s.classList.toggle('on', i < n)); // (only when the count changes)
+    lit = n;
+  }
   speedoEl.classList.toggle('boost', boost);
 }
+const NLEN = ((2 * Math.PI * 41 * 270) / 360).toFixed(1); // the nitro arc's length: three quarters of the circle
 // a picked-up coin flies from where it was on the road up into the counter
 function flyCoin(world) {
   const v = new THREE.Vector3().copy(world).project(cam),
@@ -331,10 +354,21 @@ export function drawMap() {
       const [a2, b2] = mapTf(q.x, q.z);
       i ? x.lineTo(a2, b2) : x.moveTo(a2, b2);
     });
-    x.setLineDash(f.tunnel ? [5, 5] : []);
-    x.strokeStyle = f.tunnel ? '#ff6a00' : 'rgba(244,247,255,.92)';
-    x.lineWidth = 6;
-    x.stroke();
+    if (f.tunnel) {
+      x.setLineDash([5, 5]); // the subway: orange dots, as the underpass
+      x.strokeStyle = '#ff6a00';
+      x.lineWidth = 6;
+      x.stroke();
+    } else {
+      // the sky bridge: raised like the flyover (cyan), dotted so it reads as the other way, on a dark edge
+      x.strokeStyle = 'rgba(8,14,40,.65)';
+      x.lineWidth = 16;
+      x.stroke();
+      x.setLineDash([9, 6]);
+      x.strokeStyle = '#6fd3ff';
+      x.lineWidth = 7;
+      x.stroke();
+    }
     x.setLineDash([]);
   }
   const [sx, sy] = game.mapPts[0];

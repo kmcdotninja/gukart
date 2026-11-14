@@ -152,7 +152,9 @@
     </div>
     <div class="hud-tr">
       <div class="speedo">
-        <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true"><circle class="g-bg" cx="60" cy="60" r="52"/><circle class="g-fg" id="gArc" cx="60" cy="60" r="52"/></svg>
+        <!-- the meter: a dark face, a ring of segments that light with speed (white-hot at the top, glowing on a boost),
+             and inside it the nitro tank as a cyan arc (src/hud.js gauge, ev.nitro) -->
+        <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true"><circle class="g-face" cx="60" cy="60" r="58"/><g id="gSegs"></g><circle class="g-nbg" cx="60" cy="60" r="41" transform="rotate(135 60 60)"/><circle class="g-n" id="gNitro" cx="60" cy="60" r="41" transform="rotate(135 60 60)"/></svg>
         <div class="sp-num"><b id="speed">0</b><span class="mono">KM/H</span></div>
       </div>
       <div class="timetag mono" id="timer">0:00.00</div>
@@ -378,6 +380,7 @@
           document.getElementById('loading').classList.add('travel');
           document.getElementById('ldTravelName').textContent = t.name + (t.then === 'map' ? ' MAP' : t.then === 'garage' ? ' GARAGE' : '');
           document.getElementById('ldTravel').hidden = false;
+          if (t.pic) document.getElementById('loading').style.setProperty('--ld-pic', 'url("' + t.pic + '")');
         }
       } catch (e) {
         // storage blocked: the normal poster loader

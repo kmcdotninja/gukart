@@ -50,6 +50,8 @@ export const AR = {
   DOHA: 'الدوحة',
   UNDERPASS: 'نفق',
   'UNDERPASS AHEAD': 'نفق أمامك',
+  'JUMP AHEAD': 'قفزة أمامك',
+  'SPLIT AHEAD': 'تفرع أمامك',
   STATION: 'محطة',
   'SKY BRIDGE': 'الجسر',
   SUBWAY: 'محطة المترو',
