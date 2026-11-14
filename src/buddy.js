@@ -240,7 +240,7 @@ export const PARTS = {
     ['#8a5cff', 'Grape', 2800],
     ['#ff6a00', 'Buddy Orange', 3000],
     ['#c0c6d0', 'Chrome', 5000],
-    ['#d4a12a', 'Gold', 50000], // (polished metal like Chrome, the dearest paint in the shop)
+    ['#d4a12a', 'Gold', 10000], // (a chrome-gold wrap, the showpiece: buddy.js makes it a polished mirror gold)
   ],
   rim: [
     ['classic', 'Classic', 0],
@@ -1410,15 +1410,20 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
   body.add(chassis);
   // glossy clearcoat paint, chrome, a dark frame metal, rubber; all lit by a studio environment so they reflect
   const paintCol = custom?.paint || V.paint || def.kart, // (the newer vehicles come in their own colours)
-    chromePaint = paintCol === '#c0c6d0' || paintCol === '#d4a12a'; // (Chrome and Gold: polished metal, not a clear coat over colour)
+    goldPaint = paintCol === '#d4a12a',
+    chromePaint = paintCol === '#c0c6d0' || goldPaint; // (Chrome and Gold: polished metal, not a clear coat over colour)
+  // Gold is the showpiece: a chrome-gold wrap, a rich yellow gold polished to a mirror, the lights sliding over it in hot
+  // highlights, with a warm glow of its own so it stays gold (not brown) in the shade
   const paint = new THREE.MeshPhysicalMaterial({
-    color: paintCol,
-    metalness: chromePaint ? 0.9 : 0.05,
-    roughness: chromePaint ? 0.12 : 0.42,
+    color: goldPaint ? '#e0a812' : paintCol,
+    metalness: goldPaint ? 1 : chromePaint ? 0.9 : 0.05,
+    roughness: goldPaint ? 0.14 : chromePaint ? 0.12 : 0.42,
     clearcoat: 1,
-    clearcoatRoughness: 0.08,
+    clearcoatRoughness: goldPaint ? 0.02 : 0.08,
     envMap: ENV.tex,
-    envMapIntensity: chromePaint ? 1 : 0.55,
+    envMapIntensity: goldPaint ? 1.15 : chromePaint ? 1 : 0.55,
+    emissive: goldPaint ? '#3a2200' : '#000000',
+    emissiveIntensity: goldPaint ? 0.3 : 0,
   }); // a deep, saturated paint under a glossy clear coat
   const trim = new THREE.MeshPhysicalMaterial({
     color: V.accent || def.trim,
@@ -2816,7 +2821,7 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
 
   // the decal over the paint
   if (custom?.decal && custom.decal !== 'none') {
-    paint.map = decalTex(paintCol, custom.decal);
+    paint.map = decalTex(goldPaint ? '#e0a812' : paintCol, custom.decal);
     paint.color.set('#ffffff');
     paint.needsUpdate = true;
     const meshes = [];

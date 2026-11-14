@@ -172,6 +172,7 @@ export function endSchool() {
   $('#hud').style.visibility = '';
 }
 
+// (no longer asked when the game opens: a question before you've even raced is friction. The school is in Settings.)
 // the first time the game opens: offered once, START or SKIP. Not for anyone who has raced already, and never in a test run
 export function offerSchool() {
   if (store.get('school.offered', false) || location.search.includes('gktest') || location.hash === '#capture') return;

@@ -1883,12 +1883,16 @@ export function partThumbs() {
     const m = new THREE.Mesh(
       chipG,
       new THREE.MeshPhysicalMaterial({
-        color: c,
-        metalness: c === '#c0c6d0' || c === '#d4a12a' ? 0.9 : 0.25,
-        roughness: c === '#c0c6d0' || c === '#d4a12a' ? 0.12 : 0.3,
+        // (a metal chip shows little but what it reflects, and the studio is dim: Gold and Chrome are drawn half metal on
+        // a brighter base, so the chip reads as bright as the paint looks on the car)
+        color: c === '#d4a12a' ? '#eab219' : c === '#c0c6d0' ? '#e4e8ee' : c,
+        metalness: c === '#c0c6d0' || c === '#d4a12a' ? 0.55 : 0.25,
+        roughness: c === '#c0c6d0' || c === '#d4a12a' ? 0.18 : 0.3,
         clearcoat: 1,
         clearcoatRoughness: 0.05,
         envMap: ENV.tex,
+        envMapIntensity: c === '#c0c6d0' || c === '#d4a12a' ? 1.8 : 1,
+        emissive: c === '#d4a12a' ? '#7a4d00' : '#000000',
       }),
     );
     scene.add(m);

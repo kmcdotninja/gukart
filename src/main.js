@@ -36,7 +36,7 @@ import { initGarageScreen } from './garage-screen.js';
 import { initModes } from './modes.js';
 import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
-import { initSchool, schoolUpdate, offerSchool } from './school.js';
+import { initSchool, schoolUpdate } from './school.js';
 import { initPhoto } from './photo.js';
 import { paintPowerButton } from './powers-race.js';
 import { inject } from '@vercel/analytics';
@@ -424,8 +424,7 @@ async function boot() {
     show($('#menu'), -1);
   } // arriving from the map: down out of the sky onto the new city
   else {
-    show($('#menu'));
-    offerSchool(); // (the first time the game opens: the Driving School, once)
+    show($('#menu')); // (straight to the home screen, nothing asked first: the Driving School is in Settings)
   }
   if (CAPTURE) {
     last = 0;
