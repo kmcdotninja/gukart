@@ -44,24 +44,25 @@ export function setNight(on) {
   game.night = on ? 1 : 0;
   // Kano's night is dark: moonlight and lamplit windows. Doha's is a big city's: the sky glows, the streets are lit end to
   // end, the towers blaze, so the light is brighter and warmer and the haze is a lit purple rather than black
-  // Singapore's is a Las Vegas night: the sky and the streets dark, so the city's lights (every window, the LED edges
-  // of the towers, the floodlit landmarks, the Supertrees) blaze against it in colour. The contrast is the point
   // (Kaduna and Kano City, the metropolis, glow like Doha: a big city's night, the sky lit from below, the streets bright)
+  // Singapore is a bright night too, the sky lit and the streets clear, but the ambient light a little lower than Doha's
+  // so the city's own lights (every window, the towers' LED edges, the Supertrees) still stand out against it
   const city =
       on &&
       (chapter.id === 'doha' ||
         chapter.id === 'singapore' ||
         chapter.id === 'kaduna' ||
         (chapter.id === 'kano' && game.circuit?.id === 'metro')),
-    neon = on && chapter.id === 'singapore';
-  sun.color.set(on ? (neon ? '#8f9cff' : city ? '#b4bfff' : '#8fa8ff') : '#ffe2b8');
-  sun.intensity = on ? (neon ? 0.85 : city ? 1.5 : 1.0) : 3.6;
-  hemi.color.set(on ? (neon ? '#6a64b0' : city ? '#9a90d8' : '#4a5f9e') : '#cfe2ff');
-  hemi.groundColor.set(on ? (neon ? '#3a2a58' : city ? '#6a4a34' : '#3a2a1c') : '#8a6a48');
-  hemi.intensity = on ? (neon ? 1.05 : city ? 1.75 : 1.05) : 1.35;
-  scene.fog.color.set(on ? (neon ? '#140c30' : city ? '#2c2148' : '#0a0f22') : '#e9d9bf');
-  scene.environmentIntensity = on ? (neon ? 0.5 : city ? 0.7 : 0.45) : 1;
-  renderer.toneMappingExposure = on ? (neon ? 1.35 : city ? 1.4 : 1.3) : 1.0;
+    sg = on && chapter.id === 'singapore',
+    L = (d, n, c, g) => (on ? (sg ? g : city ? c : n) : d); // day, a dark night, a big city's night, Singapore's
+  sun.color.set(L('#ffe2b8', '#8fa8ff', '#b4bfff', '#a8b4ff'));
+  sun.intensity = L(3.6, 1.0, 1.5, 1.2);
+  hemi.color.set(L('#cfe2ff', '#4a5f9e', '#9a90d8', '#8a84d0'));
+  hemi.groundColor.set(L('#8a6a48', '#3a2a1c', '#6a4a34', '#4a3a50'));
+  hemi.intensity = L(1.35, 1.05, 1.75, 1.4);
+  scene.fog.color.set(L('#e9d9bf', '#0a0f22', '#2c2148', '#241a44'));
+  scene.environmentIntensity = L(1, 0.45, 0.7, 0.6);
+  renderer.toneMappingExposure = L(1.0, 1.3, 1.4, 1.38);
   game.world?.setNight(game.night);
   game.race?.setNight?.(game.night);
   $('#nightBtn')?.classList.toggle('on', on);

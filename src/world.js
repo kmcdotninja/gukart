@@ -192,10 +192,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       uniforms: {
         uNight: { value: 0 },
         uCity: { value: coast ? 1 : 0 },
-        uNeon: { value: city === 'singapore' ? 1 : 0 },
         uMoon: { value: new THREE.Vector3(0.5, 0.45, -0.74).normalize() },
       },
-      fragmentShader: `uniform float uNight; uniform float uCity; uniform float uNeon; uniform vec3 uMoon; varying vec3 vP;
+      fragmentShader: `uniform float uNight; uniform float uCity; uniform vec3 uMoon; varying vec3 vP;
       float h3(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
       void main(){ float h = vP.y;
       vec3 top = vec3(.2,.47,.82), mid = vec3(.55,.76,.93), hz = vec3(.99,.84,.62);
@@ -208,9 +207,6 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       // stars mostly washed out
       vec3 cg = mix(vec3(.62,.32,.3), vec3(.24,.16,.4), smoothstep(0., .3, h)); cg = mix(cg, vec3(.07,.08,.22), smoothstep(.3, .9, h));
       n = mix(n, cg, uCity); st *= 1. - uCity * .8;
-      // a neon city (Singapore): a dark night sky, deep navy overhead, the city's magenta glow only low on the horizon
-      vec3 ng = mix(vec3(.62,.16,.42), vec3(.2,.08,.32), smoothstep(0., .1, h)); ng = mix(ng, vec3(.02,.025,.09), smoothstep(.1, .5, h));
-      n = mix(n, ng * 1.25, uNeon); st *= 1. - uNeon * .6; // (a quarter brighter than a true dark sky, still night)
       n += st + moon * vec3(1., .97, .88) + halo * vec3(.6, .7, 1.);
       gl_FragColor = vec4(mix(c, n, uNight), 1.); }`,
     }),
