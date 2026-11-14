@@ -10,6 +10,7 @@ import { Sound } from './audio.js';
 import { clamp, fmtTime } from './util.js';
 import { drawLogo } from './textures.js';
 import { LAPS } from './race.js';
+import { drawStamp, STAMP_INK, wear } from './stamps.js';
 
 function enter() {
   if (game.state !== 'results') return;
@@ -112,60 +113,22 @@ function paper(x, path, fill, shadow = 0.3) {
   x.fill();
   x.restore();
 }
-// the city's visa stamp: a double ring of deep red ink, the city round the top and ENTRY round the bottom, GK across
-// the middle; pressed a touch crooked, specks of ink missing. Red ink on a light photo, white on a dark one, so it
-// always reads
-function visaStamp(dst, cx, cy, r, city, ink) {
+// the city's passport stamp (src/stamps.js: each city its own shape, landmark and words), pressed crooked, specks of
+// ink missing. The city's own colour on a light photo, white on a dark one, so it always reads
+function visaStamp(dst, cx, cy, ink) {
   // (drawn on a layer of its own, so the worn specks take ink off the stamp, not holes out of the photo under it)
-  const L = Math.ceil(r * 2.4),
+  const L = 460,
     oc = document.createElement('canvas');
   oc.width = oc.height = L;
   const x = oc.getContext('2d');
-  x.save();
   x.translate(L / 2, L / 2);
-  x.rotate(-0.24);
-  x.globalAlpha = 0.92;
+  x.rotate(-0.2);
   x.strokeStyle = x.fillStyle = ink;
-  x.lineWidth = 9;
-  x.beginPath();
-  x.arc(0, 0, r, 0, Math.PI * 2);
-  x.stroke();
-  x.lineWidth = 4;
-  x.beginPath();
-  x.arc(0, 0, r - 20, 0, Math.PI * 2);
-  x.stroke();
-  const around = (t, rad, top) => {
-    x.font = 'italic 800 38px "Barlow Condensed", "Arial Narrow", sans-serif';
-    const span = Math.min(Math.PI * 0.95, t.length * 0.17);
-    [...t].forEach((ch, i) => {
-      const a = (i / Math.max(1, t.length - 1) - 0.5) * span;
-      x.save();
-      x.rotate(top ? a : -a);
-      x.translate(0, top ? -rad : rad);
-      x.textAlign = 'center';
-      x.textBaseline = 'middle';
-      x.fillText(ch, 0, 0);
-      x.restore();
-    });
-  };
-  around(city, r - 44, true);
-  around('ENTRY', r - 44, false);
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.font = 'italic 800 64px "Barlow Condensed", "Arial Narrow", sans-serif';
-  x.fillText('GK', 0, 4);
-  x.fillRect(-r * 0.42, -36, r * 0.84, 4);
-  x.fillRect(-r * 0.42, 40, r * 0.84, 4);
+  x.globalAlpha = 0.92;
+  drawStamp(x, chapter.id, chapter.name.toUpperCase());
   x.globalAlpha = 1;
-  x.globalCompositeOperation = 'destination-out';
-  for (let i = 0; i < 120; i++) {
-    const a = Math.random() * Math.PI * 2,
-      d = Math.random() * r * 1.05;
-    x.fillStyle = `rgba(0,0,0,${0.25 + Math.random() * 0.5})`;
-    x.fillRect(Math.cos(a) * d, Math.sin(a) * d, 2 + Math.random() * 3, 2 + Math.random() * 2);
-  }
-  x.restore();
-  dst.drawImage(oc, cx - L / 2, cy - L / 2);
+  wear(x, L, L); // (pressed by hand: uneven ink, ragged edges, specks)
+  dst.drawImage(oc, cx - L * 0.47, cy - L * 0.47, L * 0.94, L * 0.94);
 }
 function paperClip(x, X, Y, h, rot) {
   x.save();
@@ -228,7 +191,6 @@ function journal(pol) {
   const x = c.getContext('2d'),
     F = (w, n) => `italic ${w} ${n}px "Barlow Condensed", "Arial Narrow", sans-serif`,
     MONO = n => `600 ${n}px "Courier New", monospace`,
-    city = chapter.name.toUpperCase(),
     circ = (game.circuit?.name || chapter.name).toUpperCase(),
     P = game.race?.player;
   const at = (X, Y, r, f) => {
@@ -298,15 +260,33 @@ function journal(pol) {
     x.drawImage(pol, -pw / 2, -ph / 2, pw, ph);
     x.shadowColor = 'transparent';
     // the stamp over the photo's bottom right corner, half on the white frame
-    // how light the photo is under the stamp: red ink on a light one, white on a dark one
-    const sx = pol.width / 2 + (pw / 2 - 190) / s,
-      sy = pol.height / 2 + (ph / 2 - 335) / s,
+    // how light the photo is under the stamp: the city's colour on a light one, white on a dark one
+    const SX = pw / 2 - 180,
+      SY = ph / 2 - 340,
+      sx = pol.width / 2 + SX / s,
+      sy = pol.height / 2 + SY / s,
       rr = Math.round(140 / s),
       px = pol.getContext('2d').getImageData(Math.round(sx - rr), Math.round(sy - rr), rr * 2, rr * 2).data;
-    let lum = 0;
-    for (let i = 0; i < px.length; i += 16) lum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
-    lum /= px.length / 16;
-    visaStamp(x, pw / 2 - 190, ph / 2 - 335, 140, city, lum < 0.5 ? 'rgba(252,250,244,0.94)' : '#c4122f');
+    // the ink that stands out most: the city's own colour when it contrasts well with the photo there, otherwise
+    // white or navy, whichever contrasts more (WCAG contrast of the photo's average colour under the stamp)
+    let r = 0,
+      g = 0,
+      b = 0,
+      n = 0;
+    for (let i = 0; i < px.length; i += 16) ((r += px[i]), (g += px[i + 1]), (b += px[i + 2]), n++);
+    const lumOf = (R, G, B) => {
+        const f = v => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * f(R) + 0.7152 * f(G) + 0.0722 * f(B);
+      },
+      hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)),
+      bgL = lumOf(r / n, g / n, b / n),
+      con = h => {
+        const L2 = lumOf(...hex(h));
+        return (Math.max(L2, bgL) + 0.05) / (Math.min(L2, bgL) + 0.05);
+      },
+      own = STAMP_INK[chapter.id] || '#c4122f',
+      ink = con(own) >= 3.2 ? own : con('#fcfaf4') >= con('#1b2350') ? '#fcfaf4' : '#1b2350';
+    visaStamp(x, SX, SY, ink);
     tape(x, pw / 2 - 30, 40, 70, 150, 0.12, 'rgba(165,195,180,0.8)');
   });
   // the receipt at the bottom left, torn top and bottom, clipped
