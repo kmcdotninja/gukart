@@ -1805,3 +1805,81 @@ body.onfire #hud::before {
 #hud[data-mode='school'] #timer {
   display: none;
 }
+
+/* ---- every racer's face along the progress bar at the top (src/main.js); yours bigger, ringed in orange, in front */
+.progress {
+  position: relative;
+  margin: 6px 0;
+}
+.prog-racers {
+  position: absolute;
+  inset: 0;
+}
+.prog-racers i {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid rgba(11, 19, 48, 0.85);
+  overflow: hidden;
+}
+.prog-racers i img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.prog-racers i.me {
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.35);
+}
+
+/* ---- a red number on a home tile: something new inside (cars you can afford on GARAGE). Inside the top right corner:
+   the tile clips anything outside it */
+.badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #e5243b;
+  border: 3px solid #fff;
+  color: #fff;
+  font-family: var(--race);
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  animation: badgePop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes badgePop {
+  from {
+    transform: scale(0);
+  }
+}
+/* (the bar a little longer than it was, so the racers along it spread out) */
+.hud-tc {
+  width: min(36vw, 300px);
+}
+@media (max-width: 600px) {
+  .hud-tc {
+    width: min(40vw, 160px);
+  }
+}
+
+/* ---- less on the race screen: no running clock (except in Time Trial, where your lap time is the point) and no score */
+#hud:not([data-mode='tt']) #timer,
+#hud .scorebar {
+  display: none;
+}

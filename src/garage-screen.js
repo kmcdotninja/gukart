@@ -25,6 +25,18 @@ let preview = null;
 let marked = null,
   cheer = false;
 const hasVeh = id => !VEHICLES[id].price || store.get('owned', []).includes('veh:' + id);
+export function paintBadge() {
+  const n = newCars().length,
+    b = $('#garageBadge');
+  b.textContent = n;
+  b.hidden = !n;
+}
+// cars you can afford now but haven't been to see: a red number on the GARAGE tile at home (src/home.js), gone once
+// you've opened the garage
+export const newCars = () =>
+  VKEYS.filter(
+    id => !hasVeh(id) && VEHICLES[id].price <= store.get('wallet', 0) && !store.get('seenAfford', []).includes(id),
+  );
 const shown = () => preview || game.vehicle;
 // a line across the garage when something can't be done (not enough coins): big enough to read, gone in a moment
 let toastT = 0;
@@ -397,6 +409,8 @@ export function initGarageScreen() {
   // into the garage: the roller door lifts and the camera glides in; the controls show once you're inside
   $('#garageBtn').addEventListener('click', () => {
     Sound.init();
+    store.set('seenAfford', [...store.get('seenAfford', []), ...newCars()]);
+    paintBadge();
     $('#menu').hidden = true;
     openGarage();
   });

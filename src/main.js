@@ -7,7 +7,7 @@ import { perfHud } from './perf.js';
 import { Tilt } from './tilt.js';
 import * as THREE from 'three';
 import { buildTextures, logoReady } from './textures.js';
-import { LAPS, WEAPONS } from './race.js';
+import { WEAPONS } from './race.js';
 import { VEHICLES, clearance } from './buddy.js';
 import { Music } from './music.js';
 import { vehicleThumbs, partThumbs, racerPortraits } from './garage.js';
@@ -165,7 +165,25 @@ function frame(now) {
     if (game.mode === 'free') FREE.top = Math.max(FREE.top, p.speed);
     if (game.mode === 'tt') ghostStep(p);
     hud.speed.textContent = Math.round(Math.max(0, p.speed) * 3.2);
-    hud.prog.style.width = (clamp(p.prog / (LAPS * game.track.len), 0, 1) * 100).toFixed(1) + '%';
+    // this lap, start to finish line (over a whole race the racers sat on top of each other; over a lap you see the gaps)
+    const lapOf = k => (k.prog <= 0 ? 0 : (k.prog % game.track.len) / game.track.len);
+    hud.prog.style.width = (lapOf(p) * 100).toFixed(1) + '%';
+    {
+      // every racer's face along the bar, where they are on the lap: who's close behind, how far ahead you are
+      const ks = game.race.karts,
+        box = hud.racers;
+      if (box.childElementCount !== ks.length)
+        box.innerHTML = ks
+          .map(
+            k =>
+              `<i class="${k === p ? 'me' : ''}" style="--c:${k.def?.fur || '#fff'}"><img src="${game.FACES[k.def?.id] || ''}" alt=""></i>`,
+          )
+          .join('');
+      ks.forEach((k, j) => {
+        const el = box.children[j];
+        el.style.left = (lapOf(k) * 100).toFixed(1) + '%';
+      });
+    }
     gauge(Math.max(0, p.speed) * 3.2, p.boost > 0);
     const wrong = game.race.wrongT >= 1;
     if (hud.wrong.hidden === wrong) hud.wrong.hidden = !wrong; // (only when it changes)
@@ -178,6 +196,7 @@ function frame(now) {
     }
     drawMap();
     coachUpdate(dt);
+    game.bendTrail?.update(dt);
     schoolUpdate(dt);
     {
       const Fk = game.track.forks || [],

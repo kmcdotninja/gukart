@@ -11,6 +11,7 @@ import { openModes } from './modes.js';
 import { swapCircuit } from './circuit.js';
 import { cupOf, playCup, trophyOf, TOUR, raceName, isFinal, showRoute, hideRoute } from './cup.js';
 import { maybeChest } from './chest.js';
+import { paintBadge } from './garage-screen.js';
 
 export function travelTo(id, then = '', circ = null) {
   const c = CHAPTERS.find(x => x.id === id),
@@ -32,6 +33,7 @@ export function travelTo(id, then = '', circ = null) {
 // the World Tour tile (its name, which race is next, a mark per race), then QUICK RACE, GARAGE and MAP. Picking a city
 // and circuit for a quick race is on the QUICK RACE screen (src/modes.js); the tour picks its own
 export function renderChapter() {
+  paintBadge(); // (a red number on GARAGE: cars you can afford now)
   const c = CHAPTERS[game.chIndex],
     t = cupOf(),
     won = trophyOf(),

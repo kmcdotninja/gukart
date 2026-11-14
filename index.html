@@ -71,7 +71,7 @@
       </button>
       <div class="dock-row">
         <button class="big-tile" id="quickBtn" aria-label="Quick race"><img id="quickThumb" src="/loader-pack-desk.jpg" alt=""><span>QUICK RACE</span></button>
-        <button class="big-tile garage-tile" id="garageBtn" aria-label="Open the garage"><img id="garageThumb" src="/tile-garage.png" alt=""><span>GARAGE</span></button>
+        <button class="big-tile garage-tile" id="garageBtn" aria-label="Open the garage"><img id="garageThumb" src="/tile-garage.png" alt=""><span>GARAGE</span><b class="badge" id="garageBadge" hidden>1</b></button>
         <button class="big-tile" id="mapBtn" aria-label="Open the world map"><img id="mapThumb" src="/tile-map.jpg" alt=""><span>MAP</span></button>
       </div>
     </div>
@@ -162,7 +162,7 @@
     </div>
     <div class="hud-tc">
       <div class="final-badge" id="finalBadge" hidden>THE FINAL</div>
-      <div class="progress"><div class="stripebar thin"><i id="progFill"></i></div></div>
+      <div class="progress"><div class="stripebar thin"><i id="progFill"></i></div><div class="prog-racers" id="progRacers"></div></div>
       <div class="weapon panel empty" id="weapon"><span class="wicon" id="wicon"></span><span class="wname mono" id="wname">NO WEAPON</span><b id="wammo"></b></div>
     </div>
     <canvas id="minimap" width="240" height="240"></canvas>

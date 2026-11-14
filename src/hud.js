@@ -32,6 +32,7 @@ export const hud = {
   speed: $('#speed'),
   lines: $('#speedlines'),
   prog: $('#progFill'),
+  racers: $('#progRacers'),
 };
 export const ICONS = {
   blaster:

@@ -1,5 +1,6 @@
 // Building a circuit into the scene: the road, the city round it and the race on it (at boot), and swapping to another
 // circuit in the same city without reloading the page.
+import { bendTrail } from './bendtrail.js';
 import * as THREE from 'three';
 import { buildTrack, buildRoad, buildForks, buildForkRoads } from './track.js';
 import { buildWorld } from './world.js';
@@ -88,6 +89,7 @@ export async function buildCircuit(tex, step = async () => {}) {
             ? dressKaduna
             : null,
   });
+  game.bendTrail = bendTrail(scene, game.track); // (chevrons on the road through every bend)
   await step(66, 'WAKING UP BUDDY');
   game.race = new Race(scene, game.track, tex, quality, events);
   game.race.setVehicle(game.vehicle, custom(game.vehicle));
