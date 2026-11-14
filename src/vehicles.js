@@ -102,8 +102,8 @@ export const POWERS_BASE = {
   },
   brute: {
     name: 'CANNON FIRE',
-    line: 'It charges at speed while the cannon on its roof fires a barrage of huge iron cannonballs down the road, blasting everyone ahead',
-    hits: 'EVERYONE AHEAD',
+    line: 'It charges at speed while the gun on its nose fires a barrage of iron cannonballs that hunt down rivals wherever they are, ahead or behind',
+    hits: 'EVERYONE, WHEREVER THEY ARE',
     p: {
       dur: [3, 'HOW LONG (S)', 1.5, 5, 0.5],
       shots: [7, 'CANNONBALLS', 3, 12, 1],
@@ -195,11 +195,13 @@ export function powerPose(id, t, P = POWERS[id]) {
       const up = ease(clamp01(t / 0.35)),
         down = ease(clamp01((t - (P.dur - 0.45)) / 0.45));
       o.pitch = P.lift * (up - down) * (1 + 0.06 * Math.sin(t * 7)); // the front up, wavering, then slammed down
-      o.y = Math.sin(o.pitch) * 1.3; // (pivoting on the back wheels, so the body rises as the nose goes up)
+      // (it pivots on its back wheels: whoever shows it keeps the lowest wheel on the road, so the body rises as the nose
+      // goes up)
       o.squash = t > P.dur - 0.1 ? 0.88 : 1;
       o.boost = 1 + (P.boost - 1) * up;
       o.fx.flame = 1;
       o.fx.smoke = t < 0.4 ? 1 : 0;
+      o.fx.tyreFire = 1; // (fire pouring off the back tyres as they spin it up)
       return o;
     }
     case 'muscle': {
