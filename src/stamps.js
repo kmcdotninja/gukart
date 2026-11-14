@@ -164,24 +164,28 @@ const LAND = {
     ])
       x.fillRect(a, 8, w, 3);
   },
-  // Marina Bay Sands: three towers flaring at the foot, the long ship across their tops
+  // Marina Bay Sands: three tall towers, each two legs leaning together (a slit up the middle), tapering as they rise;
+  // the SkyPark across their tops like a ship, its bow reaching out past the last tower
   sands: x => {
-    for (const t of [-38, 0, 38])
-      fill(x, () => {
-        x.moveTo(t - 13, 0);
-        x.lineTo(t - 7, -64);
-        x.lineTo(t + 7, -64);
-        x.lineTo(t + 13, 0);
-        x.closePath();
-      });
+    for (const t of [-42, 0, 42])
+      for (const sd of [-1, 1])
+        fill(x, () => {
+          // one leg: wide apart at the foot, meeting its twin at the top
+          x.moveTo(t + sd * 17, 0);
+          x.lineTo(t + sd * 7, 0);
+          x.lineTo(t + sd * 1, -80);
+          x.lineTo(t + sd * 6, -80);
+          x.closePath();
+        });
     fill(x, () => {
-      x.moveTo(-60, -66);
-      x.quadraticCurveTo(-10, -76, 70, -70);
-      x.lineTo(68, -64);
-      x.lineTo(-58, -62);
+      x.moveTo(-62, -82);
+      x.lineTo(100, -88);
+      x.quadraticCurveTo(92, -78, 70, -77);
+      x.lineTo(-56, -77);
+      x.quadraticCurveTo(-62, -78, -62, -82);
       x.closePath();
     });
-    x.fillRect(-66, 0, 132, 4);
+    x.fillRect(-72, 0, 144, 4);
   },
   // a mosque: the great dome between two minarets
   mosque: x =>
@@ -315,7 +319,7 @@ const STAMPS = {
     ])
       plane(x, px, py, 0.8);
   },
-  // an octagon, like Paris's: ARRIVAL either side of the dhow over the top, DOHA between rules, Qatar written below
+  // an octagon, like Paris's: ARRIVAL either side of the dhow over the top, DOHA under a rule, Qatar written below
   doha: x => {
     FRAME.poly(x, 8, 168, 140, Math.PI / 8);
     for (const r of [-0.55, 0.55]) {
@@ -328,20 +332,20 @@ const STAMPS = {
     rule(x, 110, -10);
     words(x, 'DOHA', 36, SERIF, 68, 200);
     words(x, 'Qatar', 78, SCRIPT, 46, 170);
-    words(x, 'HAMAD INTERNATIONAL', 108, SANS, 14, 130, 0.1);
   },
   // a long hexagon, like San Francisco's: SINGAPORE over the top, the Sands big in the middle, ARRIVAL and the airport
   // at the sides, the republic along the bottom
   singapore: x => {
     FRAME.poly(x, 6, 184, 132);
-    words(x, 'SINGAPORE', -72, SERIF, 42, 200);
-    at(x, 0, 42, 1.05, LAND.sands);
-    side(x, -128, 4, () => words(x, 'ARRIVAL', 0, SANS, 18, 70, 0.08));
-    side(x, 128, 4, () => {
-      words(x, 'CHANGI', -10, SANS, 18, 70, 0.08);
-      words(x, 'AIRPORT', 12, SANS, 18, 70, 0.08);
+    words(x, 'SINGAPORE', -70, SERIF, 40, 176);
+    at(x, 0, 52, 0.95, LAND.sands);
+    // (the sides: inside the hexagon's slanted inner line, which closes in above and below the middle)
+    side(x, -110, 6, () => words(x, 'ARRIVAL', 0, SANS, 16, 54, 0.06));
+    side(x, 110, 6, () => {
+      words(x, 'CHANGI', -9, SANS, 16, 54, 0.06);
+      words(x, 'AIRPORT', 10, SANS, 16, 54, 0.06);
     });
-    words(x, 'REPUBLIC OF SINGAPORE', 84, SANS, 22, 230, 0.06);
+    words(x, 'REPUBLIC OF SINGAPORE', 78, SANS, 19, 168, 0.04);
   },
   // scalloped, like Tokyo's: planes either side of the country, the mosque, ABU DHABI between rules, the airport
   abudhabi: x => {
@@ -360,11 +364,11 @@ const STAMPS = {
   lagos: x => {
     FRAME.house(x, 176, 116, 62);
     for (const sd of [-1, 1]) {
-      side(x, sd * 96, -58, () => {
+      side(x, sd * 92, -48, () => {
         x.rotate(sd * 0.34);
-        words(x, 'WELCOME TO', 0, SANS, 17, 100, 0.1);
+        words(x, 'WELCOME TO', 0, SANS, 16, 80, 0.08);
       });
-      side(x, sd * 104, -26, () => words(x, 'NIGERIA', 0, SANS, 22, 100, 0.08));
+      side(x, sd * 104, -20, () => words(x, 'NIGERIA', 0, SANS, 22, 96, 0.08));
     }
     at(x, 0, -22, 0.62, LAND.skyline);
     words(x, 'LAGOS', 36, SERIF, 72, 300);
