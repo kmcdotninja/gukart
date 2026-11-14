@@ -303,6 +303,11 @@ function frame(now) {
 }
 
 async function boot() {
+  // (testing on the dev server only, never in the game players get: ?unlock gives 20,000 coins and every vehicle)
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('unlock')) {
+    store.set('wallet', Math.max(store.get('wallet', 0), 20000));
+    store.set('owned', [...new Set([...store.get('owned', []), ...Object.keys(VEHICLES).map(v => 'veh:' + v)])]);
+  }
   const fill = $('#loadFill'),
     stepEl = $('#ldStep'),
     pctEl = $('#ldPct');
