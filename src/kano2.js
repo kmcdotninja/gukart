@@ -56,10 +56,42 @@ export function dalaTrack(La, Lb) {
 // the Muhammadu Buhari Interchange (the four brick clock towers, the steel X spelling KANO), past the Kano Club's golf
 // course on the Race Course, round the Ring Road roundabout and back to State Road. Features are dressed by kaduna.js
 // (the modern Nigerian city) and its own pieces; closer() solves La and Lb.
-import { corner, spiral } from './sgtracks.js';
+import { corner } from './sgtracks.js';
 // how high the interchange's loop climbs: high enough that where it crosses back over the road below there's a clear
 // sky's worth of room under the deck (about 20 m, like the bridges over the road at Changi), not a low tunnel
 export const BUHARI_RISE = 24;
+const sstep = u => u * u * (3 - 2 * u);
+// a straight climbing or dropping dy over L, the slope easing in from flat and out to flat (no kink at either end)
+function easedRamp(t, L, dy, n = 12, list) {
+  for (let i = 0; i < n; i++) t.straight(L / n, dy * (sstep((i + 1) / n) - sstep(i / n)), i === 0 ? list : undefined);
+}
+// spiral() (src/sgtracks.js), the same eased turn-in and turn-out, but cut into short pieces so the climb can ease in
+// and out too: flat as it turns in, steepest halfway round, flat again as it turns out
+function easedSpiral(t, R, deg, dy, list, ramp = 30) {
+  const n = 6,
+    rr = (ramp * Math.PI) / 180,
+    Lr = 2 * rr * R,
+    midDeg = deg - 2 * ramp,
+    mid = (midDeg * Math.PI * R) / 180,
+    total = Lr * 2 + mid,
+    pieces = [];
+  for (let i = 0; i < n; i++) {
+    const k = (i + 0.5) / n / R;
+    pieces.push([1 / k, ((k * Lr) / n) * (180 / Math.PI), Lr / n]);
+  }
+  const m = 24;
+  for (let i = 0; i < m; i++) pieces.push([R, midDeg / m, mid / m]);
+  for (let i = 0; i < n; i++) {
+    const k = (n - i - 0.5) / n / R;
+    pieces.push([1 / k, ((k * Lr) / n) * (180 / Math.PI), Lr / n]);
+  }
+  let at = 0;
+  pieces.forEach(([r, ang, len], i) => {
+    const h = dy * (sstep((at + len) / total) - sstep(at / total));
+    t.arc(r, ang, h, i === n ? list : undefined);
+    at += len;
+  });
+}
 export function kanoCityTrack(La, Lb) {
   const t = turtle();
   // State Road
@@ -93,8 +125,8 @@ export function kanoCityTrack(La, Lb) {
     [70, 'kicker'],
     [140, 'coins', { lat: 0, wave: 1 }],
   ]);
-  t.straight(100, 11.5, [
-    [0, 'redflyover', { len: 100 + 236 + 100 }],
+  easedRamp(t, 140, 11.5, 12, [
+    [0, 'redflyover', { len: 140 + 236 + 140 }],
     [30, 'coins', { lat: 0, n: 8 }],
   ]);
   corner(t, 112, 90, 0, [
@@ -102,26 +134,28 @@ export function kanoCityTrack(La, Lb) {
     [80, 'items'],
     [150, 'coins', { lat: 4, wave: 1 }],
   ]);
-  t.straight(100, -11.5);
+  easedRamp(t, 140, -11.5);
   t.straight(60, 0, [
     [0, 'citystreet', { len: 60 }],
     [30, 'pad', { lat: 0 }],
   ]);
   // the Muhammadu Buhari Interchange: in at street level and all the way round the four clock towers, 360 degrees, the
-  // ramp rising as it goes, until you're high above the way you came in and cross over it; then the long ramp down
-  const R = 48,
-    DOWN = 210, // (the ramp back down: about as steep as the flyover's)
+  // ramp rising as it goes, until you're high above the way you came in and cross over it; then the long ramp down.
+  // A big, sweeping loop (as wide as the game's widest corners) and the climb and the drop eased in and out, so the
+  // road never kinks up or down under you at speed
+  const R = 80,
+    DOWN = 300, // (the ramp back down: long, so even eased it's no steeper than the flyover's)
     spl = 2 * ((30 * Math.PI) / 180) * R * 2 + ((360 - 60) * Math.PI * R) / 180; // the whole spiral's length
   t.straight(40, 0, [
     [0, 'buhari', { len: 40 + spl + 60 + DOWN, spiral: [40, spl] }],
     [10, 'coins', { lat: 0, n: 5 }],
   ]);
-  spiral(t, R, 360, BUHARI_RISE, [
-    [((300 * Math.PI) / 180) * R * 0.3, 'items'],
-    [((300 * Math.PI) / 180) * R * 0.6, 'coins', { lat: 4, wave: 1 }],
+  easedSpiral(t, R, 360, BUHARI_RISE, [
+    [spl * 0.3, 'items'],
+    [spl * 0.6, 'coins', { lat: 4, wave: 1 }],
   ]);
   t.straight(60, 0, [[30, 'pad', { lat: 0 }]]);
-  t.straight(DOWN, -BUHARI_RISE);
+  easedRamp(t, DOWN, -BUHARI_RISE);
   // straight on into Kano Railway Station: in under the arches of the old station front, through the concourse and
   // along the platform under the long steel canopy, a train standing beside you, and out the far end
   t.straight(320, 0, [

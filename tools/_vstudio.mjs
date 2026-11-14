@@ -14,8 +14,8 @@ for (const v of list.split(',')) {
   if (v === list.split(',')[0])
     await p.screenshot({ path: `${out}/page-${v}.jpg`, type: 'jpeg', quality: 70, fullPage: true });
   await p.click('#play');
-  for (const t of [0.5, 1.2, 2]) {
-    await p.waitForTimeout(t === 0.5 ? 500 : 700);
+  for (const t of [0.3, 0.6, 1.2, 2, 2.6]) {
+    await p.waitForTimeout(t === 0.3 ? 300 : t === 0.6 ? 300 : t === 1.2 ? 600 : t === 2 ? 800 : 600);
     await p.locator('.stage').screenshot({ path: `${out}/${v}-${t}.jpg`, type: 'jpeg', quality: 70 });
   }
 }

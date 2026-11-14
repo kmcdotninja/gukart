@@ -91,7 +91,7 @@ export const POWERS_BASE = {
   },
   roadster: {
     name: 'SKY ROCKET',
-    line: 'The rocket pipes fire, it lifts off the road, rolls right over in the air and lands far ahead',
+    line: 'Four thrusters drop out from under the car and blast it off the road; it rolls right over in the air and lands far ahead',
     charge: 25,
     p: {
       height: [14, 'HEIGHT (M)', 6, 30, 1],
@@ -206,6 +206,10 @@ export function powerPose(id, t, P = POWERS[id]) {
       o.boost = P.boost;
       o.fx.flame = 1;
       o.fx.rocket = 1;
+      // its four thrusters under the car: out as it fires, full blast lifting off, a steady push holding it up, a hard
+      // burst again to set it down softly, then back in
+      o.fx.deploy = Math.min(1, u / 0.06, (1 - u) / 0.06);
+      o.fx.thrust = u < 0.28 ? 1 : u > 0.7 ? 0.9 : 0.45;
       return o;
     }
     case 'brute': {

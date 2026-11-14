@@ -82,7 +82,59 @@ const shadowsOn = root =>
 // your car on a rig the power moves; the two rivals in the next lane, one ahead and one behind
 const rig = new THREE.Group();
 S.add(rig);
-let car = null;
+let car = null,
+  thrusters = null;
+// the Roadster's four thrusters, hidden under the car: a nozzle at each corner of the floor that drops out and fires a
+// jet straight down (a hot core, a blue flame, a glow on the road under it)
+function makeThrusters(root) {
+  const box = new THREE.Box3().setFromObject(root),
+    sz = box.getSize(new THREE.Vector3()),
+    xs = sz.x * 0.3,
+    zs = sz.z * 0.3,
+    y0 = box.min.y + 0.32,
+    metal = new THREE.MeshStandardMaterial({ color: '#2a2e36', metalness: 0.9, roughness: 0.3 }),
+    rim = new THREE.MeshStandardMaterial({ color: '#c8ccd4', metalness: 1, roughness: 0.2 }),
+    out = [];
+  for (const [x, z] of [
+    [xs, zs],
+    [-xs, zs],
+    [xs, -zs],
+    [-xs, -zs],
+  ]) {
+    const g = new THREE.Group();
+    g.position.set(x, y0, z);
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 0.34, 20, 1, true), metal);
+    bell.material.side = THREE.DoubleSide;
+    bell.position.y = -0.17;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.035, 8, 24).rotateX(Math.PI / 2), rim);
+    ring.position.y = -0.34;
+    const core = new THREE.Mesh(
+      new THREE.ConeGeometry(0.16, 1.4, 16, 1, true).rotateX(Math.PI).translate(0, -0.7 - 0.34, 0),
+      new THREE.MeshBasicMaterial({
+        color: '#ffffff',
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    const jet = new THREE.Mesh(
+      new THREE.ConeGeometry(0.3, 3, 20, 1, true).rotateX(Math.PI).translate(0, -1.5 - 0.34, 0),
+      new THREE.MeshBasicMaterial({
+        color: '#6fd3ff',
+        transparent: true,
+        opacity: 0.7,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    g.add(bell, ring, core, jet);
+    g.scale.setScalar(0.001);
+    root.add(g);
+    out.push({ g, core, jet });
+  }
+  return out;
+}
 function buildCar() {
   if (car) rig.remove(car.root);
   car = makeKart(RACERS[0], tex, 14, type, DEFAULT_CUSTOM[type]);
@@ -91,6 +143,7 @@ function buildCar() {
   setFace(car, 'happy');
   for (let i = 0; i < 40; i++)
     car.robot.update(0.05, { t: i, steer: 0, wheel: car.wheelRing, wheelR: car.wheelR, speed: 0.4 });
+  thrusters = type === 'roadster' ? makeThrusters(car.root) : null;
   const fit = clearance(car);
   $('#fit').className = 'fit ' + (fit.length ? 'bad' : 'ok');
   $('#fit').textContent = fit.length
@@ -359,6 +412,29 @@ function frame(now) {
         new THREE.Vector3(0, 1, -8),
         0.5,
       );
+    if (thrusters) {
+      const dep = p.fx.deploy || 0,
+        th = (p.fx.thrust || 0) * dep;
+      for (const t of thrusters) {
+        t.g.scale.setScalar(Math.max(0.001, dep));
+        const fl = th * (0.85 + Math.random() * 0.3);
+        t.jet.scale.set(1, Math.max(0.01, fl), 1);
+        t.core.scale.set(1, Math.max(0.01, fl * 0.9), 1);
+        t.jet.visible = t.core.visible = th > 0.02;
+        if (th > 0.5 && Math.random() < 0.5) {
+          // the blast kicking up the road when it's close to it
+          t.g.getWorldPosition(v3);
+          if (v3.y < 5)
+            puff(
+              v3.setY(0.3),
+              '#dfe8f4',
+              1.6,
+              new THREE.Vector3((Math.random() - 0.5) * 8, 1.5, (Math.random() - 0.5) * 8),
+              2.6,
+            );
+        }
+      }
+    }
     cone.material.opacity = (p.fx.lights || 0) * 0.28;
     glow.material.opacity = (p.fx.glow || 0) * 0.35;
     ring.visible = p.fx.ring != null;
@@ -416,7 +492,7 @@ function frame(now) {
       if (q.life <= 0) q.s.visible = false;
     }
   // follow the car up when it flies
-  orbit.target.y += (1.4 + p.y * 0.8 - orbit.target.y) * Math.min(1, dt * 4);
+  orbit.target.y += (1.4 + p.y * 0.95 - orbit.target.y) * Math.min(1, dt * 9);
   orbit.update();
   const w = canvas.clientWidth,
     h = canvas.clientHeight;
