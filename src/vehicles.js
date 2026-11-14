@@ -37,10 +37,10 @@ export const POWERS_BASE = {
     line: 'It leaps and slams down: the ground shakes in a wave that rolls out and flips every rival it reaches',
     hits: 'EVERYONE NEAR',
     p: {
-      height: [5, 'JUMP (M)', 2, 10, 0.5],
-      air: [1, 'AIR TIME (S)', 0.6, 2, 0.1],
-      radius: [45, 'WAVE (M)', 15, 80, 1],
-      boost: [1.4, 'SPEED', 1.1, 2.2, 0.05],
+      height: [7, 'JUMP (M)', 2, 10, 0.5],
+      air: [1.6, 'AIR TIME (S)', 0.6, 2, 0.1],
+      radius: [70, 'WAVE (M)', 15, 80, 1],
+      boost: [3, 'SPEED', 1.1, 3, 0.05],
     },
   },
   roadster: {
@@ -48,27 +48,27 @@ export const POWERS_BASE = {
     line: 'Four thrusters blast it into the sky: it flies flat out over the pack for a few seconds, twirls once as it comes down, and the landing blast flips anyone close',
     hits: 'WHERE IT LANDS',
     p: {
-      height: [14, 'HEIGHT (M)', 6, 30, 1],
+      height: [16, 'HEIGHT (M)', 6, 30, 1],
       dur: [4, 'FLIGHT (S)', 2, 6, 0.1],
-      boost: [2, 'SPEED IN THE AIR', 1.2, 3, 0.05],
+      boost: [3, 'SPEED IN THE AIR', 1.2, 3, 0.05],
       rolls: [1, 'TWIRLS COMING DOWN', 0, 2, 1],
-      blast: [14, 'LANDING BLAST (M)', 5, 30, 1],
+      blast: [18, 'LANDING BLAST (M)', 5, 30, 1],
     },
   },
   kart: {
     name: 'SUPERSONIC',
     line: 'It breaks the sound barrier: a white vapour cone wraps it, a sonic boom, double speed, and every rival it passes is blown off the road',
     hits: 'ANYONE IT PASSES',
-    p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [2, 'SPEED', 1.4, 3, 0.1], wake: [8, 'WAKE (M)', 3, 15, 1] },
+    p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [3, 'SPEED', 1.4, 3, 0.1], wake: [11, 'WAKE (M)', 3, 15, 1] },
   },
   buggy: {
     name: 'BEACH BALL',
     line: 'It throws a volley of giant beach balls across the whole road: they bound ahead and any rival who hits one is flipped over',
     hits: 'ANYONE IN ITS PATH',
     p: {
-      size: [3.2, 'BALL (M)', 1.5, 6, 0.1],
-      speed: [55, 'BALL SPEED (M/S)', 30, 90, 1],
-      boost: [1.35, 'SPEED', 1.1, 2.2, 0.05],
+      size: [4, 'BALL (M)', 1.5, 6, 0.1],
+      speed: [120, 'BALL SPEED (M/S)', 30, 180, 1],
+      boost: [3, 'SPEED', 1.1, 3, 0.05],
     },
   },
   rail: {
@@ -76,9 +76,9 @@ export const POWERS_BASE = {
     line: 'A huge nitrous launch: front wheels high in a long wheelie, flames out the back, smashing anyone in its path',
     hits: 'ANYONE IN ITS PATH',
     p: {
-      dur: [3.5, 'HOW LONG (S)', 2, 6, 0.5],
-      boost: [2, 'SPEED', 1.4, 3, 0.05],
-      lift: [0.5, 'WHEELIE', 0.2, 0.9, 0.05],
+      dur: [4, 'HOW LONG (S)', 2, 6, 0.5],
+      boost: [3, 'SPEED', 1.4, 3, 0.05],
+      lift: [0.9, 'WHEELIE', 0.2, 0.9, 0.05],
     },
   },
   muscle: {
@@ -87,8 +87,8 @@ export const POWERS_BASE = {
     hits: 'ANYONE BEHIND',
     p: {
       dur: [4, 'LAYING IT (S)', 2, 6, 0.5],
-      burn: [6, 'BURNS FOR (S)', 3, 12, 0.5],
-      boost: [1.45, 'SPEED', 1.1, 2.2, 0.05],
+      burn: [10, 'BURNS FOR (S)', 3, 12, 0.5],
+      boost: [3, 'SPEED', 1.1, 3, 0.05],
     },
   },
   raider: {
@@ -96,8 +96,8 @@ export const POWERS_BASE = {
     line: 'It surges forward at speed; as it reaches the car ahead a heavy boom snaps out, catches it and throws it off the road',
     hits: 'THE CAR AHEAD',
     p: {
-      swing: [80, 'THROW (DEGREES)', 40, 120, 5],
-      boost: [2.2, 'SPEED', 1.4, 3, 0.05],
+      swing: [100, 'THROW (DEGREES)', 40, 120, 5],
+      boost: [3, 'SPEED', 1.4, 3, 0.05],
     },
   },
   brute: {
@@ -105,10 +105,10 @@ export const POWERS_BASE = {
     line: 'It charges at speed while the gun on its nose fires a barrage of iron cannonballs that hunt down rivals wherever they are, ahead or behind',
     hits: 'EVERYONE, WHEREVER THEY ARE',
     p: {
-      dur: [3, 'HOW LONG (S)', 1.5, 5, 0.5],
-      shots: [7, 'CANNONBALLS', 3, 12, 1],
-      shot: [90, 'SHOT SPEED (M/S)', 50, 150, 5],
-      boost: [1.5, 'SPEED', 1.1, 2.2, 0.05],
+      dur: [3.5, 'HOW LONG (S)', 1.5, 5, 0.5],
+      shots: [9, 'CANNONBALLS', 3, 12, 1],
+      shot: [120, 'SHOT SPEED (M/S)', 50, 150, 5],
+      boost: [3, 'SPEED', 1.1, 3, 0.05],
     },
   },
 };
