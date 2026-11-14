@@ -230,16 +230,18 @@ export function dressSingapore(k) {
         scene.add(me);
       }
   }
-  // the Helix: two steel strands spiralling round the road, rings binding them, LED pearls along them lit at night
+  // the Helix, Marina Bay's signature: you drive inside it. Two steel strands spiralling round the road (tight coils, so
+  // it reads as a tube), rings binding them, LED pearls along them, arches of light over the road that chase away ahead
+  // of you, and a portal at each end standing on the deck
   for (const f of fOf('helix')) {
     const R = W / 2 + 4,
       cy = R * 0.62,
-      pitch = 30;
+      pitch = 18;
     const strandM = glow(
       new THREE.MeshStandardMaterial({ color: '#e6ebf2', metalness: 0.85, roughness: 0.3 }),
       null,
       '#9ff3ff',
-      0.5,
+      0.9,
     );
     const pearlM = glow(lam('#dfe9f5'), null, '#ffffff', 0);
     const pearls = [];
@@ -255,7 +257,7 @@ export function dressSingapore(k) {
         );
       }
       const curve = new THREE.CatmullRomCurve3(pts);
-      scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, pts.length * 2, 0.55, 8), strandM));
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, pts.length * 2, 0.75, 8), strandM));
       // a finer strand just inside the main one
       const inner = pts.map((v, j) => {
         const s = f.s + j * 1.5,
@@ -327,6 +329,81 @@ export function dressSingapore(k) {
     );
     scene.add(new THREE.Mesh(mergeGeometries(pearls), pearlM));
     colourCycle.push({ mat: pearlM, hue: 0.5, sat: 0.6, speed: 0.07, str: 1.4 });
+    // the chase: an arch of light over the road every 4 m, in 8 groups lit one after another so a wave of light runs
+    // away from you down the tube (faint by day, bright at night)
+    const G = 8,
+      chase = Array.from(
+        { length: G },
+        () => new THREE.MeshBasicMaterial({ color: '#6fd3ff', transparent: true, opacity: 0.2 }),
+      ),
+      arches = Array.from({ length: G }, () => []);
+    let ai = 0;
+    for (let s = f.s + 2; s <= f.s + f.len - 2; s += 4, ai++) {
+      const p = tr.point(s, 0);
+      arches[ai % G].push(
+        new THREE.TorusGeometry(R * 0.72, 0.16, 5, 28, Math.PI * 0.62)
+          .rotateZ(Math.PI * 0.19)
+          .rotateY(head(s))
+          .translate(p.x, p.y + cy, p.z),
+      );
+    }
+    arches.forEach((list, g) => list.length && scene.add(new THREE.Mesh(mergeGeometries(list), chase[g])));
+    animated.push(t => {
+      for (let g = 0; g < G; g++) {
+        const wave = Math.pow(Math.max(0, Math.cos(TAU * (t * 0.9 - g / G))), 6);
+        chase[g].opacity = 0.18 + wave * (0.35 + night * 0.6);
+      }
+    });
+    // the portals: two pylons standing on the deck at its edges, a beam across at 10 m, lit cyan; the way in carries
+    // the name, facing you as you come
+    const pylonM = glow(lam('#e8edf3'), null, '#9ff3ff', 0.6),
+      nameT = canvasTex(1024, 192, (x, w, h) => {
+        x.fillStyle = '#0b1330';
+        x.fillRect(0, 0, w, h);
+        x.strokeStyle = '#6fd3ff';
+        x.lineWidth = 8;
+        x.strokeRect(14, 14, w - 28, h - 28);
+        x.fillStyle = '#ffffff';
+        x.font = 'italic 900 112px "Barlow Condensed", "Arial Narrow", sans-serif';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText('THE HELIX', w / 2, h / 2 + 6);
+      });
+    for (const [s, named] of [
+      [f.s - 6, true],
+      [f.s + f.len + 6, false],
+    ]) {
+      const p = tr.point(s, 0),
+        a = head(s),
+        g = new THREE.Group(),
+        X = W / 2 + 1.9; // (on the deck, just inside its edge)
+      g.position.set(p.x, p.y, p.z);
+      g.rotation.y = a;
+      for (const sd of [1, -1]) {
+        const py = new THREE.Mesh(new THREE.BoxGeometry(1.2, 11, 1.2), pylonM);
+        py.position.set(sd * X, 5.5, 0);
+        py.castShadow = true;
+        g.add(py);
+      }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(2 * X + 1.2, 1.2, 1.2), pylonM);
+      beam.position.y = 10.4;
+      g.add(beam);
+      if (named) {
+        const sign = new THREE.Mesh(
+          new THREE.PlaneGeometry(14, 2.6),
+          glow(lam('#ffffff', { map: nameT }), nameT, '#ffffff', 0.9),
+        );
+        sign.position.set(0, 8.4, -0.7); // (hung under the beam, on its face toward you)
+        sign.rotation.y = Math.PI;
+        g.add(sign);
+        for (const sd of [1, -1]) {
+          const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 0.15), pylonM);
+          hanger.position.set(sd * 5, 9.95, -0.7);
+          g.add(hanger);
+        }
+      }
+      scene.add(g);
+    }
     place('THE HELIX', 'Through the steel spiral', tr.point(f.s + f.len / 2, 0), f.s + f.len / 2, { back: 40, h: 6 });
   }
 

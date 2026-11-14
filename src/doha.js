@@ -1129,47 +1129,86 @@ export function dressDoha(k) {
     1.1,
   );
   for (const f of fOf('kataratowers')) {
-    // a crescent standing on its tip: the plan is a thin slab, the elevation a curved blade; the two curve away from each
-    // other like the crossed swords, so the road runs through the gap between their feet
-    // a crescent between two equal circles offset by its thickness: fat in the middle, tapering to points top and bottom;
-    // the convex back faces the road and the tips curve away, so the pair reads as the crossed blades
-    const R = 120,
-      th = 40,
-      pts = [];
-    const lim = Math.acos(th / 2 / R);
-    for (let k2 = 0; k2 <= 40; k2++) {
-      const a2 = Math.PI - lim + (2 * lim * k2) / 40;
-      pts.push(new THREE.Vector2(R + R * Math.cos(a2), R * Math.sin(a2)));
-    }
-    for (let k2 = 40; k2 >= 0; k2--) {
-      const a2 = Math.PI - lim + (2 * lim * k2) / 40;
-      pts.push(new THREE.Vector2(th + R + R * Math.cos(a2) + 0, R * Math.sin(a2)));
-    }
-    const bg = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: 34, bevelEnabled: false })
-      .translate(-th / 2 + 2, 34, -17)
-      .scale(1, 0.72, 1); // the lower tip buried, ~110 m standing
+    // the Katara Towers, as they stand: ONE building on the waterfront, two towers rising from a shared podium and
+    // sweeping apart into a U, narrow at the foot and widest near the top, each tower ending in a horn that turns back
+    // up and in (the crossed swords of the emblem). Each tower's inner edge is a white blade running the whole curve.
+    // Drawn as the elevation of one tower (x out from the middle, y up), extruded to its thickness, mirrored for the other
+    const ell = (t2, y0) => [46 * Math.sin(t2), y0 + 150 * (1 - Math.cos(t2))]; // the inner curve, the bottom of an ellipse
+    const T1 = (104 * Math.PI) / 180; // (past the top of the ellipse: the horn turns back in)
+    const tower = (inset, y0) => {
+      const pts = [new THREE.Vector2(1.5 + inset, 0), new THREE.Vector2(28, 0)];
+      // the outer face: leaning out as it rises, then rounding into the horn
+      for (let k2 = 1; k2 <= 12; k2++) {
+        const u = k2 / 12;
+        pts.push(new THREE.Vector2(28 + 30 * Math.sin((u * Math.PI) / 2), 150 * u));
+      }
+      const [tx, ty] = ell(T1, y0);
+      pts.push(new THREE.Vector2(tx + 10, ty - 8), new THREE.Vector2(tx + 2, ty + 4)); // the horn's tip
+      // the inner face: down the curve to the middle
+      for (let k2 = 24; k2 >= 0; k2--) {
+        const [x2, y2] = ell((T1 * k2) / 24, y0);
+        pts.push(new THREE.Vector2(x2 + 1.5 + inset, y2));
+      }
+      return new THREE.Shape(pts);
+    };
+    const D = 26, // thickness
+      towerG = new THREE.ExtrudeGeometry(tower(0, 10), { depth: D, bevelEnabled: false }).translate(0, 0, -D / 2);
     {
-      const uv = bg.attributes.uv;
+      const uv = towerG.attributes.uv;
       for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 16, uv.getY(i) / 16);
     }
+    // the white blade: a band along the inner curve, standing a little proud of both faces
+    const blade = [];
+    for (let k2 = 0; k2 <= 24; k2++) {
+      const tt = (T1 * k2) / 24,
+        [x2, y2] = ell(tt, 10),
+        nx = Math.cos(tt) * 150,
+        ny = Math.sin(tt) * 46,
+        nl = Math.hypot(nx, ny);
+      blade.push(new THREE.Vector2(x2 + 1.5 - (nx / nl) * 0.5, y2 + (ny / nl) * 0.5)); // (half a metre proud of the glass)
+    }
+    for (let k2 = 24; k2 >= 0; k2--) {
+      const tt = (T1 * k2) / 24,
+        [x2, y2] = ell(tt, 10),
+        nx = Math.cos(tt) * 150,
+        ny = Math.sin(tt) * 46,
+        nl = Math.hypot(nx, ny); // (outward from the curve)
+      blade.push(new THREE.Vector2(x2 + 1.5 + (nx / nl) * 3.2, y2 - (ny / nl) * 3.2));
+    }
+    const bladeG = new THREE.ExtrudeGeometry(new THREE.Shape(blade), { depth: D + 1.6, bevelEnabled: false }).translate(
+      0,
+      0,
+      -(D + 1.6) / 2,
+    );
+    const bladeM = glow(phong({ color: '#f4f2ec', specular: '#ffffff', shininess: 60 }), null, '#fff6e0', 0.6);
+    // where it stands: on the water side of the road, its face turned to the oncoming road, so the U is in front of you
+    // as you drive up to it
     const p0 = tr.point(f.s, 0),
       a = head(f.s),
-      l = tr.L[tr.idx(f.s)];
-    place('KATARA TOWERS', 'Two golden crescents, the crossed swords', p0, f.s, { back: 170, h: 7, lookH: 40 });
-    for (const sd of [-1, 1]) {
-      const m = new THREE.Mesh(bg, goldGlass);
-      m.position.set(p0.x + l.x * sd * (W / 2 + 34), 0, p0.z + l.z * sd * (W / 2 + 34));
-      m.rotation.y = a + (sd > 0 ? Math.PI / 2 : -Math.PI / 2);
-      m.scale.setScalar(0.78);
+      l = tr.L[tr.idx(f.s)],
+      side = tr.out?.[tr.idx(f.s)] || 1,
+      off = W / 2 + 70,
+      g = new THREE.Group();
+    g.position.set(p0.x + l.x * side * off, 0, p0.z + l.z * side * off);
+    g.rotation.y = a; // (its x across the road, its face toward you as you come)
+    for (const sd of [1, -1]) {
+      const m = new THREE.Mesh(towerG, goldGlass),
+        bl = new THREE.Mesh(bladeG, bladeM);
+      m.scale.x = bl.scale.x = sd;
       m.castShadow = true;
-      scene.add(m); // turned so the tips curve away from the road (they never meet)
-      reserve(m.position.x, m.position.z, 16);
-      const pod = new THREE.Mesh(boxM(40, 8, 34), mats.cream);
-      pod.position.copy(m.position);
-      pod.rotation.y = a;
-      scene.add(pod);
+      g.add(m, bl);
     }
-    // their podium: a low cream block under each, by the water
+    // the shared podium under both, by the water, and the low arch between the two feet
+    const pod = new THREE.Mesh(boxM(96, 9, 46), mats.cream);
+    pod.position.y = 0;
+    g.add(pod);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(9, 1.4, 8, 24, Math.PI), bladeM);
+    arch.position.set(0, 9, D / 2 + 1.2);
+    g.add(arch);
+    g.scale.setScalar(0.8);
+    scene.add(g);
+    reserve(g.position.x, g.position.z, 55);
+    place('KATARA TOWERS', 'Two golden crescents, the crossed swords', g.position, f.s, { back: 170, h: 7, lookH: 60 });
   }
 
   /* ---------- Lusail Stadium: the golden bowl ---------- */
@@ -1540,6 +1579,77 @@ export function dressDoha(k) {
         for (let wx = -w / 2 + 2; wx < w / 2 - 1; wx += 3)
           add(boxM(1, 1.3, 0.25).translate(wx, h - 3.3, 4.05), souqWin, p.x, 0, p.z, a); // small windows up top, lamplit at night
       }
+
+  // Msheireb's signature: the road runs under the souq's covered lane. Timber posts stand on the ground just past the
+  // kerbs, beams cross the road at 7 m (well over the karts), purlins run along them, and woven palm matting lies on top
+  // with gaps that throw stripes of sun on the road; lanterns hang from every other beam (lit at night), and spice
+  // stalls stand between the posts
+  {
+    const mat = canvasTex(
+      256,
+      256,
+      (x, w, h) => {
+        x.clearRect(0, 0, w, h);
+        for (let yy = 0; yy < h; yy += 32) {
+          x.fillStyle = yy % 64 ? '#b98f55' : '#a87e47';
+          x.fillRect(0, yy, w, 22); // a band of woven fronds, then a gap of light
+          x.fillStyle = 'rgba(80,50,20,.35)';
+          for (let xx = (yy / 32) % 2 ? 0 : 8; xx < w; xx += 16) x.fillRect(xx, yy, 3, 22);
+        }
+      },
+      { repeat: true },
+    );
+    const matM = new THREE.MeshLambertMaterial({ map: mat, alphaTest: 0.5, side: THREE.DoubleSide }),
+      lanternM = glow(lam('#8a5a24'), null, '#ffb24a', 2.2),
+      X = W / 2 + 2.6, // the posts: past the kerbs
+      TOP = 7.2,
+      spice = ['#e8a317', '#c2361b', '#7a4a22', '#5d7a2a', '#d9b25a', '#a3271b'];
+    for (const f of fOf('souq')) {
+      let n = 0;
+      for (let s = f.s; s <= f.s + f.len; s += 6, n++) {
+        const p = tr.point(s, 0),
+          a = head(s),
+          y0 = p.y || 0;
+        for (const sd of [-1, 1]) add(boxM(0.5, TOP, 0.5).translate(sd * X, 0, 0), mats.woodDark, p.x, y0, p.z, a);
+        add(boxM(2 * X + 0.6, 0.5, 0.55).translate(0, TOP, 0), mats.woodDark, p.x, y0, p.z, a);
+        for (let lx = -X; lx <= X + 0.01; lx += (2 * X) / 6)
+          add(boxM(0.22, 0.22, 6.1).translate(lx, TOP + 0.5, 0), mats.wood, p.x, y0, p.z, a);
+        const mm = new THREE.PlaneGeometry(2 * X + 0.6, 6.1).rotateX(-Math.PI / 2).translate(0, TOP + 0.75, 0);
+        {
+          const uv = mm.attributes.uv;
+          for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * (2 * X)) / 8, uv.getY(i) * 0.75);
+        }
+        add(mm, matM, p.x, y0, p.z, a);
+        if (n % 2 === 0)
+          for (const lx of [-8, 0, 8]) {
+            add(boxM(0.06, 1, 0.06).translate(lx, TOP - 1, 0), mats.woodDark, p.x, y0, p.z, a); // (hung from the beam)
+            add(
+              new THREE.CylinderGeometry(0.34, 0.26, 0.75, 6).translate(lx, TOP - 1.35, 0),
+              lanternM,
+              p.x,
+              y0,
+              p.z,
+              a,
+            );
+          }
+        // a stall between this post and the next, each side: a low table with heaps of spice on it
+        if (n % 2 === 1)
+          for (const sd of [-1, 1]) {
+            const lx = sd * (X + 2.2);
+            add(boxM(1.4, 0.85, 3.6).translate(lx, 0, 0), mats.wood, p.x, y0, p.z, a);
+            for (const lz of [-1.1, 0, 1.1])
+              add(
+                new THREE.ConeGeometry(0.45, 0.55, 10).translate(lx, 1.12, lz),
+                lam(spice[(n * 3 + Math.round(lz) + (sd > 0 ? 2 : 0) + 6) % spice.length]),
+                p.x,
+                y0,
+                p.z,
+                a,
+              );
+          }
+      }
+    }
+  }
 
   /* ---------- the Fanar: the spiral minaret, a ramp winding round a tapering tower ---------- */
   for (const f of fOf('fanar')) {

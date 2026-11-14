@@ -1013,7 +1013,7 @@ button:focus-visible {
   object-fit: contain;
   padding: 6px 8px 22px;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
-} /* one fixed picture: the kart on its own, on the orange glow (public/tile-garage.png) */
+} /* the car you race, in its own paint, on the orange glow (src/garage-screen.js renderGarage) */
 
 /* wide screens: nothing stretched across; the logo top-left, the chapter panel and GO in a column on the right */
 @media (min-width: 820px) {

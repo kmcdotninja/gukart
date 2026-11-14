@@ -479,6 +479,22 @@ export function buildRoad(scene, tr, tex) {
           false,
         ); // (Doha's streets are swept)
   }
+  // where a fork's branch leaves or rejoins the road, the kerb on that side opens for it (it ran straight across the
+  // mouth); mouth[0] is the +L side, mouth[1] the -L side
+  const mouth = [new Uint8Array(N), new Uint8Array(N)];
+  for (const b of tr.forks || [])
+    for (let i = 0; i <= b.M; i++) {
+      const q = b.P[i],
+        n = tr.nearest(q.x, q.z),
+        lat = (q.x - tr.P[n.i].x) * tr.L[n.i].x + (q.z - tr.P[n.i].z) * tr.L[n.i].z;
+      if (Math.abs(lat) > W / 2 + BW / 2 + 4) continue;
+      const lo = lat - BW / 2 - 1.6,
+        hi = lat + BW / 2 + 1.6;
+      for (let o = -2; o <= 2; o++) {
+        if (hi > W / 2 && lo < W / 2 + 2.4) mouth[0][tr.wrap(n.i + o)] = 1;
+        if (lo < -W / 2 && hi > -W / 2 - 2.4) mouth[1][tr.wrap(n.i + o)] = 1;
+      }
+    }
   // curbs on the ground, barriers on the decks
   // (Doha: a grey concrete kerb and a paved pavement with palms in it, not a racing kerb and a dirt verge)
   const curbMat = new THREE.MeshLambertMaterial({ map: tr.city === 'doha' ? DQ.kerbTex() : tex.curb });
@@ -493,7 +509,7 @@ export function buildRoad(scene, tr, tex) {
           [W / 2 + 0.6, 0.17],
           [W / 2, 0.07],
         ],
-        k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k),
+        k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k) || mouth[0][k],
       ),
       4,
     ),
@@ -510,7 +526,7 @@ export function buildRoad(scene, tr, tex) {
           [-W / 2 - 1.7, 0.19],
           [-W / 2 - 2.4, 0.1],
         ],
-        k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k),
+        k => elevated[k] || inGap[k] || tr.trench[k] || tr.lowb[k] || tr.hall[k] || shut(k) || mouth[1][k],
       ),
       4,
     ),
@@ -906,7 +922,13 @@ export function buildRoad(scene, tr, tex) {
     m.matrixAutoUpdate = false;
     scene.add(m);
     const G = tr.frame((k.gap[0] + k.gap[1]) / 2, tr.newFrame());
-    const c = new THREE.Mesh(new THREE.BoxGeometry(W + 30, 1, k.gap[1] - k.gap[0]), water);
+    // a jump with Kofar Mata's dye pits just ahead of it flies over the pits themselves: a floor of beaten earth for
+    // them (world.js sets the pits in it) instead of a canal
+    k.dye = tr.city === 'kano' && tr.feats.some(f => f.type === 'dye' && f.s > k.s && f.s - k.s < 160);
+    const c = new THREE.Mesh(
+      new THREE.BoxGeometry(W + 30, 1, k.gap[1] - k.gap[0]),
+      k.dye ? new THREE.MeshLambertMaterial({ color: '#b8956a' }) : water,
+    );
     c.matrix.makeBasis(G.l, G.u, G.t).setPosition(G.p.clone().addScaledVector(G.u, -1.6));
     c.matrixAutoUpdate = false;
     scene.add(c);
@@ -925,11 +947,13 @@ export function buildRoad(scene, tr, tex) {
 
 /* ---------- the fork: on a long straight the road splits like a Y; the left branch is an open bypass, the right one runs
    through a covered subway; they meet again further on. The straight between them is closed ---------- */
-export const BW = 20;
+// each branch is as wide as the road it leaves (it was 20 m: too tight to take the split at speed, and inside the
+// subways, the Kaduna arcade above all, a kart felt squeezed)
+export const BW = W;
 export function buildForks(tr) {
   const { N, P, seg, len } = tr,
     V3 = THREE.Vector3,
-    BULGE = 50;
+    BULGE = 56; // (how far each branch swings out: room for the wider branches side by side)
   const plain = i =>
     Math.abs(P[i].y) < 0.3 && !tr.trench[i] && !tr.elevated[i] && !tr.inGap[i] && Math.abs(tr.K[i]) < 0.016; // straight or a gentle bend
   const blocked = new Uint8Array(N);
@@ -1210,9 +1234,55 @@ export function buildForkRoads(scene, tr, tex) {
     map: tr.city === 'doha' ? DQ.kerbTex() : tex.curb,
     side: THREE.DoubleSide,
   });
+  // how far a point is across the main road from its middle (0 in the middle, W/2 at its edge)
+  const mainLat = q => {
+    const n = tr.nearest(q.x, q.z);
+    return Math.abs((q.x - tr.P[n.i].x) * tr.L[n.i].x + (q.z - tr.P[n.i].z) * tr.L[n.i].z);
+  };
   for (const b of forks) {
-    mesh(strip(b, [BW / 2, -BW / 2], 0.075), road);
-    for (const sg of [1, -1]) mesh(strip(b, [sg * (BW / 2 + 1.6), (sg * BW) / 2], 0.09), curb);
+    // the branch's surface: where an edge of it lies on the main road (as it leaves and as it rejoins) that edge has
+    // no white line, so no line runs across the main road; its asphalt still covers the main road's own edge line there
+    {
+      const cols = [BW / 2, BW / 2 - 1.2, -BW / 2 + 1.2, -BW / 2],
+        us = [0, 0.075, 0.925, 1],
+        pos = [],
+        uv = [],
+        idx = [];
+      for (let i = 0; i <= b.M; i++) {
+        const on = [1, -1].map(sg => mainLat(b.P[i].clone().addScaledVector(b.L[i], (sg * BW) / 2)) < W / 2 - 0.2);
+        cols.forEach((lat, c) => {
+          const q = b.P[i].clone().addScaledVector(b.L[i], lat);
+          pos.push(q.x, 0.075 + (b.P[i].y || 0), q.z);
+          const plain = (c < 2 && on[0]) || (c >= 2 && on[1]);
+          uv.push(plain ? 0.5 : us[c], (i * b.seg) / 24);
+        });
+      }
+      for (let i = 0; i < b.M; i++)
+        for (let c = 0; c < 3; c++) {
+          const a2 = i * 4 + c,
+            d = a2 + 4;
+          idx.push(a2, a2 + 1, d, a2 + 1, d + 1, d);
+        }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      mesh(g, road);
+    }
+    // its kerbs, only off the main road (they used to run across it at both ends)
+    for (const sg of [1, -1]) {
+      const g = strip(b, [sg * (BW / 2 + 1.6), (sg * BW) / 2], 0.09),
+        keep = [],
+        id = g.index.array;
+      for (let k = 0; k < id.length; k += 6) {
+        const i = Math.floor(id[k] / 2),
+          q = b.P[Math.min(b.M, i)].clone().addScaledVector(b.L[Math.min(b.M, i)], (sg * BW) / 2);
+        if (mainLat(q) > W / 2 + 2.4) keep.push(...id.slice(k, k + 6));
+      }
+      g.setIndex(keep);
+      mesh(g, curb);
+    }
     if (b.bridge) {
       const i0 = b.deck.indexOf(1),
         i1 = b.deck.lastIndexOf(1),

@@ -2,7 +2,7 @@
 // the Kofar Mata dye pits, Kurmi market, the Emir's palace, doum palms, neem and baobab trees.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { W } from './track.js';
+import { W, BW } from './track.js';
 import { buildGantry, pitStraight } from './gantry.js';
 import { clamp, lerp, sstep, fbm, rng } from './util.js';
 import { canvasTex, loopKnot, starKnot, diamondBand } from './textures.js';
@@ -95,7 +95,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     const tl = Math.hypot(t.x, t.z) || 1;
     return { p: tr.point(m, 0), tx: t.x / tl, tz: t.z / tl, half: (k.gap[1] - k.gap[0]) / 2 + 2 };
   });
-  const roadGap = (x, z) => Math.min(tr.nearest(x, z).d, ...(tr.forks || []).map(f => f.dist(x, z) + (W / 2 - 20 / 2))); // (the fork's two ways count as road)
+  const roadGap = (x, z) => Math.min(tr.nearest(x, z).d, ...(tr.forks || []).map(f => f.dist(x, z) + (W / 2 - BW / 2))); // (the fork's two ways count as road)
   const free = (x, z, r, minRoad = W / 2 + 13) => {
     const n = tr.nearest(x, z);
     if (n.d < minRoad + r + Math.abs(tr.P[n.i].y) * 1.9) return false;
@@ -322,7 +322,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         26 * Math.sin(5 * th + 1.3) +
         60 * (fbm(Math.cos(th) * 2 + 9, Math.sin(th) * 2) - 0.45);
       const n = tr.nearest(x, z),
-        dLand = Math.min(n.d, ...(tr.forks || []).filter(f => f.tunnel).map(f => f.dist(x, z) + (W / 2 - 20 / 2))),
+        dLand = Math.min(n.d, ...(tr.forks || []).filter(f => f.tunnel).map(f => f.dist(x, z) + (W / 2 - BW / 2))),
         onRoad = dLand < W / 2 + 22 && P[n.i].y < 3 && !tr.lowb[n.i], // (a sky bridge keeps the sea under it, and so does the water bridge; a subway needs land)
         ins = tr.isInside(x, z),
         s = n.i * tr.seg;
@@ -1551,6 +1551,26 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         bunting(fr(f.s + f.len * 0.6));
       }
     }
+  // the jump before Kofar Mata lands you over the dye pits: rows of them filling the gap under you, rims of mud, the
+  // indigo (a few green and rust) shining in them (track.js laid the earth floor; it's at -1.1)
+  for (const k of tr.kickers)
+    if (k.dye)
+      for (let s = k.gap[0] + 2; s <= k.gap[1] - 2; s += 3.8)
+        for (let lat = -W / 2 - 12; lat <= W / 2 + 12; lat += 3.8) {
+          const i = tr.idx(s),
+            p = tr.point(s, 0).addScaledVector(tr.L[i], lat + rr(-0.4, 0.4));
+          rims.add(p.x, -0.95, p.z, 0, 1, 1, 1, pick(['#d9c29b', '#cdb48c', '#e2cba6']));
+          dye.add(
+            p.x,
+            -0.85,
+            p.z,
+            0,
+            1,
+            1,
+            1,
+            rand() < 0.8 ? pick(['#1b2a80', '#22336b', '#0f1a4d', '#2b3f9e']) : pick(['#4b6b2a', '#7a3b1e']),
+          );
+        }
   if (!coast) {
     bunting(fr(60));
     palace();

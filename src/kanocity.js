@@ -13,6 +13,7 @@
 //  - the Ring Road roundabout
 import { BUHARI_RISE } from './kano2.js';
 import * as THREE from 'three';
+import { BW } from './track.js';
 import { canvasTex, diamondBand, starKnot } from './textures.js';
 
 const TAU = Math.PI * 2;
@@ -408,7 +409,7 @@ export function dressKanoCity(k, h) {
       // clear of every road on the lap, at any height, with room for the tower's own width (and the fork's branches)
       roadsClear = (x, z) => {
         for (let i = 0; i < tr.N; i++) if (Math.hypot(tr.P[i].x - x, tr.P[i].z - z) < W / 2 + 6) return false;
-        for (const fk of tr.forks || []) if (fk.dist(x, z) < 20 / 2 + 6) return false;
+        for (const fk of tr.forks || []) if (fk.dist(x, z) < BW / 2 + 6) return false;
         return true;
       };
     // (at night the towers are floodlit, warm gold, the clock faces bright)

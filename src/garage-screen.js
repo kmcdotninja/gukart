@@ -114,7 +114,13 @@ export function renderGarage() {
   $('#gUpLegend').hidden = !(up.has('turbo') || up.has('grip'));
   renderCollection();
   $('#gName').textContent = v.name.toUpperCase();
-  $('#garageBtn').setAttribute('aria-label', `Open the garage, ${v.name}`); // (the tile's picture is a fixed one: the kart on its own, public/tile-garage.png)
+  {
+    // the home screen's GARAGE tile shows the car you race (not one on the stand you're only looking at), in its own
+    // saved paint, so you can see at a glance which car you're using (public/tile-garage.png until the pictures are made)
+    const mine = VEHICLES[game.vehicle];
+    $('#garageBtn').setAttribute('aria-label', `Open the garage, ${mine.name}`);
+    if (game.THUMBS?.[game.vehicle]) $('#garageThumb').src = game.THUMBS[game.vehicle];
+  }
   renderCustom();
   $('#gWallet').textContent = store.get('wallet', 0).toLocaleString('en');
 }
