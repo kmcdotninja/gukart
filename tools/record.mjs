@@ -4,6 +4,9 @@
 //   node tools/record.mjs --circuit pearl --seconds 30 --out recordings/pearl.mp4
 //   node tools/record.mjs --frames 120                      (a quick check: a couple of seconds)
 //   node tools/record.mjs --launch                          (the launch video: Doha's garage, then a race on Msheireb, 45 s)
+//   node tools/record.mjs --photo                           (photo mode: the last seconds of a race on Kano's Old City,
+//                                                            the line, the results with the replay behind them, PHOTO,
+//                                                            the camera swung round the kart, the shutter, the Polaroid)
 //   node tools/record.mjs --showcase                        (home on The Pearl, its map, the garage: four cars, the Brute unlocked and
 //                                                            painted black, then a race on The Pearl at night through the
 //                                                            aquarium, 45 s, 1920x1080; --city singapore --circuit changi:
@@ -27,15 +30,22 @@ const arg = (name, def) => {
   return i > 0 ? process.argv[i + 1] : def;
 };
 const showcase = process.argv.includes('--showcase');
+const photo = process.argv.includes('--photo');
 const launch = process.argv.includes('--launch') || showcase;
-const circuit = arg('circuit', showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
+const circuit = arg('circuit', photo ? 'old' : showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
 // the city the circuit is in (and whose garage it opens): Doha unless told otherwise (--city singapore --circuit changi)
-const city = arg('city', 'doha');
+const city = arg('city', photo ? 'kano' : 'doha');
 const FPS = 60;
-const frames = +arg('frames', 0) || Math.round(+arg('seconds', launch ? 45 : 60) * FPS);
+const frames = +arg('frames', 0) || Math.round(+arg('seconds', photo ? 19 : launch ? 45 : 60) * FPS);
 const out = arg(
   'out',
-  showcase ? 'recordings/showcase.mp4' : launch ? 'recordings/launch.mp4' : `recordings/${circuit}.mp4`,
+  photo
+    ? 'recordings/photo-mode.mp4'
+    : showcase
+      ? 'recordings/showcase.mp4'
+      : launch
+        ? 'recordings/launch.mp4'
+        : `recordings/${circuit}.mp4`,
 );
 // the launch video, one take with no titles: Doha's home, into the garage, through the vehicles, the muscle car dressed
 // in Buddy Orange with flames and turbo wheels, saved, then PLAY and a race on Msheireb. [second, what is clicked]
@@ -223,15 +233,34 @@ if (!launch) {
   for (let i = 0; i < 30; i++) await step();
 }
 // the sound starts with the video: its first sample is the first frame
-if (!mute) await page.evaluate(() => window.gukart.Sound.init());
+if (!mute && !photo) await page.evaluate(() => window.gukart.Sound.init());
 // RACE (open it, then its NEXT), then the QUICK RACE setup already on this circuit and time of day: NEXT (city), NEXT (circuit), GO
 if (!launch)
   await page.evaluate(() => {
     document.querySelector('#mCards .mcard[data-mode="gp"]').click(); // opens RACE
     document.querySelector('#mCards .mcard.on').click(); // its NEXT
-    for (let i = 0; i < 3; i++) document.querySelector('#qNext').click();
+    for (let i = 0; i < 4; i++) document.querySelector('#qNext').click(); // (how hard, the city, the circuit, day or night: GO)
   });
 await page.mouse.move(W - 1, H - 1); // nothing hovered
+// photo mode: the race run on unseen until it's under way, then Buddy (on autopilot) put on the run to the line of the
+// last lap, and the recording (and its sound) starts there
+if (photo) {
+  for (let i = 0; i < 2400; i++) {
+    await step();
+    if (await page.evaluate(() => window.gukart.game.state === 'race')) break;
+  }
+  for (let i = 0; i < 60; i++) await step();
+  await page.evaluate(() => {
+    const g = window.gukart.game,
+      P = g.race.player;
+    P.ai = true;
+    P.lap = (g.track.len > 2600 ? 2 : 3) - 1;
+    P.s = g.track.len - 230;
+    P.lat = 0;
+    P.prog = P.lap * g.track.len + P.s;
+  });
+  if (!mute) await page.evaluate(() => window.gukart.Sound.init());
+}
 
 // ffmpeg takes the frames as JPEGs on its input (into a picture-only file first when the sound is added after)
 mkdirSync(dirname(out), { recursive: true });
@@ -262,7 +291,10 @@ let auto = false;
 const clicks = (showcase ? SHOWCASE : launch ? LAUNCH : []).map(([t, sel]) => [Math.round(t * FPS), sel]);
 // when the race starts (its card, then GO): the music is laid in afterwards, the menus' track until then, the race's after
 let raceFrom = -1,
-  goFrom = -1;
+  goFrom = -1,
+  resultsAt = -1,
+  photoOpen = false,
+  snapped = false;
 for (let f = 0; f < frames; f++) {
   for (const [at, sel] of clicks)
     if (at === f) {
@@ -291,6 +323,43 @@ for (let f = 0; f < frames; f++) {
         k.skill = Math.min(1.3, k._base + Math.max(0, P.prog - k.prog - 6) * 0.006);
       }
     });
+  if (photo) {
+    // after the line: the results with the replay behind them, then PHOTO, the camera swung slowly round the kart, the
+    // shutter, and the Polaroid held on screen to the end
+    const st = await page.evaluate(() => window.gukart.game.state);
+    // (over the line and after: Buddy kept to the middle of the road, so the camera swinging round to him doesn't end
+    // up among the crates at the roadside)
+    if (st === 'finish' || st === 'results')
+      await page.evaluate(() => {
+        const P = window.gukart.game.race.player;
+        P.lat *= 0.92;
+      });
+    if (st === 'results' && resultsAt < 0) resultsAt = f;
+    if (resultsAt >= 0) {
+      const t = (f - resultsAt) / FPS;
+      if (t >= 3.4 && !photoOpen) {
+        photoOpen = true;
+        await page.evaluate(() => document.querySelector('#photoBtn').click());
+      }
+      if (photoOpen && t < 7.6)
+        await page.evaluate(
+          u => {
+            const ph = window.gukart.game.photo;
+            if (!ph) return;
+            const e = u * u * (3 - 2 * u);
+            ph.yaw = 0.7 + e * 1.5;
+            ph.pitch = 0.18 + e * 0.12;
+            ph.dist = 6.5 - e * 0.8;
+          },
+          Math.min(1, Math.max(0, (t - 3.8) / 3.6)),
+        );
+      if (t >= 8 && !snapped) {
+        snapped = true;
+        await page.evaluate(() => document.querySelector('#photoSnap').click());
+      }
+      if (t >= 13) break;
+    }
+  }
   await step();
   if (!mute) await page.evaluate(n => window.__audioStep(n), RATE / FPS);
   {
