@@ -674,6 +674,31 @@ export const Sound = {
     s.start(t, Math.random());
     s.stop(t + 0.2);
   },
+  // a camera's shutter: a sharp click as it opens, a clack as it closes, a little mechanical rattle between (photo mode)
+  shutter() {
+    if (!this.ctx || !this.on) return;
+    const c = this.ctx,
+      t = c.currentTime;
+    const tick = (at, freq, q, vol, len) => {
+      const s = c.createBufferSource(),
+        f = c.createBiquadFilter(),
+        g = c.createGain();
+      s.buffer = noise(c);
+      f.type = 'bandpass';
+      f.frequency.value = freq;
+      f.Q.value = q;
+      g.gain.setValueAtTime(vol, at);
+      g.gain.exponentialRampToValueAtTime(0.0005, at + len);
+      s.connect(f);
+      f.connect(g);
+      g.connect(this.bus);
+      s.start(at, Math.random());
+      s.stop(at + len + 0.02);
+    };
+    tick(t, 3800, 1.4, 0.5, 0.035); // the click
+    for (let i = 1; i <= 3; i++) tick(t + 0.018 * i, 2600 + i * 300, 3, 0.12, 0.02); // the rattle
+    tick(t + 0.09, 1700, 1.2, 0.42, 0.06); // the clack
+  },
   // the water bridge: a plank thumping under the tyres and the slap of spray, louder the faster you go (0..1)
   plank(v = 0.5) {
     if (!this.ctx || !this.on || this.quiet) return;

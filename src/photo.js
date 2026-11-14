@@ -8,6 +8,7 @@ import { $, show, hide } from './dom.js';
 import { game, chapter } from './game.js';
 import { scene, cam, renderer } from './scene.js';
 import { Sound } from './audio.js';
+import { Haptics } from './haptics.js';
 import { clamp, fmtTime } from './util.js';
 import { drawLogo } from './textures.js';
 import { LAPS } from './race.js';
@@ -51,10 +52,7 @@ function polaroid(src) {
   v.addColorStop(1, 'rgba(0,0,0,0.28)');
   x.fillStyle = v;
   x.fillRect(B, B, PH, PH);
-  for (let i = 0; i < 9000; i++) {
-    x.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},0.05)`;
-    x.fillRect(B + Math.random() * PH, B + Math.random() * PH, 2, 2);
-  }
+  grain(x, B, B, PH, PH, 0.1);
   x.strokeStyle = 'rgba(0,0,0,0.12)';
   x.lineWidth = 2;
   x.strokeRect(B, B, PH, PH);
@@ -76,11 +74,27 @@ function polaroid(src) {
   return c;
 }
 // a little noise over a filled area, so paper looks like paper
-function grain(x, X, Y, w, h, n, a) {
-  for (let i = 0; i < n; i++) {
-    x.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '60,40,20'},${a})`;
-    x.fillRect(X + Math.random() * w, Y + Math.random() * h, 2, 2);
+// a noise tile made once and laid over an area as a pattern (thousands of little squares one by one were slow on a phone)
+let noiseTile = null;
+function grain(x, X, Y, w, h, a) {
+  if (!noiseTile) {
+    noiseTile = document.createElement('canvas');
+    noiseTile.width = noiseTile.height = 128;
+    const t = noiseTile.getContext('2d'),
+      img = t.createImageData(128, 128);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const light = Math.random() < 0.5,
+        on = Math.random() < 0.35;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = light ? 255 : 40;
+      img.data[i + 3] = on ? 255 : 0;
+    }
+    t.putImageData(img, 0, 0);
   }
+  x.save();
+  x.globalAlpha = a;
+  x.fillStyle = x.createPattern(noiseTile, 'repeat');
+  x.fillRect(X, Y, w, h);
+  x.restore();
 }
 // a torn edge: a path round a rectangle whose chosen sides are ragged (t, r, b, l), as paper torn by hand
 function torn(x, X, Y, w, h, sides = 'trbl', j = 7) {
@@ -216,7 +230,7 @@ function journal(pol) {
   });
   // the kraft folder
   paper(x, () => (x.beginPath(), x.roundRect(60, 150, W - 120, H - 200, 30)), '#c49a66', 0.35);
-  grain(x, 60, 150, W - 120, H - 200, 30000, 0.07);
+  grain(x, 60, 150, W - 120, H - 200, 0.16);
   // a torn map scrap on the left: pale sea, a coast, the tour's cities
   at(40, 640, -0.06, () => {
     paper(x, () => torn(x, 0, 0, 380, 470, 'trbl', 8), '#e8e1cc');
@@ -406,35 +420,48 @@ function journal(pol) {
   });
   return c;
 }
-let print = null; // the last Polaroid, ready to save
+let print = null; // the last page, as a canvas: shown at once, made into a PNG only when it's saved
 function snap() {
-  renderer.render(scene, cam); // (read straight after drawing, so the picture is there to read)
-  const card = journal(polaroid(renderer.domElement));
+  // straight away: the flash, the shutter's click-clack, a buzz, and the Polaroid dropping in still developing
   const f = $('#photoFlash');
   f.classList.remove('go');
   void f.offsetWidth;
   f.classList.add('go');
-  Sound.blip?.(1800, 0.06, 'square', 0.06, 0.5);
-  card.toBlob(blob => {
-    if (!blob) return;
-    print = blob;
-    const img = $('#phPrintImg');
-    if (img.src) URL.revokeObjectURL(img.src);
-    img.src = URL.createObjectURL(blob);
-    const pr = $('#phPrint');
-    pr.hidden = false;
-    pr.classList.remove('in');
-    void pr.offsetWidth;
-    pr.classList.add('in');
-  }, 'image/png');
+  Sound.shutter?.();
+  Haptics.buzz(30, 0, true);
+  renderer.render(scene, cam); // (the moment itself, read straight after drawing it)
+  const shot = document.createElement('canvas');
+  shot.width = renderer.domElement.width;
+  shot.height = renderer.domElement.height;
+  shot.getContext('2d').drawImage(renderer.domElement, 0, 0);
+  const pr = $('#phPrint'),
+    holder = $('#phPrintCard');
+  holder.innerHTML = '<div class="ph-developing"><i></i></div>';
+  pr.hidden = false;
+  pr.classList.remove('in');
+  void pr.offsetWidth;
+  pr.classList.add('in');
+  $('#phSave').disabled = true;
+  // then the page, once the flash and the drop have painted
+  requestAnimationFrame(() =>
+    setTimeout(() => {
+      print = journal(polaroid(shot));
+      print.className = 'ph-card';
+      holder.replaceChildren(print);
+      $('#phSave').disabled = false;
+    }, 30),
+  );
 }
 function save() {
   if (!print) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(print);
-  a.download = 'gukart.png';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  print.toBlob(blob => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'gukart.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
 }
 
 export function initPhoto() {

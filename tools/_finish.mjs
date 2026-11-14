@@ -2,10 +2,14 @@
 // the last lap, driven by the AI), to picture what comes after the line: the replay behind the results, photo mode
 import { chromium } from 'playwright';
 import { preview } from 'vite';
-const [out, city = 'kano', circ = 'old'] = process.argv.slice(2);
+const [out, city = 'kano', circ = 'old', phone] = process.argv.slice(2);
 const server = await preview({ preview: { port: 4192, strictPort: true, host: '127.0.0.1' }, logLevel: 'silent' });
 const b = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
+const p = await b.newPage(
+  phone
+    ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 }
+    : { viewport: { width: 1100, height: 650 } },
+);
 p.on('pageerror', e => console.log('page error:', e.message));
 await p.addInitScript(
   ([cy, c]) => {
@@ -67,19 +71,17 @@ await p.mouse.move(420, 260, { steps: 8 });
 await p.mouse.up();
 await p.waitForTimeout(800);
 await p.screenshot({ path: `${out}/photo.jpg`, type: 'jpeg', quality: 70 });
-await tap('#photoSnap');
-await p.waitForTimeout(1500);
+const t0 = Date.now();
+await p.locator('#photoSnap').click({ force: true });
+await p
+  .waitForSelector('#phPrintCard .ph-developing', { timeout: 2000 })
+  .then(() => console.log('developing shown after', Date.now() - t0, 'ms'));
+await p.waitForSelector('#phPrintCard canvas', { timeout: 10000 });
+console.log('page ready after', Date.now() - t0, 'ms');
+await p.waitForTimeout(900);
 await p.screenshot({ path: `${out}/polaroid.jpg`, type: 'jpeg', quality: 75 });
 // the saved picture itself, full size
-const png = await p.evaluate(async () => {
-  const r = await fetch(document.querySelector('#phPrintImg').src),
-    b = await r.blob();
-  return await new Promise(res => {
-    const f = new FileReader();
-    f.onload = () => res(f.result);
-    f.readAsDataURL(b);
-  });
-});
+const png = await p.evaluate(() => document.querySelector('#phPrintCard canvas').toDataURL('image/png'));
 (await import('node:fs')).writeFileSync(`${out}/print.png`, Buffer.from(png.split(',')[1], 'base64'));
 await tap('#phClose');
 await tap('#photoBack');
