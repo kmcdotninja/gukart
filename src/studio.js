@@ -168,7 +168,11 @@ function buildCar() {
   for (let i = 0; i < 40; i++)
     car.robot.update(0.05, { t: i, steer: 0, wheel: car.wheelRing, wheelR: car.wheelR, speed: 0.4 });
   thrusters = type === 'roadster' ? makeThrusters(car.root) : null;
-  bladeZ = new THREE.Box3().setFromObject(car.root).max.z;
+  {
+    const bb = new THREE.Box3().setFromObject(car.root);
+    bladeZ = bb.max.z;
+    roofY = bb.max.y;
+  }
   const fit = clearance(car);
   $('#fit').className = 'fit ' + (fit.length ? 'bad' : 'ok');
   $('#fit').textContent = fit.length
@@ -380,56 +384,43 @@ function setBoom(base, yaw, L) {
   });
 }
 
-// BULLDOZER: a real plough: a curved steel moldboard with a bolted cutting edge and ribs on its back, on two push arms,
-// lowered by two hydraulic rams (barrels and chrome pistons that slide out); worn yellow paint
-const blade = new THREE.Group(),
-  bladeArm = new THREE.Group(); // (pivots down from carried high to on the road)
+// CANNON FIRE: a heavy twin-barrelled cannon on a turret on the Brute's roof, and the iron cannonballs it fires
+const cannon = new THREE.Group(),
+  barrels = [];
 {
-  const paint = new THREE.MeshStandardMaterial({ color: '#e0a400', metalness: 0.35, roughness: 0.55 }),
-    steel = new THREE.MeshStandardMaterial({ color: '#3a3f47', metalness: 0.8, roughness: 0.35 }),
-    chrome = new THREE.MeshStandardMaterial({ color: '#e8ecf2', metalness: 1, roughness: 0.12 });
-  // the moldboard: a curved plate with thickness
-  const shape = new THREE.Shape();
-  shape.absarc(0, 0, 1.3, -0.95, 0.75, false);
-  shape.absarc(0, 0, 1.18, 0.75, -0.95, true);
-  const mold = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(shape, { depth: 4, bevelEnabled: false, curveSegments: 20 })
-      .translate(0, 0, -2)
-      .rotateY(Math.PI / 2),
-    paint,
-  );
-  mold.position.set(0, 0.95, -0.9);
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(4.05, 0.18, 0.22), steel);
-  edge.position.set(0, 0.16, 0.12);
-  for (let i = -1.8; i <= 1.8; i += 0.45) {
-    const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.05, 8).rotateX(Math.PI / 2), chrome);
-    bolt.position.set(i, 0.16, 0.24);
-    blade.add(bolt);
+  const iron = new THREE.MeshStandardMaterial({ color: '#2b2f36', metalness: 0.85, roughness: 0.35 }),
+    brass = new THREE.MeshStandardMaterial({ color: '#b8893a', metalness: 0.9, roughness: 0.3 });
+  const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.9, 0.5, 20), iron);
+  cannon.add(turret);
+  for (const sx of [-0.32, 0.32]) {
+    const b = new THREE.Group();
+    const tube = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.17, 0.22, 2.4, 16).rotateX(Math.PI / 2).translate(0, 0, 1.1),
+      iron,
+    );
+    const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.06, 8, 16), brass);
+    muzzle.position.z = 2.3;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 8, 16), brass);
+    band.position.z = 0.4;
+    b.add(tube, muzzle, band);
+    b.position.set(sx, 0.35, 0);
+    cannon.add(b);
+    barrels.push(b);
   }
-  for (const rx of [-1.4, -0.45, 0.45, 1.4]) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.16), paint);
-    rib.position.set(rx, 0.95, -1.2);
-    rib.rotation.x = 0.15;
-    blade.add(rib);
-  }
-  blade.add(mold, edge);
-  bladeArm.add(blade);
-  for (const sx of [-1.1, 1.1]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 2.2), paint);
-    arm.position.set(sx, 0.6, -2.1);
-    bladeArm.add(arm);
-  }
-  blade.userData.rams = [-0.6, 0.6].map(sx => {
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.1, 12).translate(0, 0.55, 0), steel),
-      piston = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 12).translate(0, 0.55, 0), chrome);
-    barrel.add(piston);
-    barrel.position.set(sx, 1.5, -1.6);
-    rig.add(barrel);
-    return { barrel, piston };
-  });
 }
-bladeArm.visible = false;
-rig.add(bladeArm);
+cannon.visible = false;
+rig.add(cannon);
+const cannonballs = Array.from({ length: 12 }, () => {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42, 20, 14),
+    new THREE.MeshStandardMaterial({ color: '#1d2026', metalness: 0.7, roughness: 0.4 }),
+  );
+  m.castShadow = true;
+  m.visible = false;
+  S.add(m);
+  return { m, t: -1, x: 0, z: 0, y: 0 };
+});
+let shotsFired = 0;
 
 /* ---------- the panels ---------- */
 $('#veh').innerHTML = IDS.map(
@@ -533,7 +524,8 @@ $('#copy').onclick = async () => {
 
 /* ---------- playing the power ---------- */
 let playT = -1,
-  bladeZ = 2.4; // (where the front of the car is, for the plough blade)
+  bladeZ = 2.4, // (where the front of the car is)
+  roofY = 2; // (and the top of it, for the cannon)
 const stop = () => {
   playT = -1;
   $('#play').textContent = 'PLAY THE POWER';
@@ -542,7 +534,7 @@ $('#play').onclick = () => {
   playT = 0;
   resetRivals();
   // (powers thrown at the road ahead are watched from behind the car, looking down the road after them)
-  if (type === 'buggy' || type === 'raider') {
+  if (type === 'buggy' || type === 'raider' || type === 'brute') {
     cam.position.set(6, 6.5, -13);
     orbit.target.z = 9;
   } else orbit.target.z = 0;
@@ -776,29 +768,46 @@ function frame(now) {
       }
     }
     boom.visible = showBoom;
-    // BULLDOZER: the rams push the blade down onto the road; sparks where its edge scrapes
-    const bd = p.fx.blade || 0;
-    bladeArm.visible = bd > 0.001;
-    blade.userData.rams.forEach(r => (r.barrel.visible = bd > 0.001));
-    if (bladeArm.visible) {
-      bladeArm.position.set(0, 0, bladeZ + 0.4);
-      bladeArm.rotation.x = -0.9 * (1 - ease(Math.min(1, bd))); // (carried up, lowered)
-      blade.position.set(0, 0, 1.3);
-      blade.userData.rams.forEach(r => {
-        r.barrel.rotation.x = 0.9 + 0.5 * bd;
-        r.piston.position.y = 0.2 + 0.7 * bd;
-      });
-      if (bd > 0.8)
-        for (let i = 0; i < 3; i++)
+    // CANNON FIRE: the cannon up on the roof; each new shot a flash and smoke at the muzzle and a ball away down the
+    // road, alternating barrels; the balls fly fast and low, trailing smoke
+    cannon.visible = p.fx.cannon != null;
+    if (cannon.visible) {
+      cannon.position.set(0, roofY + 0.25, 0.2);
+      while (shotsFired < (p.fx.shots || 0)) {
+        const b = barrels[shotsFired % 2],
+          ball = cannonballs[shotsFired % cannonballs.length],
+          at = b.localToWorld(v3.set(0, 0, 2.4));
+        const aim = rivals.filter(r => r.z > 3 && !r.ko).sort((a, b) => a.z - b.z)[shotsFired % 2],
+          spread = aim ? aim.x : (Math.random() - 0.5) * 8;
+        Object.assign(ball, { t: 0, x: at.x, y: at.y, z: at.z, dx: spread });
+        ball.m.visible = true;
+        b.position.z = -0.35; // (the barrel's recoil)
+        for (let i = 0; i < 6; i++)
           puff(
-            v3.set((Math.random() - 0.5) * 3.8, 0.15, bladeZ + 1.8),
-            Math.random() < 0.5 ? '#ffd27a' : '#ff9a2a',
-            0.35,
-            new THREE.Vector3((Math.random() - 0.5) * 8, 2 + Math.random() * 3, -4),
-            0.2,
-            2.6,
-            1,
+            at,
+            i < 2 ? '#ffd27a' : '#cfd3da',
+            i < 2 ? 1.2 : 1.6 + Math.random(),
+            new THREE.Vector3((Math.random() - 0.5) * 4, 1 + Math.random() * 2, 4 + Math.random() * 4),
+            2,
+            i < 2 ? 4 : 1.2,
+            0.6,
           );
+        shotsFired++;
+      }
+      for (const b of barrels) b.position.z += (0 - b.position.z) * Math.min(1, dt * 10);
+    } else shotsFired = 0;
+    for (const c of cannonballs) {
+      if (c.t < 0) continue;
+      c.t += dt;
+      c.z += (P.shot - BASE * p.boost) * dt; // (its speed down the road, less yours)
+      c.x += (c.dx - c.x) * Math.min(1, dt * 3); // (curving onto the rival it was fired at)
+      c.y = Math.max(0.42, c.y - 2 * dt);
+      c.m.position.set(c.x, c.y, c.z);
+      if (Math.random() < 0.8) puff(c.m.position, '#b9bdc6', 0.8, new THREE.Vector3(0, 0.4, 0), 1.4, 1.6, 0.9);
+      if (c.t > 2.5) {
+        c.t = -1;
+        c.m.visible = false;
+      }
     }
     car.robot.update(dt, {
       t: now / 1000,
@@ -834,7 +843,23 @@ function frame(now) {
           )
             knock(r, 'flip');
       if (type === 'rail' && passed && Math.abs(r.x) < 8) knock(r, 'flip');
-      if (type === 'brute' && passed && Math.abs(r.x) < 8 && (p.fx.blade || 0) > 0.6) knock(r, 'flip');
+      if (type === 'brute')
+        for (const c of cannonballs)
+          if (c.t >= 0 && Math.abs(r.z - c.z) < 2.2 && Math.abs(r.x - c.x) < 3.2) {
+            knock(r, 'flip');
+            for (let i = 0; i < 8; i++)
+              puff(
+                c.m.position,
+                i < 3 ? '#ff9a2a' : '#8a8f99',
+                2 + Math.random() * 2,
+                new THREE.Vector3((Math.random() - 0.5) * 8, 3 + Math.random() * 4, (Math.random() - 0.5) * 8),
+                2,
+                1.4,
+                0.6,
+              );
+            c.t = -1;
+            c.m.visible = false;
+          }
       if (type === 'monster' && p.fx.quake != null && p.fx.quake * P.radius > d - 2) knock(r, 'flip');
       if (type === 'roadster' && p.fx.land != null && p.fx.land < 0.4 && d < P.blast) knock(r, 'flip');
       if (type === 'muscle' && p.fx.fire && r.z < 0 && playT > 0.7) knock(r, 'spin');

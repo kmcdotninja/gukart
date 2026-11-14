@@ -101,10 +101,15 @@ export const POWERS_BASE = {
     },
   },
   brute: {
-    name: 'BULLDOZER',
-    line: 'Hydraulic rams lower a steel plough blade onto the road: scraping sparks, it ploughs through the pack and flips every rival in front out of the way',
-    hits: 'ANYONE IN FRONT',
-    p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [1.4, 'SPEED', 1.1, 2, 0.05] },
+    name: 'CANNON FIRE',
+    line: 'It charges at speed while the cannon on its roof fires a barrage of huge iron cannonballs down the road, blasting everyone ahead',
+    hits: 'EVERYONE AHEAD',
+    p: {
+      dur: [3, 'HOW LONG (S)', 1.5, 5, 0.5],
+      shots: [7, 'CANNONBALLS', 3, 12, 1],
+      shot: [90, 'SHOT SPEED (M/S)', 50, 150, 5],
+      boost: [1.5, 'SPEED', 1.1, 2.2, 0.05],
+    },
   },
 };
 // (once a race, ready this many seconds after the start)
@@ -217,10 +222,15 @@ export function powerPose(id, t, P = POWERS[id]) {
       return o;
     }
     case 'brute': {
-      if (t > P.dur) return null;
+      if (t > P.dur + 0.6) return null;
+      // a shot every dur/shots seconds while it charges; each one kicks it back for a moment (the recoil)
+      const gap = P.dur / P.shots,
+        n = Math.min(P.shots, Math.floor(t / gap) + 1),
+        since = t - (n - 1) * gap;
       o.boost = P.boost;
-      o.pitch = -0.05;
-      o.fx.blade = Math.min(1, t / 0.35, (P.dur - t) / 0.35);
+      o.fx.cannon = t;
+      o.fx.shots = t <= P.dur ? n : P.shots; // how many fired so far
+      o.pitch = t <= P.dur ? 0.06 * Math.exp(-since * 14) : 0; // (the kick)
       o.fx.flame = 1;
       return o;
     }
