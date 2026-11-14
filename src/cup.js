@@ -196,6 +196,16 @@ export function afterCupRace() {
         : `${toGatePts(t)} / ${TOUR.gate} TO THE FINAL`;
   // the button says what's next in big words; where it is goes small underneath (one line each, never wrapped)
   const where = raceName(t.races[t.i < n ? t.i : n - 1]).toUpperCase();
+  // the tour's last race: no FINAL STANDINGS button to find (nobody pressed it). The card shows this race's result for
+  // a moment, then goes on by itself to where you finished overall: the podium, your place, your trophy
+  $('#againBtn').hidden = done;
+  if (done) {
+    const at = t.res.length;
+    setTimeout(() => {
+      const now = cupOf();
+      if (game.state === 'results' && now && now.res.length === at) finalStandings(now);
+    }, 2800);
+  }
   $('#againBtn').innerHTML = done
     ? 'FINAL STANDINGS'
     : gateNow && !ok
@@ -293,6 +303,7 @@ function finalStandings(t) {
       ? `<div class="pz trophy t${won}"><span>WORLD TOUR · ${TROPHY[won - 1]} TROPHY</span><b><i class="coin-icon"></i>+${prize}</b></div>`
       : '';
     $('#againBtn').textContent = 'NEW TOUR';
+    $('#againBtn').hidden = false;
     $('#menuBtn').textContent = 'HOME';
     if (won) {
       Sound.coin();

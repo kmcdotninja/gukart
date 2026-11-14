@@ -212,6 +212,7 @@ export function startRace() {
   $('#quitBtn').textContent = game.school ? 'LEAVE SCHOOL' : game.mode === 'free' ? 'END DRIVE' : 'QUIT'; // (quitting goes back to the chapters)
   $('#restartBtn').textContent = game.mode === 'free' ? 'START AGAIN' : 'RESTART RACE';
   $('#againBtn').textContent = game.mode === 'free' ? 'DRIVE AGAIN' : 'RACE AGAIN';
+  $('#againBtn').hidden = false; // (the tour's last race hides it while its card moves on to the final standings)
   $('#menuBtn').textContent = 'HOME';
   $('#retryBtn').hidden = true;
   hud.lap.textContent = game.mode === 'free' ? '1' : `1/${LAPS}`;
