@@ -107,7 +107,7 @@ function buildCar() {
   setFace(car, 'happy');
   for (let i = 0; i < 40; i++)
     car.robot.update(0.05, { t: i, steer: 0, wheel: car.wheelRing, wheelR: car.wheelR, speed: 0.4 });
-  thrusters = type === 'roadster' ? makeThrusters(car.root) : null;
+  thrusters = type === 'roadster' ? makeThrusters(car.root, car.wheels) : null;
   // a soft disc over each wheel's face that fades in at speed: the spokes blurred
   for (const w of car.wheels) {
     const r = w.r || 0.4,
@@ -365,6 +365,11 @@ let playT = -1,
 const stop = () => {
   playT = -1;
   $('#play').textContent = 'PLAY THE POWER';
+  // the power's end: everything it made goes with it (smoke, fire on the road, balls, cannonballs)
+  for (const q of puffs) ((q.life = 0), (q.s.visible = false));
+  for (const b of balls) b.m.visible = false;
+  for (const c of cannonballs) ((c.t = -1), (c.m.visible = false));
+  reticles.forEach(r => (r.visible = false));
 };
 $('#play').onclick = () => {
   playT = 0;
@@ -577,7 +582,7 @@ function frame(now) {
           1.4 + Math.random(),
           new THREE.Vector3(0, 1.2, 0),
           0.3,
-          1 / P.burn,
+          0.6,
           1,
         );
     // BEACH BALL: the volley thrown out ahead, the balls bounding down the road, rolling, fanning out across it

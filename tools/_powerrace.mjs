@@ -48,17 +48,30 @@ await p.evaluate(() => {
 await p.waitForTimeout(700);
 await p.screenshot({ path: `${out}/ready.jpg`, type: 'jpeg', quality: 70 });
 await p.evaluate(() => (window.gukart.game.race.input.powerPressed = true));
-for (const t of [0.3, 0.8, 1.5, 2.5, 3.5]) {
-  await p.waitForTimeout(t === 0.3 ? 300 : t === 0.8 ? 500 : t === 1.5 ? 700 : 1000);
+for (const t of [0.3, 0.8, 1.5, 2.5, 3.5, 6]) {
+  await p.waitForTimeout(t === 0.3 ? 300 : t === 0.8 ? 500 : t === 1.5 ? 700 : t === 6 ? 2500 : 1000);
   await p.screenshot({ path: `${out}/p${t}.jpg`, type: 'jpeg', quality: 70 });
 }
 console.log(
   await p.evaluate(() => {
     const R = window.gukart.game.race;
+    const f = R.player.pwFx || {};
     return JSON.stringify({
       used: R.player.pw.used,
+      running: R.player.pw.t >= 0,
       takedowns: R.player.takedowns,
-      spun: R.karts.filter(k => k.spin > 0).length,
+      left: {
+        vapour: f.vapour ? f.vapour.material.opacity : null,
+        diamonds: f.diamonds ? f.diamonds.visible : null,
+        fire: R.pwFire.length,
+        balls: R.pwBalls.filter(b => b.m.visible).length,
+        shots: R.pwShots.filter(c => c.m.visible).length,
+        boom: R.pwBoom.boom.visible,
+        thrusters: f.thrusters ? f.thrusters.some(t => t.jet.visible || t.g.scale.x > 0.01) : null,
+        cannon: f.cannon ? f.cannon.visible : null,
+        posed: !!R.player.pw.pose || !!R.player.pwBaseQ,
+        smoke: R.pwPuffs.filter(q => q.life > 0).length,
+      },
     });
   }),
 );

@@ -76,6 +76,23 @@ export function resetPowers(race) {
   for (const p of race.pwPuffs) ((p.life = 0), (p.s.visible = false));
 }
 
+// a power's end: everything it made goes with it, on the car and on the road (the car exactly as it was)
+function endPower(race, k) {
+  k.pw.t = -1;
+  k.pw.pose = null;
+  k.pwBoost = 1;
+  k.pwImmune = false;
+  const f = k.pwFx || {};
+  f.thrusters?.forEach(t => (t.g.scale.setScalar(0.001), (t.jet.visible = t.core.visible = false)));
+  if (f.vapour) ((f.vapour.material.opacity = 0), (f.diamonds.visible = false));
+  if (f.cannon) f.cannon.visible = false;
+  for (const b of race.pwBalls) if (b.owner === k) ((b.owner = null), (b.t = -1), (b.m.visible = false));
+  for (const c of race.pwShots) if (c.owner === k) ((c.t = -1), (c.m.visible = false));
+  race.pwFire = race.pwFire.filter(p => p.owner !== k);
+  if (k.pw.thrown != null || k.pw.catchT >= 0) race.pwBoom.boom.visible = false;
+  k.pw.thrown = null;
+}
+
 // is k's power ready to fire?
 export const powerReady = (race, k) =>
   race.mode === 'gp' && !!k.pw && !k.pw.used && race.time >= READY_AFTER && !k.finished; // (races only: not alone in Time Trial or Free Drive)
@@ -91,7 +108,7 @@ export function firePower(race, k) {
   // what it needs built on the car, the first time (the thrusters under the floor, the vapour cone, the cannon on
   // its weapon mount)
   k.pwFx ||= {};
-  if (type === 'roadster' && !k.pwFx.thrusters) k.pwFx.thrusters = makeThrusters(k.m.root);
+  if (type === 'roadster' && !k.pwFx.thrusters) k.pwFx.thrusters = makeThrusters(k.m.root, k.m.wheels);
   if (type === 'kart' && !k.pwFx.vapour) {
     const v = makeVapour();
     k.m.root.add(v.vapour, v.diamonds);
@@ -155,10 +172,7 @@ export function updatePowers(race, dt) {
     const pose = powerPose(type, pw.t);
     pw.pose = pose;
     if (!pose) {
-      pw.t = -1;
-      k.pwBoost = 1;
-      k.pwImmune = false;
-      if (k.pwFx?.cannon) k.pwFx.cannon.visible = false;
+      endPower(race, k);
       continue;
     }
     k.pwBoost = pose.boost;
@@ -239,7 +253,7 @@ export function updatePowers(race, dt) {
           3,
         );
     // FIRE TRAIL: patches of fire laid behind the tyres
-    if (fx.fire && Math.random() < dt * 30) race.pwFire.push({ s: k.s - 2.2, lat: k.lat, life: P.burn, owner: k });
+    if (fx.fire && Math.random() < dt * 30) race.pwFire.push({ s: k.s - 2.2, lat: k.lat, life: 99, owner: k }); // (out when the power ends)
     // HARPOON: within reach of the car ahead, the boom snaps out, catches it and throws it off the road
     if (fx.harpoon != null) {
       if (!pw.target)

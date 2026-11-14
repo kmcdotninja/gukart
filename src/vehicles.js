@@ -83,11 +83,10 @@ export const POWERS_BASE = {
   },
   muscle: {
     name: 'FIRE TRAIL',
-    line: 'Its tyres lay a burning trail: any rival who drives into the flames spins out',
+    line: 'Its tyres lay a burning trail while it runs: any rival who drives into the flames spins out. When the power ends, the fire goes out',
     hits: 'ANYONE BEHIND',
     p: {
-      dur: [4, 'LAYING IT (S)', 2, 6, 0.5],
-      burn: [10, 'BURNS FOR (S)', 3, 12, 0.5],
+      dur: [4, 'HOW LONG (S)', 2, 6, 0.5],
       boost: [3, 'SPEED', 1.1, 3, 0.05],
     },
   },

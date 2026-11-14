@@ -47,21 +47,27 @@ export function localBox(root) {
   root.updateMatrixWorld(true);
   return box;
 }
-export function makeThrusters(root) {
+// placed from the car's own wheels (one just inside each, tucked up under the floor at axle height), so they sit on
+// the body whatever else is attached to the car; without the wheels, from the car's box
+export function makeThrusters(root, wheels) {
   const box = localBox(root),
     sz = box.getSize(new THREE.Vector3()),
-    xs = sz.x * 0.3,
-    zs = sz.z * 0.3,
-    y0 = box.min.y + 0.32,
     metal = new THREE.MeshStandardMaterial({ color: '#2a2e36', metalness: 0.9, roughness: 0.3 }),
     rim = new THREE.MeshStandardMaterial({ color: '#c8ccd4', metalness: 1, roughness: 0.2 }),
     out = [];
-  for (const [x, z] of [
-    [xs, zs],
-    [-xs, zs],
-    [xs, -zs],
-    [-xs, -zs],
-  ]) {
+  root.updateMatrixWorld(true);
+  const spots = wheels?.length
+    ? wheels.slice(0, 4).map(w => {
+        const p = root.worldToLocal(w.spin.getWorldPosition(new THREE.Vector3()));
+        return [p.x * 0.6, p.y + 0.05, p.z * 0.78];
+      })
+    : [
+        [sz.x * 0.3, box.min.y + 0.32, sz.z * 0.3],
+        [-sz.x * 0.3, box.min.y + 0.32, sz.z * 0.3],
+        [sz.x * 0.3, box.min.y + 0.32, -sz.z * 0.3],
+        [-sz.x * 0.3, box.min.y + 0.32, -sz.z * 0.3],
+      ];
+  for (const [x, y0, z] of spots) {
     const g = new THREE.Group();
     g.position.set(x, y0, z);
     const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 0.34, 20, 1, true), metal);
