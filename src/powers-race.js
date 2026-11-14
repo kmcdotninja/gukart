@@ -78,6 +78,7 @@ export function resetPowers(race) {
 
 // a power's end: everything it made goes with it, on the car and on the road (the car exactly as it was)
 function endPower(race, k) {
+  if (k.pw.lifting) ((k.pw.lifting = false), (k.fly = true), (k.vy = Math.min(k.vy, -2)));
   k.pw.t = -1;
   k.pw.pose = null;
   k.pwBoost = 1;
@@ -177,6 +178,26 @@ export function updatePowers(race, dt) {
     }
     k.pwBoost = pose.boost;
     k.pwImmune = pose.y > 1.5; // (up in the air: nothing on the road can touch it)
+    // a power that lifts the car (the Roadster's flight, the Monster's jump) carries it for real, so where it comes down
+    // is real too: on the road, or on a roof over it (src/roofs.js), which it then rides along
+    if (pose.y > 0.05 || pw.lifting) {
+      const road = tr.point(k.s, k.lat, 0).y,
+        rh = race.roofH ? race.roofH[tr.idx(k.s)] : 0,
+        top = rh > 0 ? road + rh : null,
+        want = road + pose.y - (top != null && k.Y < top - 0.3 ? Math.max(0, road + pose.y - (top - 2.6)) : 0); // (under a roof: no higher than its ceiling)
+      if (pose.y > 0.05 && !(top != null && k.Y >= top - 0.3 && want < top)) {
+        pw.lifting = true;
+        k.fly = true;
+        k.onRoof = false;
+        k.vy = 0;
+        k.Y = want;
+        k.airT = Math.max(k.airT || 0, 0.3);
+      } else if (pw.lifting) {
+        pw.lifting = false; // (coming down: the race's own fall puts it on the road or the roof under it)
+        k.fly = true;
+        k.vy = Math.min(k.vy, -2);
+      }
+    }
     const fx = pose.fx,
       here = k.m.root.position;
     // every power's speed, seen: dust and grit thrown up behind
@@ -406,7 +427,7 @@ export function posePower(race, k, F) {
   }
   (k.pwBaseQ ||= new THREE.Quaternion()).copy(k.m.root.quaternion);
   const m = k.m,
-    lift = p.y + (p.pitch > 0 ? Math.sin(p.pitch) * (m.V.base || 1.2) : 0);
+    lift = p.pitch > 0 ? Math.sin(p.pitch) * (m.V.base || 1.2) : 0; // (its height off the road is real: k.Y, the race's own)
   m.root.position.addScaledVector(F.u, lift);
   E.set(-p.pitch, p.yaw, p.roll, 'YXZ');
   m.root.quaternion.multiply(Q.setFromEuler(E));

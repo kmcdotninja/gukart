@@ -2,7 +2,7 @@
 // the road (rh), and height above it (air). That's what lets them climb the spiral, cross the flyover, run the loop
 // upside down and fly off the ramps. Plus drifting and mini-turbos, weapons, rival AI, coins, laps and positions.
 import * as THREE from 'three';
-import { W } from './track.js';
+import { W, BW } from './track.js';
 import { makeKart, setFace, RACERS, ENV, nitroBottle } from './buddy.js';
 import { clamp, lerp, wrapA, store } from './util.js';
 import { Sound } from './audio.js';
@@ -184,6 +184,7 @@ export const WEAPONS = {
 export { VSTATS } from './vehicles.js';
 import { VSTATS } from './vehicles.js';
 import { initPowers, resetPowers, firePower, updatePowers, posePower } from './powers-race.js';
+import { roofHeights } from './roofs.js';
 const POWER_ROAD = 0.35; // (how much of a power's SPEED shows on the road: 3 gives 1.7x)
 const DRIFT_COL = ['#ffffff', '#6fd3ff', '#ff9a1f', '#d65cff'];
 const FLAME_COL = ['#ff9a1f', '#6fd3ff', '#ff9a1f', '#d65cff', '#ff3b1f', '#9fe4ff', '#ffd23a'];
@@ -669,6 +670,12 @@ export class Race {
   }
   reset() {
     if (!this.pwPuffs) initPowers(this);
+    // (the tops built over the road, rideable: worked out once, now the circuit's built; src/roofs.js)
+    this.roofH ||= roofHeights(
+      this.tr,
+      this.scene,
+      this.all.map(k => k.m.root),
+    );
     resetPowers(this); // (every car's special power: back to unused, ready again after the opening seconds)
     for (const k of this.karts || []) k.stHard = null; // (the crew's cars are matched to yours afresh each race)
     const tr = this.tr;
@@ -1178,7 +1185,7 @@ export class Race {
       const i = tr.idx(k.s);
       const Fk = tr.forks || [],
         Bq = k.br ? Fk[k.brI] : null;
-      k.offroad = k.br ? Math.abs(k.lat) > 20 / 2 + 1.5 : !tr.elevated[i] && Math.abs(k.lat) > W / 2 + 1.5;
+      k.offroad = k.br ? Math.abs(k.lat) > BW / 2 + 1.5 : !tr.elevated[i] && Math.abs(k.lat) > W / 2 + 1.5;
       // (on HARD the crew's cars are at least as good as yours, whatever you bought: as fast, as quick away, as sure off
       // the road. A better car doesn't buy the win)
       const st0 = VSTATS[k.m.type],
@@ -1306,7 +1313,20 @@ export class Race {
           k.charge = 0;
           if (k === P) Sound.blip(220, 0.3, 'triangle', 0.1, 2);
         }
-      if (!k.fly) {
+      // a roof over the road here (src/roofs.js): a car that came down onto it rides along it; off its end, it falls
+      const rh = !k.br && this.roofH ? this.roofH[tr.idx(k.s)] : 0,
+        roofY = rh > 0 ? roadY - ramp + rh : null;
+      if (k.onRoof && !k.fly) {
+        if (roofY != null) {
+          k.vy = 0;
+          k.Y = roofY;
+        } else {
+          k.onRoof = false;
+          k.fly = true;
+          k.vy = 0;
+          k.airT = 0;
+        }
+      } else if (!k.fly) {
         const vyRoad = (roadY - k.Y) / Math.max(dt, 1e-3);
         // (never inside a loop-the-loop: over its top the road always falls away, and you ride it round)
         if (!tr.inLoop[tr.idx(k.s)] && vyRoad < k.vy - GRAV * dt - 3 && k.speed > 18) {
@@ -1322,10 +1342,24 @@ export class Race {
         }
       }
       if (k.fly) {
+        const yWas = k.Y;
         k.vy -= GRAV * dt;
         k.Y += k.vy * dt;
         k.airT += dt;
-        if (k.Y <= roadY) {
+        // coming down from above a roof: it's the ground
+        const onTop = roofY != null && yWas >= roofY - 0.25,
+          ground = onTop ? roofY : roadY;
+        k.onRoof = false;
+        if (k.Y <= ground) {
+          if (onTop) {
+            k.Y = ground;
+            k.vy = 0;
+            k.fly = false;
+            k.onRoof = true;
+            if (k === this.player && k.airT > 0.25) Sound.land(0.5);
+          }
+        }
+        if (k.fly && k.Y <= roadY) {
           const hard = k.vy < -12;
           k.squash = clamp(-k.vy / 22, 0.15, 0.75);
           k.sqT = 0;
@@ -1369,7 +1403,7 @@ export class Race {
               const f = Fk[k.brI],
                 j = f.idx(k.bs),
                 walled = f.inT[j] || f.deck[j];
-              return walled ? 20 / 2 + 0.2 - (k.m.V.track + k.m.V.ww / 2) - 0.05 : f.limit[j];
+              return walled ? BW / 2 + 0.2 - (k.m.V.track + k.m.V.ww / 2) - 0.05 : f.limit[j];
             })()
           : tr.wall[wi]
             ? tr.wall[wi] - (k.m.V.track + k.m.V.ww / 2) - 0.05
