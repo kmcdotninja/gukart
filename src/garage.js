@@ -1884,8 +1884,8 @@ export function partThumbs() {
       chipG,
       new THREE.MeshPhysicalMaterial({
         color: c,
-        metalness: c === '#c0c6d0' ? 0.9 : 0.25,
-        roughness: c === '#c0c6d0' ? 0.12 : 0.3,
+        metalness: c === '#c0c6d0' || c === '#d4a12a' ? 0.9 : 0.25,
+        roughness: c === '#c0c6d0' || c === '#d4a12a' ? 0.12 : 0.3,
         clearcoat: 1,
         clearcoatRoughness: 0.05,
         envMap: ENV.tex,

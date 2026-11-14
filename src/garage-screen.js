@@ -154,6 +154,9 @@ export const custom = id => ({
   ...store.get('custom.' + id, {}),
 });
 const owned = () => store.get('owned', []);
+// a part bought is bought for one car: its paint, decals, wheels, tyres and nitro are that car's alone ('paint:#d4a12a@kart').
+// Number plates are a collection: one bought is yours for every car ('plate:gold')
+const partKey = (tab, v, id = game.vehicle) => (tab === 'plate' ? `plate:${v}` : `${tab}:${v}@${id}`);
 // a vehicle's factory part is always its own, even when that part costs coins in the shop (the Muscle's Midnight paint)
 const isFactory = (id, tab, v) => DEFAULT_CUSTOM[id]?.[tab] === v;
 let custTab = 'paint', // (the vehicle itself is chosen in the garage's own row of cards, not here)
@@ -194,7 +197,7 @@ function renderCustom() {
   $('#custTitle').textContent = TABS.find(t => t[0] === custTab)[1];
   $('#custList').innerHTML = PARTS[custTab]
     .map(([v, name, price]) => {
-      const has = !price || own.includes(custTab + ':' + v) || isFactory(game.vehicle, custTab, v),
+      const has = !price || own.includes(partKey(custTab, v)) || isFactory(game.vehicle, custTab, v),
         pic = tilePic(custTab, v);
       const face =
         custTab === 'plate'
@@ -202,7 +205,7 @@ function renderCustom() {
           : custTab === 'decal'
             ? `<i class="pv" style="background-image:url(${pic})"></i>`
             : `<img src="${pic}" alt="">`;
-      return `<button class="tile2 ${saved[custTab] === v ? 'worn' : ''} ${draft[custTab] === v ? 'sel' : ''} ${has ? '' : 'locked'}" data-part="${v}" aria-label="${name}">${face}${has ? '' : `<span class="tp"><i class="coin-icon"></i>${price}</span>`}<span class="tl">${name}</span></button>`;
+      return `<button class="tile2 ${saved[custTab] === v ? 'worn' : ''} ${draft[custTab] === v ? 'sel' : ''} ${has ? '' : 'locked'}" data-part="${v}" aria-label="${name}">${face}${has ? '' : `<span class="tp"><i class="coin-icon"></i>${price.toLocaleString('en')}</span>`}<span class="tl">${name}</span></button>`;
     })
     .join('');
 }
@@ -213,9 +216,9 @@ function costOf(d) {
   for (const [tab] of TABS) {
     if (!PARTS[tab]) continue;
     const it = PARTS[tab].find(q => q[0] === d[tab]);
-    if (it && it[2] && !own.includes(tab + ':' + it[0]) && !isFactory(game.vehicle, tab, it[0])) {
+    if (it && it[2] && !own.includes(partKey(tab, it[0])) && !isFactory(game.vehicle, tab, it[0])) {
       c += it[2];
-      items.push(tab + ':' + it[0]);
+      items.push(partKey(tab, it[0]));
     }
   }
   return { c, items };
@@ -296,6 +299,25 @@ export function initGarageScreen() {
     }
     store.set('paintDefaults', 2);
   }
+  // parts became each car's own (2026-11-14): a part bought under the old rule (for every car) stays bought on every
+  // car that's wearing it; plates stay everyone's. Once
+  if (!store.get('perCarParts', false)) {
+    const own = owned(),
+      next = own.filter(o => o.startsWith('veh:') || o.startsWith('plate:') || o.includes('@'));
+    for (const o of own) {
+      if (next.includes(o)) continue;
+      const [tab, v] = o.split(':');
+      for (const id of Object.keys(DEFAULT_CUSTOM))
+        if (store.get('custom.' + id, {})[tab] === v) next.push(`${tab}:${v}@${id}`);
+    }
+    // and whatever each car is wearing now is its own (a paint that was free when it was fitted is never charged for)
+    for (const id of Object.keys(DEFAULT_CUSTOM)) {
+      const saved = store.get('custom.' + id, null);
+      if (saved) for (const [tab, v] of Object.entries(saved)) if (PARTS[tab]) next.push(partKey(tab, v, id));
+    }
+    store.set('owned', [...new Set(next)]);
+    store.set('perCarParts', true);
+  }
   // six vehicles are bought with coins, for everyone: a saved choice that's now locked goes back to the Kart
   if (!hasVeh(game.vehicle)) {
     game.vehicle = 'kart';
@@ -362,7 +384,7 @@ export function initGarageScreen() {
     game.garage.focus(custTab);
     renderCustom(); // picking a part closes in on it
     const { c } = costOf(draft);
-    $('#custSave').textContent = c ? `SAVE ${c}` : 'SAVE';
+    $('#custSave').textContent = c ? `SAVE ${c.toLocaleString('en')}` : 'SAVE';
   });
   $('#custCancel').addEventListener('click', () => {
     $('#custSave').textContent = 'SAVE';
@@ -372,7 +394,7 @@ export function initGarageScreen() {
     const { c, items } = costOf(draft),
       w = store.get('wallet', 0);
     if (c > w) {
-      $('#custTitle').textContent = `NEED ${c - w} MORE COINS`;
+      $('#custTitle').textContent = `NEED ${(c - w).toLocaleString('en')} MORE COINS`;
       short(c, w);
       Feedback.say('deny');
       return;

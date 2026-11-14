@@ -227,60 +227,64 @@ function shared() {
 
 // what you can buy for your vehicle in the garage (coins)
 export const PARTS = {
+  // (part prices raised about tenfold 2026-11-14: they were pocket money next to a tour's winnings; only two paints
+  // are free, and every car keeps its own factory paint for nothing, garage-screen.js isFactory)
   paint: [
     ['#d63a2f', 'Kano Red', 0],
     ['#2ec4b6', 'Lagoon', 0],
-    ['#ffc22e', 'Harmattan', 0],
-    ['#1d2a6b', 'Indigo', 0],
-    ['#f4f1ea', 'Chalk', 120],
-    ['#16181d', 'Midnight', 150],
-    ['#1f8a4c', 'Naija Green', 0],
-    ['#8a5cff', 'Grape', 180],
-    ['#ff6a00', 'Buddy Orange', 200],
-    ['#c0c6d0', 'Chrome', 300],
+    ['#ffc22e', 'Harmattan', 2000],
+    ['#1d2a6b', 'Indigo', 2000],
+    ['#f4f1ea', 'Chalk', 2400],
+    ['#16181d', 'Midnight', 2600],
+    ['#1f8a4c', 'Naija Green', 2200],
+    ['#8a5cff', 'Grape', 2800],
+    ['#ff6a00', 'Buddy Orange', 3000],
+    ['#c0c6d0', 'Chrome', 5000],
+    ['#d4a12a', 'Gold', 50000], // (polished metal like Chrome, the dearest paint in the shop)
   ],
   rim: [
     ['classic', 'Classic', 0],
-    ['mesh', 'Mesh', 250],
-    ['disc', 'Disc', 250],
-    ['turbo', 'Turbo', 400],
+    ['mesh', 'Mesh', 2500],
+    ['disc', 'Disc', 2500],
+    ['turbo', 'Turbo', 5000],
+    ['gold', 'Gold', 40000], // (solid polished gold, rim and spokes)
   ],
   tyre: [
     ['road', 'Road', 0],
     ['off', 'Off-road', 0],
-    ['slick', 'Slick', 200],
-    ['white', 'Whitewall', 300],
+    ['slick', 'Slick', 2500],
+    ['white', 'Whitewall', 4000],
   ],
   decal: [
     ['none', 'None', 0],
     ['stripes', 'Racing Stripes', 0],
-    ['speed', 'Speed Stripes', 200],
-    ['pinstripe', 'Pinstripe', 150],
-    ['flames', 'Flames', 250],
-    ['bolt', 'Lightning', 250],
-    ['tribal', 'Tribal', 300],
-    ['claw', 'Claw', 300],
-    ['camo', 'Camo', 300],
-    ['checker', 'Chequer Fade', 350],
+    ['speed', 'Speed Stripes', 2000],
+    ['pinstripe', 'Pinstripe', 1500],
+    ['flames', 'Flames', 3000],
+    ['bolt', 'Lightning', 3000],
+    ['tribal', 'Tribal', 4000],
+    ['claw', 'Claw', 4000],
+    ['camo', 'Camo', 4000],
+    ['checker', 'Chequer Fade', 5000],
   ],
   plate: [
     ['kano', 'Kano', 0],
     ['doha', 'Doha', 0],
     ['kaduna', 'Kaduna', 0],
-    ['lagos', 'Lagos', 150],
-    ['singapore', 'Singapore', 250],
-    ['dubai', 'Dubai', 300],
-    ['abudhabi', 'Abu Dhabi', 300],
-    ['gold', 'Gold', 500],
-    ['vip', 'Number 1', 1200],
+    ['lagos', 'Lagos', 2000],
+    ['singapore', 'Singapore', 3000],
+    ['dubai', 'Dubai', 4000],
+    ['abudhabi', 'Abu Dhabi', 4000],
+    ['gold', 'Gold', 10000],
+    ['vip', 'Number 1', 25000],
   ],
   nitro: [
     ['#4fb0ff', 'Blue', 0],
-    ['#ff7a1a', 'Fire', 150],
-    ['#b45cff', 'Violet', 200],
-    ['#3dff8a', 'Toxic', 250],
-    ['#ff3b6b', 'Ruby', 250],
-    ['#ffffff', 'White Hot', 400],
+    ['#ff7a1a', 'Fire', 2000],
+    ['#b45cff', 'Violet', 3000],
+    ['#3dff8a', 'Toxic', 3500],
+    ['#ff3b6b', 'Ruby', 3500],
+    ['#ffffff', 'White Hot', 6000],
   ],
 };
 // number plates: the Kano plate and its special editions. One drawing, painted twice: once in colour (the map) and once
@@ -754,7 +758,7 @@ export const VEHICLES = {
   },
   rail: {
     name: 'Sand Rail',
-    price: 1000, // coins to unlock it in the garage (the Kart and the Vintage are free)
+    price: 2000, // coins to unlock it in the garage (the Kart and the Vintage are free; all doubled 2026-11-14: a tour won outright pays about 15,000)
     paint: '#ffc400',
     accent: '#9b3fd0',
     spring: '#ffc400',
@@ -778,7 +782,7 @@ export const VEHICLES = {
   },
   muscle: {
     name: 'Muscle',
-    price: 1500,
+    price: 3000,
     note: 'Long hood, big engine, straight-line speed',
     wf: 0.66,
     wr: 0.7,
@@ -796,7 +800,7 @@ export const VEHICLES = {
   },
   monster: {
     name: 'Monster',
-    price: 2500,
+    price: 5000,
     note: 'Heavy, tall, shrugs off hits',
     wf: 1.28,
     wr: 1.28,
@@ -814,7 +818,7 @@ export const VEHICLES = {
   },
   raider: {
     name: 'Raider',
-    price: 4000,
+    price: 8000,
     paint: '#12a596',
     accent: '#a436c9',
     rim: '#a436c9',
@@ -839,7 +843,7 @@ export const VEHICLES = {
   },
   roadster: {
     name: 'Roadster',
-    price: 6000,
+    price: 12000,
     paint: '#c8102e',
     accent: '#d81e2c',
     rim: '#c3c8cf',
@@ -864,7 +868,7 @@ export const VEHICLES = {
   },
   brute: {
     name: 'Brute',
-    price: 8000,
+    price: 16000,
     paint: '#ff6a00',
     accent: '#9b3fd0',
     spring: '#9b3fd0',
@@ -1091,11 +1095,18 @@ export function buildWheel(r, ww, rs, tk, trim, chrome, black) {
     roughness: 0.2,
     envMap: ENV.tex,
   }));
-  const faceMat = rs === 'mesh' ? chrome : rs === 'disc' ? silver : rs === 'turbo' ? black : gun;
+  const goldM = (G.goldS ||= new THREE.MeshStandardMaterial({
+    color: '#e3b23c',
+    metalness: 0.95,
+    roughness: 0.18,
+    envMap: ENV.tex,
+  }));
+  const faceMat =
+    rs === 'mesh' ? chrome : rs === 'disc' ? silver : rs === 'turbo' ? black : rs === 'gold' ? goldM : gun;
   g.barrel ||= new THREE.CylinderGeometry(1, 1, 1, 32, 1, true).rotateZ(Math.PI / 2);
   part(g.barrel, black, ww * 0.78, R0 * 0.98, R0 * 0.98); // the barrel, deep inside
   for (const sx of [-1, 1]) {
-    const lip = part(g.lip, chrome, ww * 1.2, R0, R0);
+    const lip = part(g.lip, rs === 'gold' ? goldM : chrome, ww * 1.2, R0, R0);
     lip.position.x = sx * face; // the polished lip
     const plate = part(g.rim, faceMat, 0.06, R0 * 0.3, R0 * 0.3);
     plate.position.x = sx * (face - 0.05); // the hub plate
@@ -1103,7 +1114,7 @@ export function buildWheel(r, ww, rs, tk, trim, chrome, black) {
       const d = part(g.rim, faceMat, 0.05, R0 * 0.94, R0 * 0.94);
       d.position.x = sx * (face - 0.07);
     } else {
-      const n = rs === 'mesh' ? 12 : rs === 'turbo' ? 7 : 5,
+      const n = rs === 'mesh' ? 12 : rs === 'turbo' ? 7 : rs === 'gold' ? 10 : 5,
         wide = rs === 'mesh' ? 0.05 : rs === 'turbo' ? 0.16 : 0.16;
       for (let k = 0; k < n; k++) {
         const sp = part(
@@ -1399,7 +1410,7 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
   body.add(chassis);
   // glossy clearcoat paint, chrome, a dark frame metal, rubber; all lit by a studio environment so they reflect
   const paintCol = custom?.paint || V.paint || def.kart, // (the newer vehicles come in their own colours)
-    chromePaint = paintCol === '#c0c6d0';
+    chromePaint = paintCol === '#c0c6d0' || paintCol === '#d4a12a'; // (Chrome and Gold: polished metal, not a clear coat over colour)
   const paint = new THREE.MeshPhysicalMaterial({
     color: paintCol,
     metalness: chromePaint ? 0.9 : 0.05,
@@ -2466,16 +2477,23 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
     // (the wheel's colour: the vehicle's own if it has one, otherwise its paint, so each car's wheels go with its body
     // and follow it when it's repainted)
     const hsl = new THREE.Color(paintCol).getHSL({}),
-      rimCol = V.rim || (hsl.l < 0.16 ? '#c3c8cf' : paintCol), // (silver on a near-black car: dark wheels in dark tyres don't read)
-      rimMat = (G['rim' + rimCol] ||= new THREE.MeshStandardMaterial({
+      gold = rs === 'gold',
+      rimCol = gold ? '#e3b23c' : V.rim || (hsl.l < 0.16 ? '#c3c8cf' : paintCol), // (silver on a near-black car: dark wheels in dark tyres don't read; gold wheels are gold)
+      rimMat = (G['rim' + rimCol + gold] ||= new THREE.MeshStandardMaterial({
         color: rimCol,
-        metalness: 0.55,
-        roughness: 0.3,
+        metalness: gold ? 0.95 : 0.55,
+        roughness: gold ? 0.18 : 0.3,
         envMap: ENV.tex,
         envMapIntensity: 1,
       }));
     {
-      const RIMS = { classic: [5, 0.2, 'dark'], mesh: [12, 0.07], disc: [20, 0.17], turbo: [7, 0.18] }, // [spokes, how wide, 'dark' for dark spokes inside a coloured ring]
+      const RIMS = {
+          classic: [5, 0.2, 'dark'],
+          mesh: [12, 0.07],
+          disc: [20, 0.17],
+          turbo: [7, 0.18],
+          gold: [10, 0.11],
+        }, // [spokes, how wide, 'dark' for dark spokes inside a coloured ring]
         [nSpokes, spokeW, spokeIn] = rs === 'classic' && V.wheelStyle ? V.wheelStyle : RIMS[rs] || RIMS.classic,
         R = r * (V.balloon ? 0.66 : 0.62),
         sw = showWheel(R, ww * (V.balloon ? 1.0 : 0.96), nSpokes, spokeW),
