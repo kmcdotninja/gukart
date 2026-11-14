@@ -4,7 +4,7 @@ import { bendTrail } from './bendtrail.js';
 import * as THREE from 'three';
 import { buildTrack, buildRoad, buildForks, buildForkRoads } from './track.js';
 import { buildWorld } from './world.js';
-import { Race } from './race.js';
+import { Race, setLaps, lapsFor } from './race.js';
 import { dressDoha } from './doha.js';
 import { dressSingapore } from './singapore.js';
 import { dressKaduna } from './kaduna.js';
@@ -29,6 +29,7 @@ export async function buildCircuit(tex, step = async () => {}) {
   game.track.cityName = game.circuit && chapter.id !== 'kano' ? game.circuit.name.toUpperCase() : CITY; // (Kano's signs say KANO on either circuit)
   game.track.city = chapter.id;
   game.track.forks = buildForks(game.track);
+  setLaps(lapsFor(game.track.len)); // (2 laps on the long circuits, 3 on the rest)
   game.scHints = game.track.forks.map(f => {
     const h = $('#scHint').cloneNode(true);
     h.removeAttribute('id');

@@ -57,6 +57,9 @@ export function dalaTrack(La, Lb) {
 // course on the Race Course, round the Ring Road roundabout and back to State Road. Features are dressed by kaduna.js
 // (the modern Nigerian city) and its own pieces; closer() solves La and Lb.
 import { corner, spiral } from './sgtracks.js';
+// how high the interchange's loop climbs: high enough that where it crosses back over the road below there's a clear
+// sky's worth of room under the deck (about 20 m, like the bridges over the road at Changi), not a low tunnel
+export const BUHARI_RISE = 24;
 export function kanoCityTrack(La, Lb) {
   const t = turtle();
   // State Road
@@ -105,19 +108,20 @@ export function kanoCityTrack(La, Lb) {
     [30, 'pad', { lat: 0 }],
   ]);
   // the Muhammadu Buhari Interchange: in at street level and all the way round the four clock towers, 360 degrees, the
-  // ramp rising as it goes, until you're high enough to cross over the way you came in on the flyover; then down
+  // ramp rising as it goes, until you're high above the way you came in and cross over it; then the long ramp down
   const R = 48,
+    DOWN = 210, // (the ramp back down: about as steep as the flyover's)
     spl = 2 * ((30 * Math.PI) / 180) * R * 2 + ((360 - 60) * Math.PI * R) / 180; // the whole spiral's length
   t.straight(40, 0, [
-    [0, 'buhari', { len: 40 + spl + 60 + 100, spiral: [40, spl] }],
+    [0, 'buhari', { len: 40 + spl + 60 + DOWN, spiral: [40, spl] }],
     [10, 'coins', { lat: 0, n: 5 }],
   ]);
-  spiral(t, R, 360, 11, [
+  spiral(t, R, 360, BUHARI_RISE, [
     [((300 * Math.PI) / 180) * R * 0.3, 'items'],
     [((300 * Math.PI) / 180) * R * 0.6, 'coins', { lat: 4, wave: 1 }],
   ]);
   t.straight(60, 0, [[30, 'pad', { lat: 0 }]]);
-  t.straight(100, -11);
+  t.straight(DOWN, -BUHARI_RISE);
   // straight on into Kano Railway Station: in under the arches of the old station front, through the concourse and
   // along the platform under the long steel canopy, a train standing beside you, and out the far end
   t.straight(320, 0, [

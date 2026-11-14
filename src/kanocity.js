@@ -11,6 +11,7 @@
 //  - the Kano Club golf course on the Race Course (West Africa's oldest, 1903): fairways, greens and flags, bunkers,
 //    trees, the white clubhouse
 //  - the Ring Road roundabout
+import { BUHARI_RISE } from './kano2.js';
 import * as THREE from 'three';
 import { canvasTex, diamondBand, starKnot } from './textures.js';
 
@@ -344,7 +345,7 @@ export function dressKanoCity(k, h) {
     const o = new THREE.Vector3(cxs / cn, 0, czs / cn),
       sm = f.s + o0 + oL / 2,
       G = group(o.x, o.z, head(f.s)),
-      deckY = 11;
+      deckY = BUHARI_RISE; // (the loop's top: src/kano2.js)
     // the island: paved, ringed in a white kerb, the cross road's underpass beneath shown by its two lit mouths
     G.add(mesh(cy(30, 30, 0.35, 48), lam('#cfc8bc')));
     G.add(mesh(cy(30.4, 30.6, 0.6, 48), lam('#e9e6df')));

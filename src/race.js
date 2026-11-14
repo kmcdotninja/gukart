@@ -8,7 +8,13 @@ import { clamp, lerp, wrapA, store } from './util.js';
 import { Sound } from './audio.js';
 const _spray = new THREE.Vector3();
 
-export const LAPS = 3;
+// laps by the circuit's length, so every race runs about the same time: 3 on a lap up to 2.6 km, 2 on the long ones
+// (Kano City, City Centre, the Singapore circuits). Set when a circuit is built (src/circuit.js)
+export let LAPS = 3;
+export const lapsFor = len => (len > 2600 ? 2 : 3);
+export function setLaps(n) {
+  LAPS = n;
+}
 const MAX = 66,
   ACC = 27,
   TURN = 1.75,
