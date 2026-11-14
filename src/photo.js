@@ -2,7 +2,8 @@
 // down, pinch or scroll to come nearer). The shutter prints it as a page from a travel journal: the Polaroid (the shot
 // square in a white frame, the Gukart logo, the circuit and your place along the bottom) tilted on a kraft-paper card,
 // the city's visa stamp inked over its corner, a Gukart boarding pass peeking out above, tape, a paper clip and a
-// ticket stub, a silver sticker and a push pin. It drops in on screen; SAVE shares it on a phone or downloads it on a computer. BACK, or Escape, returns to the results. The camera is in src/camera.js ('photo').
+// ticket stub, a silver sticker and a push pin. It drops in on screen; SAVE downloads it. BACK, or Escape, returns
+// to the results. The camera is in src/camera.js ('photo').
 import { $, show, hide } from './dom.js';
 import { game, chapter } from './game.js';
 import { scene, cam, renderer } from './scene.js';
@@ -427,14 +428,8 @@ function snap() {
     pr.classList.add('in');
   }, 'image/png');
 }
-async function save() {
+function save() {
   if (!print) return;
-  const file = new File([print], 'gukart.png', { type: 'image/png' });
-  try {
-    if (navigator.canShare?.({ files: [file] })) return await navigator.share({ files: [file], title: 'Gukart' });
-  } catch {
-    return; // (they closed the share sheet)
-  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(print);
   a.download = 'gukart.png';
