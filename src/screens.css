@@ -929,44 +929,7 @@ body.onfire #hud::before {
   letter-spacing: 0;
 }
 
-/* ---- the World Tour's Final: the race card in gold with a trophy, and a gold badge on the HUD */
-#raceLoad .rl-trophy {
-  display: none;
-}
-#raceLoad.final .rl-trophy {
-  display: block;
-  width: 84px;
-  height: 84px;
-  margin-bottom: 6px;
-  fill: #ffc400;
-  filter: drop-shadow(0 0 18px rgba(255, 196, 0, 0.7));
-  animation: trophyIn 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both;
-}
-@keyframes trophyIn {
-  from {
-    transform: scale(0.3) rotate(-14deg);
-    opacity: 0;
-  }
-}
-#raceLoad.final {
-  background:
-    radial-gradient(120% 90% at 10% 50%, rgba(255, 196, 0, 0.32), rgba(255, 196, 0, 0) 60%),
-    linear-gradient(90deg, rgba(40, 26, 4, 0.92), rgba(40, 26, 4, 0.55) 55%, rgba(40, 26, 4, 0));
-}
-#raceLoad.final .rl-tag span {
-  background: linear-gradient(100deg, #ffc400, #ffdf6b);
-  color: #1a1204;
-}
-#raceLoad.final h2 {
-  color: #ffd84a;
-  text-shadow:
-    0 4px 0 #8a5a00,
-    0 0 30px rgba(255, 196, 0, 0.55);
-}
-#raceLoad.final .rl-chip {
-  background: #ffc400;
-  color: #1a1204;
-}
+/* ---- the World Tour's Final: a gold badge on the HUD */
 .final-badge {
   align-self: center;
   margin: 0 auto 6px;
@@ -1693,16 +1656,6 @@ body.onfire #hud::before {
     align-self: end;
   }
 }
-/* the race card's lines never wrap: one line each, cut short rather than broken */
-#raceLoad .rl-chip,
-#raceLoad .rl-laps,
-#raceLoad .rl-goal b,
-#raceLoad #rlTitle {
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 /* the top right of the race HUD lines up on the right edge: the speedo, the clock and HEAT end at the same line, and
    nothing moves when the clock's digits or HEAT's label change width */
 #hud .hud-tr {
@@ -1712,4 +1665,58 @@ body.onfire #hud::before {
   font-variant-numeric: tabular-nums;
   min-width: 5.6em;
   text-align: center;
+}
+
+/* the controls card's picture: your own controls drawn, then how to drift in two plain steps */
+.ctrl-list li.ctrl-pic {
+  display: block;
+  padding: 10px 6px;
+  background: none;
+}
+.ctrl-svg {
+  display: block;
+  width: 100%;
+  max-height: min(58vh, 520px);
+}
+.ctrl-list li.ctrl-drift {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px 12px;
+}
+.cd-tag {
+  flex: none;
+  background: var(--orange);
+  color: var(--white);
+  padding: 4px 16px 4px 10px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+.cd-step {
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(14px, 3.8vw, 18px);
+  color: var(--white);
+  white-space: nowrap;
+}
+.cd-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cd-step + .cd-step::before {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin: 0 8px 2px 0;
+  border-left: 8px solid var(--orange);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+#setCtrl {
+  margin-top: 8px;
 }

@@ -1,4 +1,4 @@
-// Starting, pausing, restarting and leaving a race: the loading card before it, the countdown, the pause menu and the
+// Starting, pausing, restarting and leaving a race: the circuit's introduction before it, the countdown, the pause menu and the
 // quit question, and the attract race that runs behind the home screen.
 import { LAPS, LEVELS } from './race.js';
 import { Sound } from './audio.js';
@@ -6,11 +6,10 @@ import { isTouch, store, fmtTime } from './util.js';
 import { $, whip, show, swap, hide } from './dom.js';
 import { hud, setWeapon, events, QUIET } from './hud.js';
 import { coach } from './coach.js';
-import { chapter, CITY, game } from './game.js';
+import { chapter, game } from './game.js';
 import { renderChapter } from './home.js';
 import { custom } from './garage-screen.js';
 import { TT, FREE } from './timetrial.js';
-import { modeName } from './modes.js';
 import { endDrive } from './results.js';
 import { hidePodium } from './podium.js';
 import { setNight } from './scene.js';
@@ -18,17 +17,21 @@ import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tou
 import { rivalNames } from './buddy.js';
 import { releaseInput } from './input.js';
 
-// the loading card before a race (Asphalt): the chapter, the goal, pictures of its places, a filling diamond
-export const INTRO = location.hash === '#capture' ? 2.4 : 5.2; // seconds: long enough to read the card and see the grid
-// The circuit's introduction, before the race card (F1 TV): the camera orbits high over the whole circuit with its name,
-// then flies past its places, each with a caption, and drops down to the grid. The first time you race a circuit you
-// see up to five places; after that only the orbit and one place. A tap, a click or a key skips it.
+export const INTRO = 2.4; // seconds: the drone sweep down the grid before the countdown
+// The circuit's introduction (F1 TV): the camera orbits over the whole circuit with its name and what the race is for,
+// then flies past its places, each with a caption, and down the grid. The first time you race a circuit you see up to
+// four places; after that only the orbit and one place. A tap, a click or a key skips it.
 const FLY_OPEN = 3,
   FLY_SHOT = 2;
 export function raceIntro(then) {
+  // the World Tour's Final dresses up: THE FINAL on the introduction; fireworks and the crowd at the start
+  // (src/main.js); a gold badge on the HUD all race
+  const t = game.mode === 'cup' && cupOf();
+  game.final = !!(t && isFinal(t));
+  $('#finalBadge').hidden = !game.final;
   if (game.flybyDone) {
     game.flybyDone = false;
-    return raceCard(then);
+    return gridSweep(then);
   }
   circuitFlyby(() => {
     game.flybyDone = true;
@@ -50,9 +53,10 @@ function circuitFlyby(then) {
       {
         kind: 'orbit',
         dur: first ? FLY_OPEN : 1.6,
-        kicker: chapter.name.toUpperCase(),
+        kicker: game.final ? 'THE FINAL' : chapter.name.toUpperCase(),
         name: cname,
-        chips: [`${LAPS} LAPS`, `${km} KM`],
+        sub: goalLine(),
+        chips: game.mode === 'free' ? [`${km} KM`] : [`${LAPS} LAPS`, `${km} KM`],
       },
       ...pick.map(p => ({
         kind: 'place',
@@ -112,27 +116,9 @@ function circuitFlyby(then) {
   show(el);
   caption();
 }
-function raceCard(then) {
-  const c = chapter,
-    el = $('#raceLoad');
-  // the World Tour's Final dresses up: a gold card with a trophy, THE FINAL; fireworks and the crowd at the start
-  // (src/main.js); a gold badge on the HUD all race
-  const t = game.mode === 'cup' && cupOf();
-  game.final = !!(t && isFinal(t));
-  el.classList.toggle('final', game.final);
-  $('#finalBadge').hidden = !game.final;
-  $('#rlTitle').textContent = game.final ? 'THE FINAL' : c.tagline.toUpperCase();
-  const bl = store.get('bestlap.' + game.RID, null);
-  const T = {
-    gp: [`${LAPS} LAPS`, `WIN +${c.reward}`, `${c.reward} COINS`],
-    tt: [`${LAPS} LAPS`, bl ? `BEAT ${fmtTime(bl)}` : 'SET YOUR BEST LAP', bl ? 'RACE YOUR GHOST' : 'MAKE YOUR GHOST'],
-    free: ['NO RIVALS', `CRUISE ${CITY}`, 'KEEP THE COINS'],
-    cup: game.mode === 'cup' ? introLines() : null,
-  }[game.mode];
-  $('#rlCity').textContent = modeName(game.mode);
-  $('#rlLaps').textContent = T[0];
-  $('#rlChip').textContent = T[1];
-  $('#rlGoal').textContent = T[2];
+// after the introduction, a short drone sweep down the grid (no card: the introduction said where and what for), then
+// the countdown. The race is set up here: the rivals, how hard they are, the grid
+function gridSweep(then) {
   game.race.ev = events;
   game.race.setMode(raceMode());
   // how hard the rivals are: the World Tour's own (harder city by city), or what was picked in QUICK RACE
@@ -141,21 +127,8 @@ function raceCard(then) {
   Sound.quiet = false;
   game.state = 'intro';
   game.introT = 0; // the grid lines up; the camera sweeps over it
-  const fg = el.querySelector('.dia-fg');
-  fg.style.transition = 'none';
-  fg.style.strokeDasharray = '0 100';
-  void fg.getBoundingClientRect();
-  fg.style.transition = `stroke-dasharray ${INTRO - 0.4}s ease-in-out`;
-  requestAnimationFrame(() => {
-    fg.style.strokeDasharray = '100 100';
-  });
   whip(1);
-  show(el);
-  fitTitle();
-  setTimeout(() => {
-    hide(el, null, -1);
-    then();
-  }, INTRO * 1000);
+  setTimeout(then, INTRO * 1000);
 }
 
 // full screen on phones: Android goes full screen on the first touch; iPhone can only do it from the home screen, so say how once
@@ -300,7 +273,14 @@ export function initRaceFlow() {
   }
   $('#pauseBtn').addEventListener('click', togglePause);
   $('#ctrlBtn').addEventListener('click', () => swap($('#pause'), $('#controls'), 1));
-  $('#ctrlBack').addEventListener('click', () => swap($('#controls'), $('#pause'), -1));
+  $('#ctrlBack').addEventListener('click', () => {
+    // (back to where it was opened from: the pause card, or Settings)
+    const c = $('#controls');
+    if (c.dataset.from === 'settings') {
+      delete c.dataset.from;
+      swap(c, $('#settings'), -1);
+    } else swap(c, $('#pause'), -1);
+  });
   $('#resumeBtn').addEventListener('click', togglePause);
   $('#restartBtn').addEventListener('click', () => {
     $('#hud').style.visibility = '';
@@ -343,12 +323,13 @@ export function initRaceFlow() {
   });
 }
 
-// the card's big title stays on one line: shrunk until it fits the card's width (a long name on a small phone)
-function fitTitle() {
-  const h = $('#rlTitle');
-  h.style.fontSize = '';
-  requestAnimationFrame(() => {
-    let px = parseFloat(getComputedStyle(h).fontSize);
-    while (h.scrollWidth > h.clientWidth + 1 && px > 24) h.style.fontSize = `${(px -= 2)}px`;
-  });
+// what the race is for, under the circuit's name on the introduction's opening shot
+function goalLine() {
+  if (game.mode === 'cup') return introLines()[1];
+  if (game.mode === 'tt') {
+    const bl = store.get('bestlap.' + game.RID, null);
+    return bl ? `BEAT ${fmtTime(bl)}` : 'SET YOUR BEST LAP';
+  }
+  if (game.mode === 'free') return 'NO RIVALS';
+  return `WIN ${chapter.reward} COINS`;
 }
