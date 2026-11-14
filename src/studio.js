@@ -191,7 +191,7 @@ const rivals = RIV.map(r => {
   return { ...r, x0: r.x, z0: r.z, m, ko: null };
 });
 const resetRivals = () => {
-  for (const r of rivals) Object.assign(r, { x: r.x0, z: r.z0, ko: null });
+  for (const r of rivals) Object.assign(r, { x: r.x0, z: r.z0, ko: null, harpooned: false });
 };
 
 /* ---------- effects ---------- */
@@ -255,88 +255,146 @@ const crack = new THREE.Mesh(
 crack.position.y = 0.05;
 crack.visible = false;
 S.add(crack);
-// SUPERSONIC: the boom (a ring flung out from the nose) and the streaks rushing past
-const boom = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 8, 64), additive('#e8f6ff', 0.9));
-boom.visible = false;
-rig.add(boom);
-const streaks = new THREE.Group();
-for (let i = 0; i < 18; i++) {
-  const a = (i / 18) * Math.PI * 2,
-    m = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 6 + Math.random() * 6), additive('#ffffff', 0.5));
-  m.position.set(Math.cos(a) * (2.4 + Math.random()), 1.2 + Math.sin(a) * 1.6, -2 - Math.random() * 6);
-  streaks.add(m);
-}
-streaks.visible = false;
-rig.add(streaks);
-// SURF'S UP: a wall of water across the road, rising from flat behind to its crest under the buggy, the lip curling
-// forward, white foam along the crest (a profile drawn once and pushed out across the road's width)
-const wave = new THREE.Group();
-{
-  const prof = new THREE.Shape();
-  prof.moveTo(-14, 0);
-  prof.bezierCurveTo(-8, 0.2, -3, 1.5, -1, 3.4);
-  prof.bezierCurveTo(0, 4.2, 1.6, 4.4, 2.6, 3.6); // the crest, curling over
-  prof.bezierCurveTo(3.2, 3.1, 3, 2.4, 2.3, 2.5); // the lip's underside
-  prof.bezierCurveTo(1.6, 1.4, 2.5, 0.4, 4, 0);
-  prof.lineTo(-14, 0);
-  const g = new THREE.ExtrudeGeometry(prof, { depth: 24, bevelEnabled: false, curveSegments: 24 });
-  g.translate(0, 0, -12);
-  g.rotateY(-Math.PI / 2); // (the profile along the road, pushed out across it)
-  const water = new THREE.Mesh(
-    g,
-    new THREE.MeshStandardMaterial({
-      color: '#1c8fd6',
-      transparent: true,
-      opacity: 0.88,
-      roughness: 0.12,
-      metalness: 0.15,
-      side: THREE.DoubleSide,
-    }),
-  );
-  const fg = new THREE.TubeGeometry(
-    new THREE.LineCurve3(new THREE.Vector3(-12, 4.25, 0.6), new THREE.Vector3(12, 4.25, 0.6)),
-    1,
-    0.35,
-    8,
-  );
-  const foam = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5 }));
-  wave.add(water, foam);
-}
-wave.visible = false;
-S.add(wave);
-// DUST DEVIL: a funnel of sand, rings spinning, wide at the top
-const devil = new THREE.Group();
-for (let i = 0; i < 9; i++) {
-  const m = new THREE.Mesh(
-    new THREE.TorusGeometry(0.6 + i * 0.45, 0.22 + i * 0.03, 6, 24).rotateX(Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: '#c9a46a', transparent: true, opacity: 0.55, depthWrite: false }),
-  );
-  m.position.y = 0.4 + i * 1.3;
-  devil.add(m);
-}
-devil.visible = false;
-S.add(devil);
-// BULLDOZER: the plough blade that unfolds on the front
-const blade = new THREE.Group();
-{
-  const steel = new THREE.MeshStandardMaterial({ color: '#f2b705', metalness: 0.4, roughness: 0.4 }),
-    dark = new THREE.MeshStandardMaterial({ color: '#2a2e36', metalness: 0.7, roughness: 0.3 });
-  const plate = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.2, 1.2, 3.8, 24, 1, true, -0.7, 1.4).rotateZ(Math.PI / 2),
-    steel,
-  );
-  plate.material.side = THREE.DoubleSide;
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.16, 0.3), dark);
-  edge.position.set(0, -0.95, 0.6);
-  for (const sx of [-1.2, 1.2]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1.4), dark);
-    arm.position.set(sx, -0.2, -0.6);
-    blade.add(arm);
+// SUPERSONIC: the vapour cone (the white cloud that wraps a jet at the sound barrier: a cone of mist from the nose
+// back, densest at its edge, shimmering), the boom's burst of condensation, and shock diamonds in the exhaust
+const mistTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 64;
+  const x = c.getContext('2d');
+  for (let i = 0; i < 900; i++) {
+    const v = Math.random();
+    x.fillStyle = `rgba(255,255,255,${0.04 + v * 0.1})`;
+    x.beginPath();
+    x.arc(Math.random() * 128, Math.random() * 64, 2 + v * 6, 0, Math.PI * 2);
+    x.fill();
   }
-  blade.add(plate, edge);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+const vapour = new THREE.Mesh(
+  new THREE.ConeGeometry(2.4, 4.2, 48, 6, true).rotateX(-Math.PI / 2).translate(0, 1.1, -0.8),
+  new THREE.MeshBasicMaterial({
+    color: '#ffffff',
+    map: mistTex,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  }),
+);
+rig.add(vapour);
+const diamonds = new THREE.Group();
+for (let i = 0; i < 5; i++) {
+  const d = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.22 - i * 0.025, 0).scale(1, 1, 2.4),
+    additive(i % 2 ? '#ffd9a0' : '#9fe4ff', 0.9),
+  );
+  d.position.z = -2.3 - i * 0.55;
+  diamonds.add(d);
 }
-blade.visible = false;
-rig.add(blade);
+diamonds.position.y = 0.55;
+diamonds.visible = false;
+rig.add(diamonds);
+// BEACH BALL: a giant striped beach ball
+const ball = (() => {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 256;
+  const x = c.getContext('2d'),
+    cols = ['#e8232b', '#ffffff', '#1f6fe8', '#ffd21f', '#ffffff', '#21b04b'];
+  cols.forEach((col, i) => {
+    x.fillStyle = col;
+    x.fillRect((i * 512) / 6, 0, 512 / 6 + 1, 256);
+  });
+  x.fillStyle = '#ffffff';
+  x.fillRect(0, 0, 512, 18);
+  x.fillRect(0, 238, 512, 18);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 40, 24),
+    new THREE.MeshStandardMaterial({ map: t, roughness: 0.35 }),
+  );
+  m.castShadow = true;
+  return m;
+})();
+ball.visible = false;
+S.add(ball);
+// HARPOON: the winch hook (a barbed head) on its steel cable
+const hook = new THREE.Group();
+{
+  const steel = new THREE.MeshStandardMaterial({ color: '#c8ccd4', metalness: 1, roughness: 0.25 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1, 8).rotateX(Math.PI / 2), steel);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.5, 8).rotateX(Math.PI / 2).translate(0, 0, 0.75), steel);
+  for (const sx of [-1, 1]) {
+    const barb = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.45), steel);
+    barb.position.set(sx * 0.16, 0, 0.35);
+    barb.rotation.y = -sx * 0.6;
+    hook.add(barb);
+  }
+  hook.add(shaft, tip);
+}
+hook.scale.setScalar(2.2);
+hook.visible = false;
+S.add(hook);
+const cable = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.07, 0.07, 1, 8).translate(0, 0.5, 0).rotateX(Math.PI / 2),
+  new THREE.MeshStandardMaterial({ color: '#dfe3ea', metalness: 0.9, roughness: 0.2, emissive: '#3a4250' }),
+);
+cable.visible = false;
+S.add(cable);
+// BULLDOZER: a real plough: a curved steel moldboard with a bolted cutting edge and ribs on its back, on two push arms,
+// lowered by two hydraulic rams (barrels and chrome pistons that slide out); worn yellow paint
+const blade = new THREE.Group(),
+  bladeArm = new THREE.Group(); // (pivots down from carried high to on the road)
+{
+  const paint = new THREE.MeshStandardMaterial({ color: '#e0a400', metalness: 0.35, roughness: 0.55 }),
+    steel = new THREE.MeshStandardMaterial({ color: '#3a3f47', metalness: 0.8, roughness: 0.35 }),
+    chrome = new THREE.MeshStandardMaterial({ color: '#e8ecf2', metalness: 1, roughness: 0.12 });
+  // the moldboard: a curved plate with thickness
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, 1.3, -0.95, 0.75, false);
+  shape.absarc(0, 0, 1.18, 0.75, -0.95, true);
+  const mold = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(shape, { depth: 4, bevelEnabled: false, curveSegments: 20 })
+      .translate(0, 0, -2)
+      .rotateY(Math.PI / 2),
+    paint,
+  );
+  mold.position.set(0, 0.95, -0.9);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(4.05, 0.18, 0.22), steel);
+  edge.position.set(0, 0.16, 0.12);
+  for (let i = -1.8; i <= 1.8; i += 0.45) {
+    const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.05, 8).rotateX(Math.PI / 2), chrome);
+    bolt.position.set(i, 0.16, 0.24);
+    blade.add(bolt);
+  }
+  for (const rx of [-1.4, -0.45, 0.45, 1.4]) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.16), paint);
+    rib.position.set(rx, 0.95, -1.2);
+    rib.rotation.x = 0.15;
+    blade.add(rib);
+  }
+  blade.add(mold, edge);
+  bladeArm.add(blade);
+  for (const sx of [-1.1, 1.1]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 2.2), paint);
+    arm.position.set(sx, 0.6, -2.1);
+    bladeArm.add(arm);
+  }
+  blade.userData.rams = [-0.6, 0.6].map(sx => {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.1, 12).translate(0, 0.55, 0), steel),
+      piston = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 12).translate(0, 0.55, 0), chrome);
+    barrel.add(piston);
+    barrel.position.set(sx, 1.5, -1.6);
+    rig.add(barrel);
+    return { barrel, piston };
+  });
+}
+bladeArm.visible = false;
+rig.add(bladeArm);
 
 /* ---------- the panels ---------- */
 $('#veh').innerHTML = IDS.map(
@@ -440,6 +498,7 @@ $('#copy').onclick = async () => {
 
 /* ---------- playing the power ---------- */
 let playT = -1,
+  ballZ = -999,
   bladeZ = 2.4; // (where the front of the car is, for the plough blade)
 const stop = () => {
   playT = -1;
@@ -448,8 +507,11 @@ const stop = () => {
 $('#play').onclick = () => {
   playT = 0;
   resetRivals();
-  // (powers that act on the road ahead are watched from behind the car, so you see them roll away down it)
-  if (type === 'rail') cam.position.set(7, 6, -15);
+  // (powers thrown at the road ahead are watched from behind the car, looking down the road after them)
+  if (type === 'buggy' || type === 'raider') {
+    cam.position.set(6, 6.5, -13);
+    orbit.target.z = 9;
+  } else orbit.target.z = 0;
   $('#play').textContent = 'PLAYING';
 };
 addEventListener('keydown', e => {
@@ -550,24 +612,46 @@ function frame(now) {
           );
       }
     }
-    // SUPERSONIC: the boom flung out from the nose, the streaks rushing past
-    boom.visible = p.fx.sonic != null && p.fx.sonic < 0.8;
-    if (boom.visible) {
-      const u = p.fx.sonic / 0.8;
-      boom.position.set(0, 1.2, 2.5 + u * 10);
-      boom.scale.setScalar(1 + u * 9);
-      boom.material.opacity = 1 - u;
+    // SUPERSONIC: the vapour cone wrapping the car, shimmering; the boom's burst of condensation at the start; shock
+    // diamonds in the exhaust; dust blasted off the road either side
+    const son = p.fx.sonic;
+    vapour.material.opacity = son != null ? Math.min(0.32, son * 1.2) * (0.85 + Math.random() * 0.15) : 0;
+    if (son != null) {
+      mistTex.offset.x += dt * 3;
+      mistTex.offset.y -= dt * 1.5;
+      vapour.scale.set(1 + Math.sin(now / 40) * 0.03, 1 + Math.sin(now / 40) * 0.03, 1);
     }
-    streaks.visible = p.fx.sonic != null;
-    if (streaks.visible) for (const m of streaks.children) m.position.z = ((m.position.z - dt * 60 + 14) % 14) - 10;
-    // SURF'S UP: the wave rising under the buggy
-    wave.visible = (p.fx.wave || 0) > 0.01;
-    if (wave.visible) {
-      const h = (P.height / 4) * ease(p.fx.wave);
-      wave.scale.set(1, h, 1);
-      wave.position.set(0, 0, -1.5);
-      if (Math.random() < 0.7)
-        puff(v3.set((Math.random() - 0.5) * 22, h * 4, -1), '#ffffff', 1.2, new THREE.Vector3(0, 1, -8), 1.4);
+    diamonds.visible = son != null;
+    if (son != null) {
+      diamonds.children.forEach((d, i) => (d.material.opacity = 0.6 + 0.4 * Math.sin(now / 30 + i)));
+      // the boom: a ring of condensation bursting out round the car, then mist clinging to the cone's rim
+      if (son < 0.25)
+        for (let i = 0; i < 6; i++) {
+          const a = Math.random() * Math.PI * 2;
+          puff(
+            v3.set(Math.cos(a) * 2.2, 1.1 + Math.sin(a) * 1.8, -0.5),
+            '#ffffff',
+            1 + Math.random(),
+            new THREE.Vector3(Math.cos(a) * 10, Math.sin(a) * 7, -3),
+            1.8,
+            2.2,
+            0.3,
+          );
+        }
+      for (let i = 0; i < 4; i++) {
+        const a = Math.random() * Math.PI * 2;
+        puff(
+          car.root.localToWorld(v3.set(Math.cos(a) * 2.3, 1.1 + Math.sin(a) * 2, -2.6)),
+          '#ffffff',
+          0.7 + Math.random() * 0.6,
+          new THREE.Vector3(Math.cos(a) * 2, Math.sin(a) * 2, -14),
+          1.2,
+          2.8,
+          0.9,
+        );
+      }
+      for (const sx of [-1, 1])
+        puff(v3.set(sx * 2.4, 0.3, -1), '#d8cdb8', 1.2, new THREE.Vector3(sx * 10, 1, -4), 2, 1.4, 0.8);
     }
     // FIRE TRAIL: flames left burning on the road behind the tyres
     if (p.fx.fire)
@@ -581,27 +665,18 @@ function frame(now) {
           1 / P.burn,
           1,
         );
-    // HARMATTAN: the sandstorm rolling down the road ahead
-    if (p.fx.storm) {
-      const front = Math.min(P.reach, playT * 40);
-      for (let i = 0; i < 6; i++)
-        puff(
-          v3.set((Math.random() - 0.5) * 26, 1 + Math.random() * 5, 6 + Math.random() * front),
-          '#cfa766',
-          4 + Math.random() * 4,
-          new THREE.Vector3((Math.random() - 0.5) * 6, 0.5, 4),
-          0.4,
-          0.8,
-          0.2,
-        );
-      S.fog.color.lerp(new THREE.Color('#6b4a22'), 0.06 * p.fx.storm);
-      S.fog.near = 6;
-      S.fog.far = 60;
-    } else {
-      S.fog.color.lerp(new THREE.Color('#0a1028'), 0.08);
-      S.fog.near += (30 - S.fog.near) * 0.05;
-      S.fog.far += (90 - S.fog.far) * 0.05;
-    }
+    // BEACH BALL: thrown out ahead, bounding down the road and rolling
+    ball.visible = p.fx.ball != null;
+    if (ball.visible) {
+      const t = p.fx.ball,
+        R = P.size / 2,
+        z = 3 + t * (P.speed - BASE * p.boost), // (its own speed down the road, less yours: a little faster than you)
+        bounce = Math.abs(Math.sin(t * 5)) * 2.4 * Math.max(0, 1 - t / 3);
+      ball.scale.setScalar(R);
+      ball.position.set(Math.sin(t * 2) * 1.5, R + bounce, z);
+      ball.rotation.x += dt * ((P.speed / R) * 0.6);
+      ballZ = z;
+    } else ballZ = -999;
     // EARTHQUAKE: the shaking wave rolling out, the crack racing ahead; SKY ROCKET's landing blast
     const q = p.fx.quake ?? (p.fx.land != null ? p.fx.land : null),
       qR = p.fx.quake != null ? P.radius : P.blast;
@@ -620,22 +695,53 @@ function frame(now) {
       crack.scale.set(1, 1, L);
       crack.position.set(0, 0.05, L / 2);
     }
-    // DUST DEVIL: the whirlwind off down the road after the leader
-    devil.visible = p.fx.devil != null;
-    if (devil.visible) {
-      const L = rivals.find(r => r.leader),
-        z = Math.min(L.z, 4 + p.fx.devil * P.speed);
-      devil.position.set(L.x * Math.min(1, z / Math.max(1, L.z)), 0, z);
-      devil.children.forEach((m, i) => (m.rotation.y += dt * (6 + i)));
-      if (Math.random() < 0.6)
-        puff(v3.set(devil.position.x, 0.5, z), '#c9a46a', 2, new THREE.Vector3((Math.random() - 0.5) * 4, 3, 0), 1.2);
-      if (z >= L.z - 1) knock(L, 'lift');
+    // HARPOON: the hook flies to the car ahead on its cable, the Raider reels itself in, the rival is flung off
+    const tgt = rivals.find(r => r.harpooned) || null;
+    hook.visible = cable.visible = p.fx.harpoon != null && p.fx.fling == null;
+    if (p.fx.harpoon != null) {
+      if (!tgt) {
+        const ahead = rivals.find(r => r.leader && !r.ko) || rivals.filter(r => r.z > 2 && !r.ko)[0]; // (the car up the road ahead)
+        if (ahead) ahead.harpooned = true;
+      }
+      const T = rivals.find(r => r.harpooned);
+      if (T) {
+        const from = v3.set(0, 1.8, bladeZ),
+          to = new THREE.Vector3(T.x, 1.1, T.z - 1.6),
+          at = from.clone().lerp(to, p.fx.harpoon);
+        hook.position.copy(at);
+        hook.lookAt(to.x, to.y, to.z + 5);
+        cable.position.copy(from);
+        cable.scale.set(1, 1, Math.max(0.01, from.distanceTo(at)));
+        cable.lookAt(at);
+        if (p.fx.fling != null) {
+          knock(T, 'blown', -1); // (flung off to the far side of the road)
+          T.harpooned = false;
+        }
+      }
     }
-    // BULLDOZER: the blade on the front
-    blade.visible = (p.fx.blade || 0) > 0.01;
-    if (blade.visible) {
-      blade.position.set(0, 0.9, bladeZ + 0.6);
-      blade.scale.setScalar(Math.max(0.01, p.fx.blade));
+    // BULLDOZER: the rams push the blade down onto the road; sparks where its edge scrapes
+    const bd = p.fx.blade || 0;
+    bladeArm.visible = bd > 0.001;
+    blade.userData.rams.forEach(r => (r.barrel.visible = bd > 0.001));
+    if (bladeArm.visible) {
+      bladeArm.position.set(0, 0, bladeZ + 0.4);
+      bladeArm.rotation.x = -0.9 * (1 - ease(Math.min(1, bd))); // (carried up, lowered)
+      blade.position.set(0, 0, 1.3);
+      blade.userData.rams.forEach(r => {
+        r.barrel.rotation.x = 0.9 + 0.5 * bd;
+        r.piston.position.y = 0.2 + 0.7 * bd;
+      });
+      if (bd > 0.8)
+        for (let i = 0; i < 3; i++)
+          puff(
+            v3.set((Math.random() - 0.5) * 3.8, 0.15, bladeZ + 1.8),
+            Math.random() < 0.5 ? '#ffd27a' : '#ff9a2a',
+            0.35,
+            new THREE.Vector3((Math.random() - 0.5) * 8, 2 + Math.random() * 3, -4),
+            0.2,
+            2.6,
+            1,
+          );
     }
     car.robot.update(dt, {
       t: now / 1000,
@@ -652,6 +758,8 @@ function frame(now) {
   for (const r of rivals) {
     const was = r.z;
     if (pose) r.z -= (p.boost - 1) * BASE * dt;
+    if (r.harpooned && r.z < 3)
+      r.z = 3; // (on the line: you're reeled right up behind it, no further)
     else if (playT < 0 && !r.ko) {
       r.z += (r.z0 - r.z) * Math.min(1, dt * 0.8);
       r.x += (r.x0 - r.x) * Math.min(1, dt * 0.8);
@@ -660,11 +768,12 @@ function frame(now) {
       passed = was > 0 && r.z <= 0;
     if (pose) {
       if (type === 'kart' && passed && Math.abs(r.x) < P.wake + 2) knock(r, 'blown');
-      if (type === 'buggy' && passed && (p.fx.wave || 0) > 0.3) knock(r, 'blown');
-      if (type === 'brute' && passed && Math.abs(r.x) < 8 && (p.fx.blade || 0) > 0.5) knock(r, 'flip');
+      if (type === 'buggy' && Math.abs(r.z - ballZ) < P.size && Math.abs(r.x - ball.position.x) < P.size + 1.5)
+        knock(r, 'blown');
+      if (type === 'rail' && passed && Math.abs(r.x) < 8) knock(r, 'flip');
+      if (type === 'brute' && passed && Math.abs(r.x) < 8 && (p.fx.blade || 0) > 0.6) knock(r, 'flip');
       if (type === 'monster' && p.fx.quake != null && p.fx.quake * P.radius > d - 2) knock(r, 'flip');
       if (type === 'roadster' && p.fx.land != null && p.fx.land < 0.4 && d < P.blast) knock(r, 'flip');
-      if (type === 'rail' && p.fx.storm && r.z > 0 && r.z < Math.min(P.reach, 16 + playT * 40)) knock(r, 'spin');
       if (type === 'muscle' && p.fx.fire && r.z < 0 && playT > 0.7) knock(r, 'spin');
     }
     let y = 0,

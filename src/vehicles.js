@@ -58,28 +58,28 @@ export const POWERS_BASE = {
   },
   kart: {
     name: 'SUPERSONIC',
-    line: 'It breaks the sound barrier: a sonic boom, double speed, and every rival it passes is blown off the road',
+    line: 'It breaks the sound barrier: a white vapour cone wraps it, a sonic boom, double speed, and every rival it passes is blown off the road',
     hits: 'ANYONE IT PASSES',
     p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [2, 'SPEED', 1.4, 3, 0.1], wake: [8, 'WAKE (M)', 3, 15, 1] },
   },
   buggy: {
-    name: "SURF'S UP",
-    line: 'A huge wave rises under it: the buggy rides the crest and the wave washes every rival it catches off the road',
-    hits: 'ANYONE IT CATCHES',
+    name: 'BEACH BALL',
+    line: 'It launches a giant beach ball down the track: it bounds ahead and bowls over every rival in its path',
+    hits: 'ANYONE IN ITS PATH',
     p: {
-      dur: [4, 'HOW LONG (S)', 2, 6, 0.5],
-      height: [5, 'WAVE (M)', 3, 9, 0.5],
-      boost: [1.6, 'SPEED', 1.2, 2.4, 0.1],
+      size: [3.2, 'BALL (M)', 1.5, 6, 0.1],
+      speed: [55, 'BALL SPEED (M/S)', 30, 90, 1],
+      boost: [1.35, 'SPEED', 1.1, 2.2, 0.05],
     },
   },
   rail: {
-    name: 'HARMATTAN',
-    line: 'It whips up a sandstorm that rolls down the road ahead: every rival inside loses its way and spins out',
-    hits: 'EVERYONE AHEAD',
+    name: 'WHEELIE LAUNCH',
+    line: 'A huge nitrous launch: front wheels high in a long wheelie, flames out the back, smashing anyone in its path',
+    hits: 'ANYONE IN ITS PATH',
     p: {
-      dur: [4, 'HOW LONG (S)', 2, 6, 0.5],
-      reach: [80, 'REACH (M)', 30, 150, 5],
-      boost: [1.35, 'SPEED', 1.1, 2.2, 0.05],
+      dur: [3.5, 'HOW LONG (S)', 2, 6, 0.5],
+      boost: [2, 'SPEED', 1.4, 3, 0.05],
+      lift: [0.5, 'WHEELIE', 0.2, 0.9, 0.05],
     },
   },
   muscle: {
@@ -93,18 +93,17 @@ export const POWERS_BASE = {
     },
   },
   raider: {
-    name: 'DUST DEVIL',
-    line: 'It sends a whirlwind racing down the track after the leader: it catches them, lifts them and spins them',
-    hits: 'THE LEADER',
+    name: 'HARPOON',
+    line: 'It fires a winch hook into the car ahead, reels itself in at speed and flings that rival off the road behind it',
+    hits: 'THE CAR AHEAD',
     p: {
-      speed: [45, 'WHIRLWIND (M/S)', 20, 80, 1],
-      lift: [10, 'LIFT (M)', 4, 20, 1],
-      boost: [1.35, 'SPEED', 1.1, 2.2, 0.05],
+      reel: [1.4, 'REELING IN (S)', 0.6, 3, 0.1],
+      boost: [2.2, 'SPEED', 1.4, 3, 0.05],
     },
   },
   brute: {
     name: 'BULLDOZER',
-    line: 'A plough blade unfolds on the front: for a few seconds every rival in front of it is flipped out of the way',
+    line: 'Hydraulic rams lower a steel plough blade onto the road: scraping sparks, it ploughs through the pack and flips every rival in front out of the way',
     hits: 'ANYONE IN FRONT',
     p: { dur: [4, 'HOW LONG (S)', 2, 6, 0.5], boost: [1.4, 'SPEED', 1.1, 2, 0.05] },
   },
@@ -182,22 +181,22 @@ export function powerPose(id, t, P = POWERS[id]) {
       return o;
     }
     case 'buggy': {
-      if (t > P.dur) return null;
-      const u = t / P.dur,
-        w = Math.min(1, u / 0.15, (1 - u) / 0.15); // the wave rising, riding, falling away
-      o.fx.wave = w;
-      o.y = P.height * 0.62 * ease(w);
-      o.pitch = -0.18 * w;
-      o.roll = Math.sin(t * 3) * 0.06 * w;
-      o.boost = 1 + (P.boost - 1) * w;
+      if (t > 3) return null;
+      o.boost = P.boost;
+      o.pitch = t < 0.3 ? 0.12 * Math.sin((t / 0.3) * Math.PI) : 0; // (a kick back as it lets the ball go)
+      o.fx.ball = t; // the ball, out and away down the road
       return o;
     }
     case 'rail': {
       if (t > P.dur) return null;
-      o.yaw = Math.sin(t * 9) * 0.05;
-      o.boost = P.boost;
-      o.fx.storm = Math.min(1, t * 2, (P.dur - t) * 2);
-      o.fx.sand = 1;
+      const up = ease(clamp01(t / 0.35)),
+        down = ease(clamp01((t - (P.dur - 0.45)) / 0.45));
+      o.pitch = P.lift * (up - down) * (1 + 0.06 * Math.sin(t * 7)); // the front up, wavering, then slammed down
+      o.y = Math.sin(o.pitch) * 1.3; // (pivoting on the back wheels, so the body rises as the nose goes up)
+      o.squash = t > P.dur - 0.1 ? 0.88 : 1;
+      o.boost = 1 + (P.boost - 1) * up;
+      o.fx.flame = 1;
+      o.fx.smoke = t < 0.4 ? 1 : 0;
       return o;
     }
     case 'muscle': {
@@ -209,11 +208,14 @@ export function powerPose(id, t, P = POWERS[id]) {
       return o;
     }
     case 'raider': {
-      if (t > 3.6) return null;
-      o.fx.devil = t; // the whirlwind, sent off down the road
-      o.pitch = t < 0.4 ? -0.08 : 0;
-      o.boost = P.boost;
-      o.fx.flame = 1;
+      const fly = 0.45; // (the hook's flight to the car ahead)
+      if (t > fly + P.reel + 0.4) return null;
+      o.fx.harpoon = t < fly ? t / fly : 1; // 0..1 the hook flying out, then fast
+      o.fx.reel = t < fly ? 0 : Math.min(1, (t - fly) / P.reel); // reeling in
+      o.fx.fling = t > fly + P.reel ? (t - fly - P.reel) / 0.4 : null; // the rival flung off
+      o.boost = t < fly ? 1.1 : P.boost;
+      o.pitch = t < 0.15 ? -0.1 : -0.04;
+      o.fx.flame = t >= fly ? 1 : 0;
       return o;
     }
     case 'brute': {
