@@ -520,7 +520,7 @@ export function updateCamera(dt) {
   const md = (mapPan.h || game.track.radius * 2.25) * 1.3;
   scene.fog.near = up ? md * 0.85 : 140;
   scene.fog.far = up ? md * 2.4 : 1700;
-  scene.fog.color.set(game.night ? '#0a0f22' : up ? '#2d8aa3' : '#e9d9bf');
+  scene.fog.color.set(game.night ? '#0a0f22' : up ? '#2d8aa3' : game.world?.skyFog || '#e9d9bf'); // (by day, each city's horizon)
   if (game.routeLine) game.routeLine.visible = game.state === 'map';
   shadowSpan += ((up ? game.track.radius * 1.25 : 70) - shadowSpan) * Math.min(1, dt * 2.5); // grows and shrinks smoothly (no flash)
   const span = shadowSpan,
