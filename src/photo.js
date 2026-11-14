@@ -2,7 +2,7 @@
 // down, pinch or scroll to come nearer). The shutter prints it as a page from a travel journal: the Polaroid (the shot
 // square in a white frame, the Gukart logo, the circuit and your place along the bottom) tilted on a kraft-paper card,
 // the city's visa stamp inked over its corner, a Gukart boarding pass peeking out above, tape, a paper clip and a
-// ticket stub. It drops in on screen; SAVE shares it on a phone or downloads it on a computer. BACK, or Escape, returns to the results. The camera is in src/camera.js ('photo').
+// ticket stub, a silver sticker and a push pin. It drops in on screen; SAVE shares it on a phone or downloads it on a computer. BACK, or Escape, returns to the results. The camera is in src/camera.js ('photo').
 import { $, show, hide } from './dom.js';
 import { game, chapter } from './game.js';
 import { scene, cam, renderer } from './scene.js';
@@ -113,11 +113,16 @@ function paper(x, path, fill, shadow = 0.3) {
   x.restore();
 }
 // the city's visa stamp: a double ring of deep red ink, the city round the top and ENTRY round the bottom, GK across
-// the middle; strong and pressed a touch crooked, a few specks of ink missing
-function visaStamp(x, cx, cy, r, city) {
-  const ink = '#c4122f';
+// the middle; pressed a touch crooked, specks of ink missing. Red ink on a light photo, white on a dark one, so it
+// always reads
+function visaStamp(dst, cx, cy, r, city, ink) {
+  // (drawn on a layer of its own, so the worn specks take ink off the stamp, not holes out of the photo under it)
+  const L = Math.ceil(r * 2.4),
+    oc = document.createElement('canvas');
+  oc.width = oc.height = L;
+  const x = oc.getContext('2d');
   x.save();
-  x.translate(cx, cy);
+  x.translate(L / 2, L / 2);
   x.rotate(-0.24);
   x.globalAlpha = 0.92;
   x.strokeStyle = x.fillStyle = ink;
@@ -160,6 +165,7 @@ function visaStamp(x, cx, cy, r, city) {
     x.fillRect(Math.cos(a) * d, Math.sin(a) * d, 2 + Math.random() * 3, 2 + Math.random() * 2);
   }
   x.restore();
+  dst.drawImage(oc, cx - L / 2, cy - L / 2);
 }
 function paperClip(x, X, Y, h, rot) {
   x.save();
@@ -212,7 +218,7 @@ function tape(x, cx, cy, w, h, rot, col) {
   x.restore();
 }
 // the page, after the reference: kraft folder, a boarding pass behind it, a torn map scrap, the Polaroid, a receipt, a
-// pink ticket under a clip, tape, the stamp and a paper cloud. Nothing said twice
+// pink ticket under a clip, tape, the stamp, a silver sticker and a push pin. Nothing said twice
 function journal(pol) {
   const W = 1200,
     H = 1600,
@@ -292,7 +298,15 @@ function journal(pol) {
     x.drawImage(pol, -pw / 2, -ph / 2, pw, ph);
     x.shadowColor = 'transparent';
     // the stamp over the photo's bottom right corner, half on the white frame
-    visaStamp(x, pw / 2 - 190, ph / 2 - 335, 140, city);
+    // how light the photo is under the stamp: red ink on a light one, white on a dark one
+    const sx = pol.width / 2 + (pw / 2 - 190) / s,
+      sy = pol.height / 2 + (ph / 2 - 335) / s,
+      rr = Math.round(140 / s),
+      px = pol.getContext('2d').getImageData(Math.round(sx - rr), Math.round(sy - rr), rr * 2, rr * 2).data;
+    let lum = 0;
+    for (let i = 0; i < px.length; i += 16) lum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+    lum /= px.length / 16;
+    visaStamp(x, pw / 2 - 190, ph / 2 - 335, 140, city, lum < 0.5 ? 'rgba(252,250,244,0.94)' : '#c4122f');
     tape(x, pw / 2 - 30, 40, 70, 150, 0.12, 'rgba(165,195,180,0.8)');
   });
   // the receipt at the bottom left, torn top and bottom, clipped
@@ -315,7 +329,7 @@ function journal(pol) {
     });
     x.textAlign = 'left';
   });
-  paperClip(x, 360, 1272, 140, 0.12);
+  paperClip(x, 120, 1268, 140, -0.1);
   // the pink ticket at the top right, under a clip
   at(860, 290, 0.32, () => {
     paper(x, () => torn(x, 0, 0, 280, 130, 'r', 5), '#f2c4c4');
@@ -331,23 +345,83 @@ function journal(pol) {
     x.fillText(`${circ} GP`, 26, 96);
   });
   paperClip(x, 1105, 300, 160, 0.32);
-  // a paper cloud cut out, bottom right
-  at(980, 1430, 0.05, () => {
-    paper(
-      x,
-      () => {
-        x.beginPath();
-        [
-          [-80, 10, 50],
-          [-20, -20, 64],
-          [50, -4, 54],
-          [100, 20, 40],
-          [10, 30, 48],
-        ].forEach(([a, b, r]) => (x.moveTo(a + r, b), x.arc(a, b, r, 0, Math.PI * 2)));
-      },
-      '#fdfdfd',
-      0.35,
-    );
+  // a brushed-silver sticker over the Polaroid's bottom right corner, half on the kraft
+  at(930, 1400, -0.06, () => {
+    paper(x, () => (x.beginPath(), x.roundRect(-150, -80, 300, 160, 18)), '#b9bec4', 0.4);
+    const m = x.createLinearGradient(-150, -80, 150, 80);
+    m.addColorStop(0, 'rgba(255,255,255,0.55)');
+    m.addColorStop(0.45, 'rgba(255,255,255,0.05)');
+    m.addColorStop(0.6, 'rgba(255,255,255,0.35)');
+    m.addColorStop(1, 'rgba(90,95,100,0.3)');
+    x.fillStyle = m;
+    x.beginPath();
+    x.roundRect(-150, -80, 300, 160, 18);
+    x.fill();
+    x.strokeStyle = 'rgba(255,255,255,0.12)';
+    for (let i = -80; i < 80; i += 3) (x.beginPath(), x.moveTo(-148, i), x.lineTo(148, i), x.stroke());
+    x.fillStyle = '#26292e';
+    x.font = F(800, 26);
+    x.fillText('*WORLD TOUR', -126, -38);
+    x.font = F(900, 92);
+    x.fillText('S1', -126, 52);
+    x.fillRect(46, -40, 12, 84);
+    x.fillRect(72, -40, 12, 84);
+    x.font = F(800, 18);
+    x.fillText('PLAY NOW', 30, 64);
+  });
+  // a red push pin through the Polaroid's top left corner, seen from the side like a real one: the flange on the
+  // paper, the body tapering up to a round head, leaning over, its shadow falling away to the side
+  at(250, 300, 0, () => {
+    // the shadow, long and soft, cast down and to the right
+    x.save();
+    x.filter = 'blur(6px)';
+    x.fillStyle = 'rgba(30,15,5,0.45)';
+    x.beginPath();
+    x.moveTo(-6, 4);
+    x.quadraticCurveTo(40, 30, 78, 52);
+    x.arc(78, 40, 18, Math.PI / 2, -Math.PI / 2, true);
+    x.quadraticCurveTo(40, 8, 6, -4);
+    x.fill();
+    x.restore();
+    x.rotate(-0.38);
+    const red = (y0, y1) => {
+      const g = x.createLinearGradient(-26, y0, 26, y1);
+      g.addColorStop(0, '#ff6f6f');
+      g.addColorStop(0.45, '#c3172e');
+      g.addColorStop(1, '#5c0614');
+      return g;
+    };
+    // the flange where it meets the paper
+    x.fillStyle = '#7d0a1d';
+    x.beginPath();
+    x.ellipse(0, 0, 20, 7, 0, 0, Math.PI * 2);
+    x.fill();
+    x.fillStyle = red(-8, 8);
+    x.beginPath();
+    x.ellipse(0, -3, 20, 7, 0, 0, Math.PI * 2);
+    x.fill();
+    // the body: a waisted column up to the head
+    x.fillStyle = red(-50, 0);
+    x.beginPath();
+    x.moveTo(-15, -4);
+    x.bezierCurveTo(-8, -18, -8, -30, -13, -44);
+    x.lineTo(13, -44);
+    x.bezierCurveTo(8, -30, 8, -18, 15, -4);
+    x.closePath();
+    x.fill();
+    // the head: a fat rounded cap, lit from the top left
+    x.fillStyle = red(-70, -40);
+    x.beginPath();
+    x.ellipse(0, -50, 26, 14, 0, 0, Math.PI * 2);
+    x.fill();
+    x.beginPath();
+    x.ellipse(0, -58, 24, 12, 0, 0, Math.PI * 2);
+    x.fillStyle = red(-72, -46);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,0.55)';
+    x.beginPath();
+    x.ellipse(-9, -62, 9, 4, -0.3, 0, Math.PI * 2);
+    x.fill();
   });
   return c;
 }
