@@ -2136,3 +2136,27 @@ body.onfire #hud::before {
     display: none;
   }
 }
+
+/* ---- the GARAGE tile's ribbon: the name of the car you race, on an orange slanted tag across its top-left corner */
+.car-ribbon {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  z-index: 2;
+  max-width: calc(100% - 46px);
+  padding: 3px 16px 4px 12px;
+  background: var(--orange);
+  color: var(--white);
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}

@@ -119,6 +119,7 @@ export function renderGarage() {
     // saved paint, so you can see at a glance which car you're using (public/tile-garage.png until the pictures are made)
     const mine = VEHICLES[game.vehicle];
     $('#garageBtn').setAttribute('aria-label', `Open the garage, ${mine.name}`);
+    $('#garageCar').textContent = mine.name.toUpperCase(); // (its name on a ribbon across the corner)
     if (game.THUMBS?.[game.vehicle]) $('#garageThumb').src = game.THUMBS[game.vehicle];
   }
   renderCustom();
