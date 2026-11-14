@@ -55,7 +55,36 @@ export function updateCamera(dt) {
   const fpOn = game.view === 'fp' && (game.state === 'race' || game.state === 'count');
   fpBody(k.m, !fpOn);
   game.race.fpView = fpOn;
-  if (game.state === 'intro') {
+  if (game.state === 'flyby' && game.flyby) {
+    // the circuit's introduction (race-flow.js): a slow orbit high over the circuit, then a drone pass at each place,
+    // gliding in toward it and looking at it, a cut between shots
+    const f = game.flyby;
+    f.t += dt;
+    let t = f.t,
+      i = 0;
+    while (i < f.shots.length - 1 && t >= f.shots[i].dur) t -= f.shots[i++].dur;
+    const sh = f.shots[i],
+      u = Math.min(1, t / sh.dur),
+      e2 = u * u * (3 - 2 * u),
+      tr = game.track;
+    if (sh.kind === 'orbit') {
+      // (low enough that the circuit fills the frame and the edge of the world stays out of it)
+      const C = tr.center,
+        R = tr.radius * 0.9,
+        a = -0.6 + e2 * 0.55;
+      want.set(C.x + Math.cos(a) * R, tr.radius * 0.36, C.z + Math.sin(a) * R);
+      wantLook.set(C.x - Math.cos(a) * R * 0.15, 0, C.z - Math.sin(a) * R * 0.15);
+    } else {
+      const p = sh.p,
+        back = (p.back || 30) + 34 - e2 * 26,
+        q = tr.point(p.s - back, p.lat || 0);
+      want.set(q.x, q.y + (p.h || 4) + 10 - e2 * 5, q.z);
+      wantLook.set(p.x, (p.y || 0) + (p.lookH || 8), p.z);
+    }
+    wantUp.set(0, 1, 0);
+    rate = t < 0.06 || i !== f.ci ? 80 : 6; // (a clean cut to each new shot, then a smooth glide)
+    f.ci = i;
+  } else if (game.state === 'intro') {
     // a slow drone sweep down the starting grid, from high in front of the gate to low behind the pack
     game.introT += dt;
     const u = Math.min(1, game.introT / (INTRO - 0.3)),

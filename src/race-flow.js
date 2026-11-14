@@ -20,7 +20,99 @@ import { releaseInput } from './input.js';
 
 // the loading card before a race (Asphalt): the chapter, the goal, pictures of its places, a filling diamond
 export const INTRO = location.hash === '#capture' ? 2.4 : 5.2; // seconds: long enough to read the card and see the grid
+// The circuit's introduction, before the race card (F1 TV): the camera orbits high over the whole circuit with its name,
+// then flies past its places, each with a caption, and drops down to the grid. The first time you race a circuit you
+// see up to five places; after that only the orbit and one place. A tap, a click or a key skips it.
+const FLY_OPEN = 3,
+  FLY_SHOT = 2;
 export function raceIntro(then) {
+  if (game.flybyDone) {
+    game.flybyDone = false;
+    return raceCard(then);
+  }
+  circuitFlyby(() => {
+    game.flybyDone = true;
+    raceIntro(then);
+  });
+}
+function circuitFlyby(then) {
+  const tr = game.track,
+    key = 'introSeen.' + game.RID,
+    first = !store.get(key, false),
+    places = (game.world.places || []).filter(p => p.s != null),
+    pick = first ? places.slice(0, 4) : places.slice(0, 1);
+  store.set(key, true);
+  if (location.hash === '#capture') return then(); // (pictures and recordings go straight to the race)
+  game.race.reset(); // the grid lines up; the roads are empty
+  const km = (tr.len / 1000).toFixed(1).replace('.0', ''),
+    cname = (game.circuit?.name || chapter.name).toUpperCase(), // (the circuit's own name: no "KANO · KANO CITY")
+    shots = [
+      {
+        kind: 'orbit',
+        dur: first ? FLY_OPEN : 1.6,
+        kicker: chapter.name.toUpperCase(),
+        name: cname,
+        chips: [`${LAPS} LAPS`, `${km} KM`],
+      },
+      ...pick.map(p => ({
+        kind: 'place',
+        dur: first ? FLY_SHOT : 1.5,
+        p,
+        kicker: cname,
+        name: p.name,
+        sub: p.sub,
+      })),
+    ];
+  game.flyby = { shots, i: -1, t: 0, total: shots.reduce((a, x) => a + x.dur, 0) };
+  game.state = 'flyby';
+  const el = $('#flyby');
+  let ended = false;
+  const end = () => {
+    if (ended) return;
+    ended = true;
+    removeEventListener('keydown', skipKey);
+    el.removeEventListener('pointerdown', end);
+    clearInterval(tick);
+    hide(el, null, -1);
+    game.flyby = null;
+    then();
+  };
+  const skipKey = e => {
+    if (e.code !== 'Tab') end();
+  };
+  addEventListener('keydown', skipKey);
+  el.addEventListener('pointerdown', end);
+  // the caption follows the shot the camera is on (camera.js moves the camera through game.flyby)
+  const caption = () => {
+    const f = game.flyby;
+    if (!f) return;
+    let t = f.t,
+      i = 0;
+    while (i < f.shots.length - 1 && t >= f.shots[i].dur) t -= f.shots[i++].dur;
+    if (f.t >= f.total) return end();
+    if (i === f.i) return;
+    f.i = i;
+    const sh = f.shots[i];
+    $('#fbKicker').textContent = sh.kicker;
+    const nm = $('#fbName');
+    nm.textContent = sh.name;
+    nm.style.fontSize = '';
+    {
+      // (one line, brought down in size until it fits: "THE AQUARIUM TUNNEL" was cut off)
+      let px = parseFloat(getComputedStyle(nm).fontSize);
+      while (nm.scrollWidth > nm.clientWidth + 1 && px > 24) nm.style.fontSize = `${(px -= 3)}px`;
+    }
+    $('#fbSub').textContent = sh.sub || '';
+    $('#fbChips').innerHTML = (sh.chips || []).map(c => `<b>${c}</b>`).join('');
+    el.classList.remove('cap-in');
+    void el.offsetWidth;
+    el.classList.add('cap-in');
+  };
+  const tick = setInterval(caption, 50);
+  show(el);
+  caption();
+}
+function raceCard(then) {
   const c = chapter,
     el = $('#raceLoad');
   // the World Tour's Final dresses up: a gold card with a trophy, THE FINAL; fireworks and the crowd at the start

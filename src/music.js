@@ -11,7 +11,7 @@ import { store } from './util.js';
 const MENUS = '/music/track-1.mp3',
   RACING = '/music/track-2.mp3';
 // the states that are the race itself (everything else is a menu)
-const RACE = new Set(['intro', 'count', 'race', 'finish', 'paused']);
+const RACE = new Set(['flyby', 'intro', 'count', 'race', 'finish', 'paused']);
 // how loud in each state of the game (of the MUSIC setting)
 const LEVEL = { race: 0.32, finish: 0.32, paused: 0.25, intro: 0, count: 0 };
 
