@@ -191,7 +191,7 @@ const rivals = RIV.map(r => {
   return { ...r, x0: r.x, z0: r.z, m, ko: null };
 });
 const resetRivals = () => {
-  for (const r of rivals) Object.assign(r, { x: r.x0, z: r.z0, ko: null, harpooned: false });
+  for (const r of rivals) Object.assign(r, { x: r.x0, z: r.z0, ko: null, harpooned: false, thrown: 0, aim: null });
 };
 
 /* ---------- effects ---------- */
@@ -297,54 +297,89 @@ for (let i = 0; i < 5; i++) {
 diamonds.position.y = 0.55;
 diamonds.visible = false;
 rig.add(diamonds);
-// BEACH BALL: a giant striped beach ball
-const ball = (() => {
+// BEACH BALL: a volley of giant striped beach balls (each its own colours), thrown out across the whole road
+const ballTex = cols => {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 256;
-  const x = c.getContext('2d'),
-    cols = ['#e8232b', '#ffffff', '#1f6fe8', '#ffd21f', '#ffffff', '#21b04b'];
+  const x = c.getContext('2d');
   cols.forEach((col, i) => {
     x.fillStyle = col;
-    x.fillRect((i * 512) / 6, 0, 512 / 6 + 1, 256);
+    x.fillRect((i * 512) / cols.length, 0, 512 / cols.length + 1, 256);
   });
   x.fillStyle = '#ffffff';
   x.fillRect(0, 0, 512, 18);
   x.fillRect(0, 238, 512, 18);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+};
+const BALL_COLS = [
+  ['#e8232b', '#ffffff', '#1f6fe8', '#ffd21f', '#ffffff', '#21b04b'],
+  ['#ff7ac2', '#ffffff', '#24c6e0', '#ffffff'],
+  ['#ff8a1f', '#ffffff', '#7a3fe0', '#ffffff', '#ffd21f', '#ffffff'],
+  ['#21b04b', '#ffd21f', '#e8232b', '#ffffff'],
+];
+// where each goes: across the road, how big, when it's thrown, how fast, how high it bounces
+const balls = Array.from({ length: 9 }, (_, i) => {
   const m = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 40, 24),
-    new THREE.MeshStandardMaterial({ map: t, roughness: 0.35 }),
+    new THREE.SphereGeometry(1, 32, 20),
+    new THREE.MeshStandardMaterial({ map: ballTex(BALL_COLS[i % BALL_COLS.length]), roughness: 0.35 }),
   );
   m.castShadow = true;
-  return m;
-})();
-ball.visible = false;
-S.add(ball);
-// HARPOON: the winch hook (a barbed head) on its steel cable
-const hook = new THREE.Group();
+  m.visible = false;
+  S.add(m);
+  return {
+    m,
+    x: -10 + (i / 8) * 20 + (Math.random() - 0.5) * 2,
+    r: 0.8 + Math.random() * 0.9,
+    at: i * 0.08,
+    v: 0.8 + Math.random() * 0.5,
+    hop: 4 + Math.random() * 3,
+    z: -99,
+  };
+});
+// HARPOON: a heavy telescopic boom (three nested steel sections, yellow and black hazard bands on the last) with a big
+// claw on its end: two curved steel jaws. It pivots at the Raider's nose; its length and swing are set each frame
+const boom = new THREE.Group(),
+  boomParts = [];
 {
-  const steel = new THREE.MeshStandardMaterial({ color: '#c8ccd4', metalness: 1, roughness: 0.25 });
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1, 8).rotateX(Math.PI / 2), steel);
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.5, 8).rotateX(Math.PI / 2).translate(0, 0, 0.75), steel);
-  for (const sx of [-1, 1]) {
-    const barb = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.45), steel);
-    barb.position.set(sx * 0.16, 0, 0.35);
-    barb.rotation.y = -sx * 0.6;
-    hook.add(barb);
+  const steel = new THREE.MeshStandardMaterial({ color: '#59606b', metalness: 0.85, roughness: 0.3 }),
+    paint = new THREE.MeshStandardMaterial({ color: '#f2b705', metalness: 0.3, roughness: 0.5 }),
+    chrome = new THREE.MeshStandardMaterial({ color: '#e8ecf2', metalness: 1, roughness: 0.12 });
+  // three sections, each 1 m long along +z (stretched to share the length), thinner as they go
+  [0.34, 0.26, 0.19].forEach((r, i) => {
+    const sec = new THREE.Mesh(new THREE.BoxGeometry(r * 2, r * 2, 1).translate(0, 0, 0.5), i === 1 ? paint : steel);
+    boom.add(sec);
+    boomParts.push(sec);
+  });
+  const claw = new THREE.Group();
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.5, 16).rotateZ(Math.PI / 2), steel);
+  claw.add(hub);
+  for (const sd of [-1, 1]) {
+    const jaw = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.13, 8, 20, Math.PI * 0.85), chrome);
+    jaw.rotation.set(0, sd > 0 ? 0 : Math.PI, Math.PI / 2);
+    jaw.position.set(sd * 0.25, 0, 0.55);
+    claw.add(jaw);
   }
-  hook.add(shaft, tip);
+  boom.add(claw);
+  boomParts.push(claw);
 }
-hook.scale.setScalar(2.2);
-hook.visible = false;
-S.add(hook);
-const cable = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.07, 0.07, 1, 8).translate(0, 0.5, 0).rotateX(Math.PI / 2),
-  new THREE.MeshStandardMaterial({ color: '#dfe3ea', metalness: 0.9, roughness: 0.2, emissive: '#3a4250' }),
-);
-cable.visible = false;
-S.add(cable);
+boom.visible = false;
+S.add(boom);
+// the boom at base, turned to yaw, L long: its sections sliding out one inside the next, the claw on the end
+function setBoom(base, yaw, L) {
+  L = Math.max(0.3, L);
+  boom.position.copy(base);
+  boom.rotation.set(0, yaw, 0);
+  boomParts.forEach((m, i) => {
+    if (i < 3) {
+      m.position.z = (L / 3) * i * 0.92;
+      m.scale.z = L / 3 + 0.25;
+    } else m.position.z = L;
+  });
+}
+
 // BULLDOZER: a real plough: a curved steel moldboard with a bolted cutting edge and ribs on its back, on two push arms,
 // lowered by two hydraulic rams (barrels and chrome pistons that slide out); worn yellow paint
 const blade = new THREE.Group(),
@@ -498,7 +533,6 @@ $('#copy').onclick = async () => {
 
 /* ---------- playing the power ---------- */
 let playT = -1,
-  ballZ = -999,
   bladeZ = 2.4; // (where the front of the car is, for the plough blade)
 const stop = () => {
   playT = -1;
@@ -665,18 +699,19 @@ function frame(now) {
           1 / P.burn,
           1,
         );
-    // BEACH BALL: thrown out ahead, bounding down the road and rolling
-    ball.visible = p.fx.ball != null;
-    if (ball.visible) {
-      const t = p.fx.ball,
-        R = P.size / 2,
-        z = 3 + t * (P.speed - BASE * p.boost), // (its own speed down the road, less yours: a little faster than you)
-        bounce = Math.abs(Math.sin(t * 5)) * 2.4 * Math.max(0, 1 - t / 3);
-      ball.scale.setScalar(R);
-      ball.position.set(Math.sin(t * 2) * 1.5, R + bounce, z);
-      ball.rotation.x += dt * ((P.speed / R) * 0.6);
-      ballZ = z;
-    } else ballZ = -999;
+    // BEACH BALL: the volley thrown out ahead, the balls bounding down the road, rolling, fanning out across it
+    for (const b of balls) {
+      const t = p.fx.ball != null ? p.fx.ball - b.at : -1;
+      b.m.visible = t > 0;
+      if (!b.m.visible) continue;
+      const R = b.r * (P.size / 3.2),
+        z = 2 + t * (P.speed * b.v - BASE * p.boost),
+        bounce = Math.abs(Math.sin(t * b.hop)) * 2.6 * Math.max(0.2, 1 - t / 3);
+      b.m.scale.setScalar(R);
+      b.m.position.set(b.x * Math.min(1, t * 2), R + bounce, z);
+      b.m.rotation.x += dt * ((P.speed * b.v) / R) * 0.5;
+      b.z = z;
+    }
     // EARTHQUAKE: the shaking wave rolling out, the crack racing ahead; SKY ROCKET's landing blast
     const q = p.fx.quake ?? (p.fx.land != null ? p.fx.land : null),
       qR = p.fx.quake != null ? P.radius : P.blast;
@@ -695,30 +730,52 @@ function frame(now) {
       crack.scale.set(1, 1, L);
       crack.position.set(0, 0.05, L / 2);
     }
-    // HARPOON: the hook flies to the car ahead on its cable, the Raider reels itself in, the rival is flung off
-    const tgt = rivals.find(r => r.harpooned) || null;
-    hook.visible = cable.visible = p.fx.harpoon != null && p.fx.fling == null;
+    // HARPOON: it surges up behind the car ahead; within reach the boom snaps out to it (0.15 s), the claw catches it and
+    // throws it off the road to the side (0.3 s), then folds back in (0.4 s)
+    let showBoom = false;
     if (p.fx.harpoon != null) {
-      if (!tgt) {
-        const ahead = rivals.find(r => r.leader && !r.ko) || rivals.filter(r => r.z > 2 && !r.ko)[0]; // (the car up the road ahead)
-        if (ahead) ahead.harpooned = true;
+      let T = rivals.find(r => r.harpooned);
+      if (!T && !rivals.some(r => r.thrown)) {
+        T = rivals
+          .filter(r => r.z > 2 && !r.ko)
+          .sort((a, b) => a.z - b.z)
+          .pop(); // (the furthest ahead: the leader)
+        if (T) Object.assign(T, { harpooned: true, side: -1, catchT: -1 });
       }
-      const T = rivals.find(r => r.harpooned);
-      if (T) {
-        const from = v3.set(0, 1.8, bladeZ),
-          to = new THREE.Vector3(T.x, 1.1, T.z - 1.6),
-          at = from.clone().lerp(to, p.fx.harpoon);
-        hook.position.copy(at);
-        hook.lookAt(to.x, to.y, to.z + 5);
-        cable.position.copy(from);
-        cable.scale.set(1, 1, Math.max(0.01, from.distanceTo(at)));
-        cable.lookAt(at);
-        if (p.fx.fling != null) {
-          knock(T, 'blown', -1); // (flung off to the far side of the road)
-          T.harpooned = false;
+      const base = new THREE.Vector3(0, 1.5, bladeZ - 0.3);
+      if (T && T.harpooned) {
+        if (T.catchT < 0 && T.z - base.z < 11) T.catchT = 0; // (within the boom's reach: it fires)
+        if (T.catchT >= 0) {
+          T.catchT += dt;
+          const c = T.catchT,
+            out = Math.min(1, c / 0.15),
+            thr = ease(Math.min(1, Math.max(0, (c - 0.15) / 0.3)));
+          if (T.aim == null) {
+            T.aim = Math.atan2(T.x - base.x, T.z - 1.5 - base.z);
+            T.reach = Math.hypot(T.x - base.x, T.z - 1.5 - base.z);
+          }
+          const yaw = T.aim + T.side * ((P.swing * Math.PI) / 180) * thr,
+            L = T.reach * out;
+          setBoom(base, yaw, L);
+          showBoom = true;
+          if (out >= 1) {
+            T.x = base.x + Math.sin(yaw) * L;
+            T.z = base.z + Math.cos(yaw) * L + 1.5;
+          }
+          if (thr >= 1) {
+            knock(T, 'blown', T.side);
+            Object.assign(T, { harpooned: false, thrown: 0.4, aim: null, lastYaw: yaw, lastL: L });
+          }
         }
       }
+      const done = rivals.find(r => r.thrown > 0);
+      if (done) {
+        done.thrown -= dt;
+        setBoom(base, done.lastYaw, done.lastL * Math.max(0, done.thrown / 0.4));
+        showBoom = done.thrown > 0;
+      }
     }
+    boom.visible = showBoom;
     // BULLDOZER: the rams push the blade down onto the road; sparks where its edge scrapes
     const bd = p.fx.blade || 0;
     bladeArm.visible = bd > 0.001;
@@ -768,8 +825,14 @@ function frame(now) {
       passed = was > 0 && r.z <= 0;
     if (pose) {
       if (type === 'kart' && passed && Math.abs(r.x) < P.wake + 2) knock(r, 'blown');
-      if (type === 'buggy' && Math.abs(r.z - ballZ) < P.size && Math.abs(r.x - ball.position.x) < P.size + 1.5)
-        knock(r, 'blown');
+      if (type === 'buggy')
+        for (const b of balls)
+          if (
+            b.m.visible &&
+            Math.abs(r.z - b.z) < b.m.scale.x + 1.5 &&
+            Math.abs(r.x - b.m.position.x) < b.m.scale.x + 1.4
+          )
+            knock(r, 'flip');
       if (type === 'rail' && passed && Math.abs(r.x) < 8) knock(r, 'flip');
       if (type === 'brute' && passed && Math.abs(r.x) < 8 && (p.fx.blade || 0) > 0.6) knock(r, 'flip');
       if (type === 'monster' && p.fx.quake != null && p.fx.quake * P.radius > d - 2) knock(r, 'flip');

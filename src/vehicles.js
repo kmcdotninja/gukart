@@ -45,14 +45,13 @@ export const POWERS_BASE = {
   },
   roadster: {
     name: 'SKY ROCKET',
-    line: 'Four thrusters blast it into the sky: it flies flat out for a few seconds, flipping and turning over the pack, then drops back down and the blast flips anyone close',
+    line: 'Four thrusters blast it into the sky: it flies flat out over the pack for a few seconds, twirls once as it comes down, and the landing blast flips anyone close',
     hits: 'WHERE IT LANDS',
     p: {
       height: [14, 'HEIGHT (M)', 6, 30, 1],
       dur: [4, 'FLIGHT (S)', 2, 6, 0.1],
       boost: [2, 'SPEED IN THE AIR', 1.2, 3, 0.05],
-      rolls: [1, 'FLIPS', 0, 3, 1],
-      turns: [1, 'TURNS', 0, 2, 1],
+      rolls: [1, 'TWIRLS COMING DOWN', 0, 2, 1],
       blast: [14, 'LANDING BLAST (M)', 5, 30, 1],
     },
   },
@@ -64,7 +63,7 @@ export const POWERS_BASE = {
   },
   buggy: {
     name: 'BEACH BALL',
-    line: 'It launches a giant beach ball down the track: it bounds ahead and bowls over every rival in its path',
+    line: 'It throws a volley of giant beach balls across the whole road: they bound ahead and any rival who hits one is flipped over',
     hits: 'ANYONE IN ITS PATH',
     p: {
       size: [3.2, 'BALL (M)', 1.5, 6, 0.1],
@@ -94,10 +93,10 @@ export const POWERS_BASE = {
   },
   raider: {
     name: 'HARPOON',
-    line: 'It fires a winch hook into the car ahead, reels itself in at speed and flings that rival off the road behind it',
+    line: 'It surges forward at speed; as it reaches the car ahead a heavy boom snaps out, catches it and throws it off the road',
     hits: 'THE CAR AHEAD',
     p: {
-      reel: [1.4, 'REELING IN (S)', 0.6, 3, 0.1],
+      swing: [80, 'THROW (DEGREES)', 40, 120, 5],
       boost: [2.2, 'SPEED', 1.4, 3, 0.05],
     },
   },
@@ -161,8 +160,7 @@ export function powerPose(id, t, P = POWERS[id]) {
         down = ease(clamp01((u - 0.72) / 0.28));
       o.y = P.height * (up - down);
       o.pitch = 0.35 * Math.sin(clamp01(u / 0.3) * Math.PI) - 0.25 * Math.sin(clamp01((u - 0.7) / 0.3) * Math.PI);
-      o.roll = ease(clamp01((u - 0.28) / 0.22)) * Math.PI * 2 * P.rolls; // a flip...
-      o.yaw = ease(clamp01((u - 0.48) / 0.22)) * Math.PI * 2 * (P.turns || 0); // ...then a turn, nose round and back
+      o.roll = ease(clamp01((u - 0.7) / 0.26)) * Math.PI * 2 * P.rolls; // (level and flat out in the air; one twirl on the way down)
       o.boost = P.boost;
       o.fx.flame = 1;
       o.fx.rocket = 1;
@@ -208,14 +206,14 @@ export function powerPose(id, t, P = POWERS[id]) {
       return o;
     }
     case 'raider': {
-      const fly = 0.45; // (the hook's flight to the car ahead)
-      if (t > fly + P.reel + 0.4) return null;
-      o.fx.harpoon = t < fly ? t / fly : 1; // 0..1 the hook flying out, then fast
-      o.fx.reel = t < fly ? 0 : Math.min(1, (t - fly) / P.reel); // reeling in
-      o.fx.fling = t > fly + P.reel ? (t - fly - P.reel) / 0.4 : null; // the rival flung off
-      o.boost = t < fly ? 1.1 : P.boost;
-      o.pitch = t < 0.15 ? -0.1 : -0.04;
-      o.fx.flame = t >= fly ? 1 : 0;
+      // it surges forward at speed; as it reaches the car ahead the boom snaps out, catches it and throws it off the
+      // road in one move (the catch is timed by the distance, so the studio and the game decide when; fx.harpoon is
+      // just how long it's been running)
+      if (t > 2.6) return null;
+      o.boost = P.boost;
+      o.pitch = t < 0.15 ? -0.08 : -0.03;
+      o.fx.harpoon = t;
+      o.fx.flame = 1;
       return o;
     }
     case 'brute': {
