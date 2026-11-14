@@ -61,7 +61,7 @@ export function releaseInput() {
   if (inp) {
     inp.steer = 0;
     inp.drift = inp.fire = inp.brake = false;
-    inp.firePressed = inp.nitroPressed = inp.driftPressed = false;
+    inp.firePressed = inp.nitroPressed = inp.driftPressed = inp.powerPressed = false;
   }
 }
 
@@ -88,6 +88,7 @@ export function initInput() {
     if (e.repeat) return;
     if (['KeyF', 'KeyE', 'KeyJ'].includes(e.code) && game.state === 'race') game.race.input.firePressed = true;
     if (['ArrowUp', 'KeyW', 'KeyN'].includes(e.code) && game.state === 'race') game.race.input.nitroPressed = true;
+    if (e.code === 'KeyQ' && game.state === 'race') game.race.input.powerPressed = true; // the special power
     if (['Space', 'ShiftLeft', 'ShiftRight'].includes(e.code) && game.state === 'race')
       game.race.input.driftPressed = true;
     if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
@@ -142,6 +143,13 @@ export function initInput() {
     $('#nitroBtn'),
     () => {
       if (game.state === 'race') game.race.input.nitroPressed = true;
+    },
+    () => {},
+  );
+  holdButton(
+    $('#powerBtn'),
+    () => {
+      if (game.state === 'race') game.race.input.powerPressed = true;
     },
     () => {},
   );

@@ -183,6 +183,8 @@ export const WEAPONS = {
 // how each vehicle drives: src/vehicles.js (the vehicles' single source of truth, tuned in the Vehicle Studio)
 export { VSTATS } from './vehicles.js';
 import { VSTATS } from './vehicles.js';
+import { initPowers, resetPowers, firePower, updatePowers, posePower } from './powers-race.js';
+const POWER_ROAD = 0.35; // (how much of a power's SPEED shows on the road: 3 gives 1.7x)
 const DRIFT_COL = ['#ffffff', '#6fd3ff', '#ff9a1f', '#d65cff'];
 const FLAME_COL = ['#ff9a1f', '#6fd3ff', '#ff9a1f', '#d65cff', '#ff3b1f', '#9fe4ff', '#ffd23a'];
 const Y = new THREE.Vector3(0, 1, 0);
@@ -666,6 +668,8 @@ export class Race {
     this.level = l || LEVELS.normal;
   }
   reset() {
+    if (!this.pwPuffs) initPowers(this);
+    resetPowers(this); // (every car's special power: back to unused, ready again after the opening seconds)
     for (const k of this.karts || []) k.stHard = null; // (the crew's cars are matched to yours afresh each race)
     const tr = this.tr;
     const slots = [4, 0, 1, 2, 3, 5]; // Buddy starts 5th
@@ -981,6 +985,7 @@ export class Race {
 
   hit(k, type, by) {
     if (k.finished && k !== this.player) return;
+    if (k.pwImmune) return; // (up in the air on its special power: nothing on the road can touch it)
     const pos = this.tr.point(k.s, k.lat, 1.5 + k.air);
     if (k.fire > 0) {
       // too hot to touch: it bursts off you in sparks
@@ -1104,6 +1109,7 @@ export class Race {
         k.steer = inp.steer;
         k.driftHeld = inp.drift;
         if (inp.firePressed || (inp.fire && k.weapon === 'blaster')) this.fire(k);
+        if (inp.powerPressed) firePower(this, k); // the special power: the POWER button or Q
         if (inp.nitroPressed && k.nitro >= 0.3 && k.spin <= 0) {
           k.nitro -= 0.33;
           k.boost = Math.max(k.boost, this.upg.has('nitro') ? 1.7 : 1.3); // (longer with the Big Nitro upgrade)
@@ -1194,6 +1200,9 @@ export class Race {
         top = Math.max(top, MAX) * (k.boostLvl === 4 ? 1.38 : 1.3);
         k.boost -= dt;
       }
+      // its special power's burst of speed: the power's SPEED (up to 3 in the Vehicle Studio) scaled for the road, so the
+      // top of the range is about 1.7x, a surge past the pack that can still be steered through a corner
+      if (k.pwBoost > 1) top = Math.max(top, MAX * st.top) * (1 + (k.pwBoost - 1) * POWER_ROAD);
       if (k.finished) top = Math.min(top, 14 + Math.max(0, 1 - (this.time - k.finishTime) / 3) * 30); // over the line: easing off to a coast
       if (k.spin > 0) {
         k.spin -= dt;
@@ -1207,7 +1216,14 @@ export class Race {
       const target = k.throttle > 0 ? top : k.throttle < 0 ? -14 : 0;
       if (grounded || k.boost > 0) {
         if (k.speed < target)
-          k.speed = Math.min(target, k.speed + (k.boost > 0 ? 70 : ACC * st.acc * (1 - (0.4 * k.speed) / MAX)) * dt);
+          k.speed = Math.min(
+            target,
+            k.speed +
+              (k.boost > 0 || k.pwBoost > 1
+                ? 70 * Math.max(1, k.pwBoost || 1)
+                : ACC * st.acc * (1 - (0.4 * k.speed) / MAX)) *
+                dt,
+          );
         else k.speed = Math.max(target, k.speed - (k.spin > 0 ? 60 : k.throttle < 0 ? 45 : 20) * dt);
       }
       const rh0 = k.rh;
@@ -1446,6 +1462,8 @@ export class Race {
     inp.firePressed = false;
     inp.driftPressed = false;
     inp.nitroPressed = false;
+    inp.powerPressed = false;
+    if (racing) updatePowers(this, dt); // the special powers: their motion, effects and knockouts
 
     // ---- vehicles are solid boxes: side by side they shove apart, nose to tail they trade speed (by mass)
     const ks = this.karts;
@@ -1857,8 +1875,10 @@ export class Race {
       this.tq.setFromRotationMatrix(this.mx);
       this.yq.setFromAxisAngle(Y, k.visYaw + k.spinA);
       this.tq.multiply(this.yq);
+      if (k.pwBaseQ) m.root.quaternion.copy(k.pwBaseQ); // (last frame's power pose off: it's laid on fresh below)
       if (snap || !dt) m.root.quaternion.copy(this.tq);
       else m.root.quaternion.slerp(this.tq, Math.min(1, dt * (k.fly ? 6 : 22)));
+      posePower(this, k, F); // (a special power lifting and turning it: the Roadster's flight, a wheelie, a jump)
       // how hard the tyres are working through a turn (0..1): turning hard at speed. It changes nothing about the
       // handling; you hear it (a squeal), see it (dark marks on the tarmac) and feel it in the body
       k.corner = k.fly

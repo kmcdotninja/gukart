@@ -432,7 +432,8 @@ export function updateCamera(dt) {
       .set(0, 1, 0)
       .lerp(F.u, game.track.inLoop[game.track.idx(k.s)] || F.u.y < 0.7 ? 1 : 0.55)
       .normalize();
-    rate = game.state === 'count' && game.clock - game.countStart < 2.2 ? 2.2 : 9;
+    rate =
+      game.state === 'count' && game.clock - game.countStart < 2.2 ? 2.2 : 9 + Math.max(0, (k.pwBoost || 1) - 1) * 6; // (closer behind on a power's surge)
     upRate = 6;
     // a loop-the-loop: the camera rides the road like the next car of a rollercoaster. It sits on the track the same
     // distance behind (not on a straight line out the back, which cuts across the inside of the loop), looks at the road

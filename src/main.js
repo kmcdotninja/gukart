@@ -38,6 +38,7 @@ import { initWorldmap } from './worldmap.js';
 import { initRaceFlow } from './race-flow.js';
 import { initSchool, schoolUpdate, offerSchool } from './school.js';
 import { initPhoto } from './photo.js';
+import { paintPowerButton } from './powers-race.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
@@ -191,6 +192,7 @@ function frame(now) {
     const wrong = game.race.wrongT >= 1;
     if (hud.wrong.hidden === wrong) hud.wrong.hidden = !wrong; // (only when it changes)
     hud.lines.style.opacity = clamp((p.speed - 60) / 30, 0, 1) * (p.boost > 0 ? 1 : 0.5);
+    paintPowerButton(game.race, $('#powerBtn'), $('#pwArc'), $('#pwName')); // (the special power: filling, READY, spent)
     if (game.rollingIcon && (game.rollFlip += dt) > 0.08) {
       game.rollFlip = 0;
       const w = Object.keys(ICONS)[(Math.random() * Object.keys(ICONS).length) | 0];

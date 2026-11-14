@@ -2025,3 +2025,114 @@ body.onfire #hud::before {
 #photo:has(.ph-print:not([hidden])) .ph-hint {
   display: none;
 }
+
+/* ---- the special power button (src/powers-race.js): a round button in the vehicle's colours of orange, a ring filling
+   round it through the opening seconds, then glowing READY; once spent, dimmed. Where it sits depends on the screen:
+   on a phone held upright, above NITRO; on a phone on its side, in the clear space at the bottom middle (the minimap
+   goes, to make room); on a computer, the bottom-left corner, with its key, Q */
+.power-btn {
+  width: 78px;
+  height: 78px;
+  padding: 0;
+  border-color: var(--orange);
+  overflow: visible;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.pw-ring {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  rotate: -90deg;
+  pointer-events: none;
+}
+.pw-ring circle {
+  fill: none;
+  stroke-width: 6;
+}
+.pw-bg {
+  stroke: rgba(255, 255, 255, 0.14);
+}
+.pw-fg {
+  stroke: var(--orange);
+  stroke-dasharray: 0 100;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.25s linear;
+}
+.pw-name {
+  font: italic 800 13px/1 var(--race);
+  letter-spacing: 0.02em;
+  text-align: center;
+  max-width: 70px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  pointer-events: none;
+}
+.pw-key {
+  display: none;
+  margin-top: 4px;
+  padding: 1px 7px;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  font: 800 12px/1.2 var(--race);
+  pointer-events: none;
+}
+.power-btn:not(.ready) {
+  opacity: 0.7;
+}
+.power-btn.ready {
+  background: rgba(255, 106, 0, 0.35);
+  border-color: #ffd0a8;
+  box-shadow: 0 0 20px rgba(255, 120, 30, 0.8);
+  animation: pwPulse 1.1s ease-in-out infinite;
+}
+@keyframes pwPulse {
+  50% {
+    box-shadow: 0 0 34px rgba(255, 140, 40, 1);
+  }
+}
+.power-btn.used {
+  opacity: 0.3;
+  filter: grayscale(1);
+  animation: none;
+}
+#hud[data-mode='tt'] .power-btn,
+#hud[data-mode='free'] .power-btn,
+#hud[data-mode='school'] .power-btn {
+  display: none !important;
+}
+@media (pointer: fine) {
+  .power-btn {
+    display: flex;
+    left: 24px;
+    bottom: 24px;
+    width: 92px;
+    height: 92px;
+  }
+  .pw-key {
+    display: block;
+  }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #hud .power-btn {
+    display: flex;
+    right: max(20px, var(--sr));
+    bottom: calc(var(--sb) + 238px);
+  }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  #hud .power-btn {
+    display: flex;
+    left: 50%;
+    translate: -50% 0;
+    bottom: calc(var(--sb) + 16px);
+    width: 84px;
+    height: 84px;
+  }
+  #hud #minimap {
+    display: none;
+  }
+}
