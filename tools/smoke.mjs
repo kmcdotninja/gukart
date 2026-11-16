@@ -126,15 +126,29 @@ try {
   await expectVisible(page, '#menu', 'the home screen shows');
   if (!(await visible(page, '#goBtn'))) fail('the World Tour tile should be on the home screen');
   else pass('the home card is on Kano');
-  // a new World Tour shows its route first, and back returns home
+  // World Tour opens on the tours (Tour 2 locked), a tour's route comes up when it's picked, back goes back to the
+  // tours, then home
   await click(page, '#goBtn');
-  await expectVisible(page, '#tourRoute', "a new tour's route opens");
-  if ((await page.locator('#trRoute .tr-stop.city').count()) === 4) pass('the route shows its four cities');
-  else fail('the route should show four cities (Kano, Doha, Kaduna, Singapore)');
+  await expectVisible(page, '#tourRoute', 'the World Tour page opens');
+  if (
+    (await page.locator('#trRoute .tour-card').count()) === 2 &&
+    (await page.locator('#trRoute .tour-card.locked').count()) === 1
+  )
+    pass('it shows the two tours, the second locked');
+  else fail('it should show two tour cards, World Tour 2 locked');
+  await click(page, '[data-pick="tour1"]');
+  await page.waitForTimeout(300);
+  if ((await page.locator('#trRoute .tr-stop.city:not(.tour-card)').count()) === 3)
+    pass("World Tour 1's route shows its three cities");
+  else fail("World Tour 1's route should show three cities (Kano, Doha, Kaduna)");
+  await click(page, '#trBack');
+  await page.waitForTimeout(300);
+  if ((await page.locator('#trRoute .tour-card').count()) === 2) pass('back returns to the tours');
+  else fail('back from a route should return to the tours');
   await click(page, '#trBack');
   await page.waitForTimeout(500);
-  if (!(await visible(page, '#tourRoute'))) pass('back closes the route');
-  else fail('the route stayed open after back');
+  if (!(await visible(page, '#tourRoute'))) pass('back again closes the page');
+  else fail('the World Tour page stayed open after back');
 
   // garage: open it, change vehicle, the name and the wallet follow, back home
   await click(page, '#garageBtn');
