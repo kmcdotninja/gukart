@@ -195,6 +195,184 @@ function tape(x, cx, cy, w, h, rot, col) {
   }
   x.restore();
 }
+// each city its own page: the folder's paper, the tape, the ticket, the pin, the map scrap of its part of the world with
+// it ringed, the boarding pass flying to its airport, the sticker naming it
+const PAGE = {
+  kano: {
+    folder: '#b0683c',
+    tape: 'rgba(70,90,160,0.8)',
+    ticket: ['#e7c27a', '#a8823c', '#4a3410'],
+    pin: '#2f4ea8',
+    code: 'KAN',
+    map: 'ng',
+  },
+  kaduna: {
+    folder: '#8c9a5b',
+    tape: 'rgba(240,200,90,0.8)',
+    ticket: ['#f3e3b0', '#b59a52', '#4a3a12'],
+    pin: '#1c7a3c',
+    code: 'KAD',
+    map: 'ng',
+  },
+  abuja: {
+    folder: '#4f7a5e',
+    tape: 'rgba(245,245,240,0.8)',
+    ticket: ['#cfe8d6', '#6fa181', '#13402a'],
+    pin: '#0d6b3f',
+    code: 'ABV',
+    map: 'ng',
+  },
+  lagos: {
+    folder: '#c08a4e',
+    tape: 'rgba(250,170,60,0.8)',
+    ticket: ['#ffd9a0', '#c9904a', '#5a3410'],
+    pin: '#e0761a',
+    code: 'LOS',
+    map: 'ng',
+  },
+  doha: {
+    folder: '#cdb08a',
+    tape: 'rgba(160,40,80,0.7)',
+    ticket: ['#ecd1d8', '#b07a88', '#5a1530'],
+    pin: '#8a1538',
+    code: 'DOH',
+    map: 'gulf',
+  },
+  abudhabi: {
+    folder: '#d6bc8e',
+    tape: 'rgba(30,150,140,0.7)',
+    ticket: ['#c9ece6', '#6fb2a8', '#0f4a44'],
+    pin: '#0f8f86',
+    code: 'AUH',
+    map: 'gulf',
+  },
+  singapore: {
+    folder: '#9fb3c8',
+    tape: 'rgba(230,80,80,0.75)',
+    ticket: ['#f2c4c4', '#b77c7c', '#5a2430'],
+    pin: '#c3172e',
+    code: 'SIN',
+    map: 'sg',
+  },
+};
+// a colour made lighter (f > 1, towards white) or darker (f < 1)
+const shade = (hex, f) => {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)),
+    m = f > 1 ? c.map(v => v + (255 - v) * (f - 1) * 0.6) : c.map(v => v * f);
+  return `rgb(${m.map(v => Math.round(Math.min(255, v))).join(',')})`;
+};
+// the torn map scrap: the city's part of the world, the other tour cities near it dotted, this one ringed in red
+function mapScrap(x, T) {
+  const sea = '#cfe0dc',
+    land = '#e9d9b6';
+  x.fillStyle = sea;
+  x.fillRect(0, 0, 380, 470);
+  // (only the scrap's left edge shows past the Polaroid: the map slides so this city sits there)
+  const HERE = {
+      kano: [230, 90],
+      kaduna: [180, 190],
+      abuja: [170, 285],
+      lagos: [40, 390],
+      doha: [200, 250],
+      abudhabi: [270, 400],
+      singapore: [180, 330],
+    }[chapter.id] || [40, 240],
+    ox = 34 - HERE[0],
+    oy = 250 - HERE[1];
+  x.save();
+  x.translate(ox, oy);
+  x.fillStyle = land;
+  x.beginPath();
+  let towns;
+  if (T.map === 'ng') {
+    // inland, the coast along the bottom
+    x.moveTo(-400, -400);
+    x.lineTo(800, -400);
+    x.lineTo(800, 380);
+    x.lineTo(380, 380);
+    x.bezierCurveTo(300, 360, 240, 420, 160, 400);
+    x.bezierCurveTo(100, 385, 40, 430, 0, 420);
+    x.lineTo(-400, 440);
+    x.closePath();
+    x.fill();
+    // the rivers meeting
+    x.strokeStyle = '#9cc3c7';
+    x.lineWidth = 4;
+    x.beginPath();
+    x.moveTo(0, 160);
+    x.bezierCurveTo(90, 220, 150, 300, 200, 330);
+    x.lineTo(380, 250);
+    x.moveTo(200, 330);
+    x.bezierCurveTo(210, 360, 230, 380, 240, 395);
+    x.stroke();
+    towns = {
+      kano: ['Kano', 230, 90],
+      kaduna: ['Kaduna', 180, 190],
+      abuja: ['Abuja', 170, 285],
+      lagos: ['Lagos', 40, 390],
+    };
+  } else if (T.map === 'gulf') {
+    // the Qatar peninsula reaching up into the Gulf, the UAE coast along the bottom
+    x.moveTo(60, 900);
+    x.lineTo(60, 470);
+    x.bezierCurveTo(70, 380, 90, 300, 120, 150);
+    x.bezierCurveTo(140, 90, 190, 100, 200, 170);
+    x.bezierCurveTo(215, 260, 200, 330, 230, 380);
+    x.bezierCurveTo(290, 360, 340, 330, 380, 330);
+    x.lineTo(800, 330);
+    x.lineTo(800, 900);
+    x.closePath();
+    x.fill();
+    towns = { doha: ['Doha', 200, 250], abudhabi: ['Abu Dhabi', 270, 400] };
+  } else {
+    // the tip of the peninsula above, the island below across the strait
+    x.moveTo(-400, -400);
+    x.lineTo(800, -400);
+    x.lineTo(800, 150);
+    x.lineTo(380, 150);
+    x.bezierCurveTo(260, 190, 140, 170, 0, 200);
+    x.lineTo(-400, 200);
+    x.closePath();
+    x.fill();
+    x.beginPath();
+    x.ellipse(200, 320, 150, 75, -0.08, 0, Math.PI * 2);
+    x.fill();
+    towns = { singapore: ['Singapore', 180, 330] };
+  }
+  // (the land drawn far enough past each edge that sliding it never shows a gap)
+  x.restore();
+  x.strokeStyle = 'rgba(80,90,90,0.35)';
+  x.lineWidth = 1;
+  for (let g = 0; g < 380; g += 46) (x.beginPath(), x.moveTo(g, 0), x.lineTo(g, 470), x.stroke());
+  for (let g = 0; g < 470; g += 46) (x.beginPath(), x.moveTo(0, g), x.lineTo(380, g), x.stroke());
+  for (const [id, [n, a0, b0]] of Object.entries(towns)) {
+    const a = a0 + ox,
+      b = b0 + oy,
+      here = id === chapter.id;
+    x.fillStyle = '#5a4a3a';
+    x.beginPath();
+    x.arc(a - 10, b - 7, here ? 6 : 4, 0, 7);
+    x.fill();
+    x.font = here ? 'italic 700 30px Georgia, serif' : 'italic 600 22px Georgia, serif';
+    x.fillText(n, a, b);
+    if (here) {
+      // ringed by hand in red pen
+      x.strokeStyle = '#c4122f';
+      x.lineWidth = 4;
+      x.beginPath();
+      x.ellipse(
+        a + x.measureText(n).width / 2 - 8,
+        b - 12,
+        x.measureText(n).width / 2 + 30,
+        30,
+        -0.06,
+        0.2,
+        Math.PI * 2.1,
+      );
+      x.stroke();
+    }
+  }
+}
 // the page, after the reference: kraft folder, a boarding pass behind it, a torn map scrap, the Polaroid, a receipt, a
 // pink ticket under a clip, tape, the stamp, a silver sticker and a push pin. Nothing said twice
 function journal(pol) {
@@ -207,7 +385,8 @@ function journal(pol) {
     F = (w, n) => `italic ${w} ${n}px "Barlow Condensed", "Arial Narrow", sans-serif`,
     MONO = n => `600 ${n}px "Courier New", monospace`,
     circ = (game.circuit?.name || chapter.name).toUpperCase(),
-    P = game.race?.player;
+    P = game.race?.player,
+    T = PAGE[chapter.id] || PAGE.kano;
   const at = (X, Y, r, f) => {
     x.save();
     x.translate(X, Y);
@@ -218,18 +397,22 @@ function journal(pol) {
   // the boarding pass, behind the folder at the top
   at(150, 30, -0.03, () => {
     paper(x, () => (x.beginPath(), x.roundRect(0, 0, 820, 240, 16)), '#f4f1ea', 0.2);
-    x.fillStyle = '#1b2350';
+    x.fillStyle = T.pin;
     x.fillRect(600, 0, 220, 240);
     x.fillStyle = '#fff';
     x.font = F(800, 38);
     x.fillText('GUKART AIR', 625, 66);
     x.fillStyle = '#222';
-    for (let i = 0; i < 40; i++) x.fillRect(40 + i * 11, 22, Math.random() < 0.5 ? 3 : 7, 52);
+    for (let i = 0; i < 30; i++) x.fillRect(40 + i * 11, 22, Math.random() < 0.5 ? 3 : 7, 52);
     x.font = MONO(24);
     x.fillText('BOARDING PASS', 40, 104);
+    // where to: the city's airport
+    x.fillStyle = '#1b2350';
+    x.font = F(900, 64);
+    x.fillText(`→ ${T.code}`, 400, 106);
   });
   // the kraft folder
-  paper(x, () => (x.beginPath(), x.roundRect(60, 150, W - 120, H - 200, 30)), '#c49a66', 0.35);
+  paper(x, () => (x.beginPath(), x.roundRect(60, 150, W - 120, H - 200, 30)), T.folder, 0.35);
   grain(x, 60, 150, W - 120, H - 200, 0.16);
   // a torn map scrap on the left: pale sea, a coast, the tour's cities
   at(40, 640, -0.06, () => {
@@ -237,29 +420,7 @@ function journal(pol) {
     x.save();
     torn(x, 0, 0, 380, 470, '', 0);
     x.clip();
-    x.fillStyle = '#cfe0dc';
-    x.fillRect(0, 0, 380, 470);
-    x.fillStyle = '#e9d9b6';
-    x.beginPath();
-    x.moveTo(0, 60);
-    x.bezierCurveTo(140, 40, 220, 160, 170, 260);
-    x.bezierCurveTo(120, 360, 260, 420, 380, 400);
-    x.lineTo(380, 470);
-    x.lineTo(0, 470);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(80,90,90,0.35)';
-    x.lineWidth = 1;
-    for (let g = 0; g < 380; g += 46) (x.beginPath(), x.moveTo(g, 0), x.lineTo(g, 470), x.stroke());
-    for (let g = 0; g < 470; g += 46) (x.beginPath(), x.moveTo(0, g), x.lineTo(380, g), x.stroke());
-    x.fillStyle = '#5a4a3a';
-    x.font = 'italic 600 22px Georgia, serif';
-    [
-      ['Kano', 60, 140],
-      ['Kaduna', 90, 330],
-      ['Doha', 250, 110],
-      ['Singapore', 210, 440],
-    ].forEach(([n, a, b]) => (x.beginPath(), x.arc(a - 10, b - 7, 4, 0, 7), x.fill(), x.fillText(n, a, b)));
+    mapScrap(x, T);
     x.restore();
   });
   // the Polaroid, tilted
@@ -302,7 +463,7 @@ function journal(pol) {
       own = STAMP_INK[chapter.id] || '#c4122f',
       ink = con(own) >= 3.2 ? own : con('#fcfaf4') >= con('#1b2350') ? '#fcfaf4' : '#1b2350';
     visaStamp(x, SX, SY, ink);
-    tape(x, pw / 2 - 30, 40, 70, 150, 0.12, 'rgba(165,195,180,0.8)');
+    tape(x, pw / 2 - 30, 40, 70, 150, 0.12, T.tape);
   });
   // the receipt at the bottom left, torn top and bottom, clipped
   at(60, 1300, 0.04, () => {
@@ -327,13 +488,13 @@ function journal(pol) {
   paperClip(x, 120, 1268, 140, -0.1);
   // the pink ticket at the top right, under a clip
   at(860, 290, 0.32, () => {
-    paper(x, () => torn(x, 0, 0, 280, 130, 'r', 5), '#f2c4c4');
+    paper(x, () => torn(x, 0, 0, 280, 130, 'r', 5), T.ticket[0]);
     x.setLineDash([6, 6]);
-    x.strokeStyle = '#b77c7c';
+    x.strokeStyle = T.ticket[1];
     x.lineWidth = 2;
     x.strokeRect(10, 10, 250, 110);
     x.setLineDash([]);
-    x.fillStyle = '#5a2430';
+    x.fillStyle = T.ticket[2];
     x.font = MONO(26);
     x.fillText('ADMIT ONE', 26, 52);
     x.font = F(800, 30);
@@ -356,15 +517,15 @@ function journal(pol) {
     for (let i = -80; i < 80; i += 3) (x.beginPath(), x.moveTo(-148, i), x.lineTo(148, i), x.stroke());
     x.fillStyle = '#26292e';
     x.font = F(800, 26);
-    x.fillText('*WORLD TOUR', -126, -38);
+    x.fillText(`*${chapter.name.toUpperCase()}`, -126, -38);
     x.font = F(900, 92);
-    x.fillText('S1', -126, 52);
+    x.fillText(T.code, -126, 52);
     x.fillRect(46, -40, 12, 84);
     x.fillRect(72, -40, 12, 84);
     x.font = F(800, 18);
     x.fillText('PLAY NOW', 30, 64);
   });
-  // a red push pin through the Polaroid's top left corner, seen from the side like a real one: the flange on the
+  // a push pin in the city's colour through the Polaroid's top left corner, seen from the side like a real one: the flange on the
   // paper, the body tapering up to a round head, leaning over, its shadow falling away to the side
   at(250, 300, 0, () => {
     // the shadow, long and soft, cast down and to the right
@@ -381,13 +542,13 @@ function journal(pol) {
     x.rotate(-0.38);
     const red = (y0, y1) => {
       const g = x.createLinearGradient(-26, y0, 26, y1);
-      g.addColorStop(0, '#ff6f6f');
-      g.addColorStop(0.45, '#c3172e');
-      g.addColorStop(1, '#5c0614');
+      g.addColorStop(0, shade(T.pin, 1.7));
+      g.addColorStop(0.45, T.pin);
+      g.addColorStop(1, shade(T.pin, 0.45));
       return g;
     };
     // the flange where it meets the paper
-    x.fillStyle = '#7d0a1d';
+    x.fillStyle = shade(T.pin, 0.6);
     x.beginPath();
     x.ellipse(0, 0, 20, 7, 0, 0, Math.PI * 2);
     x.fill();
