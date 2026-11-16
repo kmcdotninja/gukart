@@ -89,7 +89,7 @@ function frame(now) {
     return;
   }
   game.clock += dt;
-  if (game.state === 'modes') {
+  if (game.state === 'modes' || game.tourRoom) {
     if (game.modesRoom.dirty > 0) {
       game.modesRoom.dirty--;
       renderer.render(game.modesRoom.scene, game.modesRoom.cam);

@@ -49,15 +49,39 @@ export const TOURS = [
     ],
     gate: 55, // (third place on average over the eleven races before the Final)
   },
+  {
+    id: 'tour2',
+    name: 'World Tour 2',
+    // opened by a trophy in World Tour 1: Kano City, then Abuja, the Final at night in the Central Area. Harder from the
+    // start (it picks up where World Tour 1's middle left off). Abu Dhabi and Lagos join it as they're built
+    races: [
+      ['kano', 'metro'],
+      ['abuja', 'jabi'],
+      ['abuja', 'gateway'],
+      ['abuja', 'central'],
+    ],
+    gate: 15, // (third place on average over the three races before the Final)
+    level0: 0.5,
+  },
 ];
-export const TOUR = TOURS[0]; // (the one there is, for now: Abu Dhabi, Singapore and Lagos bring the next)
-
-const KEY = 'tour';
+// the tour on the home tile and the route page: the one you last picked (World Tour 1 until another is open)
+export let TOUR = TOURS[0];
+// a tour opens when you've won a trophy in the one before it
+export const tourOpen = id => {
+  const i = TOURS.findIndex(x => x.id === id);
+  return i <= 0 || trophyOf(TOURS[i - 1].id) > 0;
+};
+export function setTour(id) {
+  TOUR = TOURS.find(x => x.id === id) || TOURS[0];
+  store.set('tourId', TOUR.id);
+}
+// (World Tour 1's saved tour keeps its old key, so a tour in progress carries on)
+const keyOf = id => (id === 'tour1' ? 'tour' : 'tour.' + id);
 export const cupOf = () => {
-  const t = store.get(KEY, null);
+  const t = store.get(keyOf(TOUR.id), null);
   return t && t.id === TOUR.id && t.races?.length === TOUR.races.length ? t : null; // (a tour saved when it was five races is dropped)
 };
-const save = t => store.set(KEY, t);
+const save = t => store.set(keyOf(t.id), t);
 // a racer's name in this tour (drawn when it started; older saved tours fall back to the defaults)
 const nameOf = (id, t = cupOf()) =>
   (id === 'buddy' ? 'Buddy' : t?.names?.[id] || RACERS.find(r => r.id === id)?.name || id).toUpperCase();
@@ -70,7 +94,8 @@ export const isFinal = t => t.i === t.races.length - 1;
 // Final at Marina Bay (as hard as HARD). Every racer is out to win a trophy; it can't be turned down
 export function tourLevel(t = cupOf()) {
   const n = TOUR.races.length,
-    u = t ? Math.min(1, t.i / (n - 1)) : 0;
+    u0 = TOUR.level0 || 0,
+    u = u0 + (1 - u0) * (t ? Math.min(1, t.i / (n - 1)) : 0);
   return { pace: 1.04 + 0.09 * u, lo: 0.95 + 0.05 * u, hi: 1.14 + 0.06 * u }; // (the Final is as hard as HARD)
 }
 
@@ -118,9 +143,32 @@ export function introLines() {
 
 // a new tour's route, before its first race: the five stops across the islands, a plane between cities, the Final in
 // gold with the points it needs. START sets off; back returns home
+const LOCK =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg>';
 const PLANE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-6z"/></svg>';
 export function showRoute() {
+  paintRoute();
+  // the room behind it: Quick Race's underpass, a still picture (main.js draws it while the page is up)
+  game.tourRoom = true;
+  game.modesRoom.resize(innerWidth / innerHeight);
+  game.modesRoom.dirty = 4;
+  show($('#tourRoute'));
+}
+// the route of the tour picked, with a switch between the tours along the top (a locked one shows what opens it)
+function paintRoute() {
+  $('#trTours').innerHTML = TOURS.map(
+    (x, i) =>
+      `<button class="tr-tab${x.id === TOUR.id ? ' on' : ''}${tourOpen(x.id) ? '' : ' locked'}" data-tour="${x.id}" aria-pressed="${x.id === TOUR.id}">${i + 1}${tourOpen(x.id) ? '' : LOCK}</button>`,
+  ).join('');
+  $('#tourRoute .tag span').textContent = TOUR.name.toUpperCase();
+  const open = tourOpen(TOUR.id);
+  $('#tourRoute').classList.toggle('is-locked', !open);
+  $('#tourRoute .tr-sub').innerHTML = open
+    ? '<b>WIN A TROPHY</b>'
+    : `<b>LOCKED</b> · WIN A TROPHY IN ${TOURS[TOURS.findIndex(x => x.id === TOUR.id) - 1].name.toUpperCase()}`;
+  $('#trGo').disabled = !open;
+  $('#trGo span').textContent = !open ? 'LOCKED' : cupOf() ? 'CONTINUE' : 'START';
   // one card per city, in the order the tour visits them: its picture, how many circuits are raced there, and on the
   // last one the Final. (However many cities and circuits a tour has, the page stays this simple.)
   const n = TOUR.races.length,
@@ -140,9 +188,16 @@ export function showRoute() {
     .join('');
   $('#tourRoute .tr-note').innerHTML = `<b>${n} RACES</b> · ${TOUR.gate} PTS OPEN THE FINAL`;
   $('#trRoute').scrollLeft = $('#trRoute').scrollTop = 0;
-  show($('#tourRoute'));
+}
+export function pickTour(id) {
+  if (id === TOUR.id) return;
+  setTour(id);
+  paintRoute();
+  Haptics.buzz?.(10);
 }
 export function hideRoute() {
+  game.tourRoom = false;
+  if (!tourOpen(TOUR.id)) setTour(TOURS[0].id); // (looking at a locked tour doesn't leave it on the home tile)
   hide($('#tourRoute'), null, -1);
 }
 
@@ -271,8 +326,10 @@ function finalStandings(t) {
     me = tb.find(r => r.id === 'buddy'),
     won = me.place <= 3 ? me.place : 0,
     prize = won ? TROPHY_PRIZE[won - 1] : 0;
+  const nextT = TOURS[TOURS.findIndex(x => x.id === TOUR.id) + 1],
+    opens = won && nextT && !tourOpen(nextT.id); // (this trophy opens the next tour)
   if (won && (!trophyOf() || won < trophyOf())) store.set('trophy.' + TOUR.id, won);
-  store.set(KEY, null); // the tour is over: the next one starts fresh
+  store.set(keyOf(TOUR.id), null); // the tour is over: the next one starts fresh
   const from = store.get('wallet', 0);
   earn(prize);
   hide($('#results'), null, -1);
@@ -300,7 +357,7 @@ function finalStandings(t) {
     paintTable(t, true);
     $('#resWallet').textContent = (from + prize).toLocaleString('en');
     $('#prize').innerHTML = won
-      ? `<div class="pz trophy t${won}"><span>WORLD TOUR · ${TROPHY[won - 1]} TROPHY</span><b><i class="coin-icon"></i>+${prize}</b></div>`
+      ? `<div class="pz trophy t${won}"><span>${TOUR.name.toUpperCase()} · ${TROPHY[won - 1]} TROPHY</span><b><i class="coin-icon"></i>+${prize}</b></div>${opens ? `<div class="pz unlocked"><span>${nextT.name.toUpperCase()} UNLOCKED</span></div>` : ''}`
       : '';
     $('#againBtn').textContent = 'NEW TOUR';
     $('#againBtn').hidden = false;
@@ -315,13 +372,19 @@ function finalStandings(t) {
 }
 // END TOUR (from the quit question): the tour is dropped
 export function endTour() {
-  store.set(KEY, null);
+  store.set(keyOf(TOUR.id), null);
   game.cupFinal = false;
 }
 // a fresh tour from race 1 (NEW TOUR after the Final, START OVER when the Final is out of reach)
 export function newCup() {
-  store.set(KEY, null);
+  store.set(keyOf(TOUR.id), null);
   game.cupFinal = false;
   hide($('#results'), null, -1);
   playCup();
+}
+
+// the tour picked last time, if it's open
+{
+  const id = store.get('tourId', 'tour1');
+  if (tourOpen(id)) TOUR = TOURS.find(x => x.id === id) || TOURS[0];
 }

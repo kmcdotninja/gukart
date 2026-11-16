@@ -59,6 +59,7 @@ export const game = {
   FACES: {}, // each racer's head, for the results
   garage: null, // the garage room for the city on the home card (src/garage.js)
   modesRoom: null, // the 3D room behind the race mode cards
+  tourRoom: false, // (and behind the World Tour's route page while it's up)
 
   // ---- the map and the camera moves round it
   mapUI: null, // the map's pins and cards (src/mapscreen.js)

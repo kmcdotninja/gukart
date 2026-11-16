@@ -331,6 +331,9 @@
 .pz.trophy.t3 span {
   color: #e8a066;
 }
+.pz.unlocked span {
+  color: #7dffb0;
+}
 /* END TOUR in the quit question: one of the game's own slanted buttons, inside the card's margins like the others;
    a red edge says it's the one that throws the tour away */
 #quitAsk .end-btn {
@@ -1157,13 +1160,57 @@ body.onfire #hud::before {
 
 /* ---- the World Tour's route (src/cup.js showRoute): light, over the home screen blurred; the stops in a row (a
    column on a phone) joined by a dashed line, a plane between the cities, the Final in gold */
+/* its own room, like Quick Race's: the underpass (modesroom.js) is drawn behind, solid, the city never showing
+   through; here only the same scanlines and dark edge as Quick Race so the cards read */
 #tourRoute {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: linear-gradient(180deg, rgba(5, 9, 24, 0.55), rgba(5, 9, 24, 0.82) 55%, rgba(5, 9, 24, 0.95));
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background:
+    repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 85% at 50% 50%, rgba(6, 10, 28, 0) 45%, rgba(6, 10, 28, 0.75));
+}
+/* the switch between the tours, at the right of the top bar: a big numbered button each, a lock on one not open yet */
+.tr-tabs {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.tr-tab {
+  min-width: 52px;
+  height: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  background: rgba(13, 18, 38, 0.85);
+  color: #cfd6ee;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 24px;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  cursor: pointer;
+}
+.tr-tab.on {
+  background: var(--orange, #ff6a00);
+  color: #fff;
+}
+.tr-tab svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  opacity: 0.8;
+}
+/* a locked tour: its route dimmed, the button off */
+#tourRoute.is-locked .tr-stop {
+  filter: grayscale(0.85) brightness(0.55);
+}
+#tourRoute.is-locked .tr-go {
+  filter: grayscale(1);
+  opacity: 0.6;
 }
 #tourRoute[hidden] {
   display: none;
@@ -1182,6 +1229,7 @@ body.onfire #hud::before {
 .tr-top .tag {
   height: 40px;
   font-size: 26px;
+  white-space: nowrap;
 }
 .tr-sub {
   margin: 16px 0 0;
@@ -1382,7 +1430,13 @@ body.onfire #hud::before {
   }
   .tr-top .tag {
     height: 36px;
-    font-size: 22px;
+    font-size: 20px;
+  }
+  .tr-tab {
+    min-width: 44px;
+    height: 40px;
+    font-size: 21px;
+    padding: 0 8px;
   }
   .tr-sub {
     font-size: 16px;

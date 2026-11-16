@@ -1,6 +1,6 @@
 // The home screen: the World Tour tile, QUICK RACE, GARAGE, MAP, and the sound and night buttons. Also travelTo():
 // going to another city reloads the game; another circuit in the same city swaps in place.
-import { screenOut } from './motion.js';
+import { screenOut, screenIn } from './motion.js';
 import { CHAPTERS } from './chapters.js';
 import { Sound } from './audio.js';
 import { store } from './util.js';
@@ -9,7 +9,19 @@ import { setNight } from './scene.js';
 import { chapter, circuitOf, game } from './game.js';
 import { openModes } from './modes.js';
 import { swapCircuit } from './circuit.js';
-import { cupOf, playCup, trophyOf, TOUR, raceName, isFinal, showRoute, hideRoute } from './cup.js';
+import {
+  cupOf,
+  playCup,
+  trophyOf,
+  TOUR,
+  TOURS,
+  raceName,
+  isFinal,
+  showRoute,
+  hideRoute,
+  pickTour,
+  tourOpen,
+} from './cup.js';
 import { maybeChest } from './chest.js';
 import { paintBadge } from './garage-screen.js';
 
@@ -42,6 +54,8 @@ export function renderChapter() {
     t = cupOf(),
     won = trophyOf(),
     n = TOUR.races.length;
+  // (just WORLD TOUR while there's only the first to race; its number once a second is open)
+  $('#tourName').textContent = TOUR === TOURS[0] && !trophyOf(TOURS[0].id) ? 'WORLD TOUR' : TOUR.name.toUpperCase();
   $('#tourSub').textContent = !t
     ? won
       ? `${['GOLD', 'SILVER', 'BRONZE'][won - 1]} WON`
@@ -84,11 +98,24 @@ export function initHome() {
   // the World Tour: start it, or carry on (in another city, the game goes there first)
   $('#goBtn').addEventListener('click', () => {
     Sound.init();
-    if (!cupOf()) return showRoute(); // a new tour: its route first
+    // a new tour: its route first; and once a second tour is open, always the route page (its switch picks the tour,
+    // its button starts or carries on)
+    if (!cupOf() || TOURS.filter(x => tourOpen(x.id)).length > 1) {
+      $('#menu').hidden = true; // (the route page is a room of its own, like Quick Race's: home isn't under it)
+      return showRoute();
+    }
     screenOut($('#menu'));
     playCup(); // (it goes to the race's city and circuit first, if they aren't the ones built)
   });
-  $('#trBack').addEventListener('click', hideRoute);
+  $('#trBack').addEventListener('click', () => {
+    hideRoute();
+    renderChapter(); // (the tile shows the tour last picked)
+    screenIn($('#menu'));
+  });
+  $('#trTours').addEventListener('click', e => {
+    const b = e.target.closest('[data-tour]');
+    if (b) pickTour(b.dataset.tour);
+  });
   $('#trGo').addEventListener('click', () => {
     hideRoute();
     screenOut($('#menu'));

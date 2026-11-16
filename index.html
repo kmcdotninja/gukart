@@ -63,7 +63,7 @@
       <button class="tour-tile" id="goBtn" aria-label="World Tour">
         <img src="/loader-drift-desk-hero.webp" alt="">
         <span class="tt-body">
-          <span class="tt-name">WORLD TOUR</span>
+          <span class="tt-name" id="tourName">WORLD TOUR</span>
           <span class="tt-sub" id="tourSub">5 RACES</span>
           <ol class="tt-marks" id="tourMarks"></ol>
         </span>
@@ -213,7 +213,7 @@
   <!-- the World Tour's route, shown as a new tour starts: its five races across the islands (src/cup.js showRoute) -->
   <section id="tourRoute" hidden>
     <div class="tr-wrap">
-      <div class="tr-top"><button class="sq-btn" id="trBack" aria-label="Back"><svg class="ic flip" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button><div class="tag"><span>WORLD TOUR 1</span><i></i><i></i></div></div>
+      <div class="tr-top"><button class="sq-btn" id="trBack" aria-label="Back"><svg class="ic flip" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M8.9 4.4a1.6 1.6 0 0 1 2.3 0l6.4 6.4a1.7 1.7 0 0 1 0 2.4l-6.4 6.4a1.6 1.6 0 1 1-2.3-2.3l5.3-5.3-5.3-5.3a1.6 1.6 0 0 1 0-2.3z"/></svg></button><div class="tag"><span>WORLD TOUR 1</span><i></i><i></i></div><div class="tr-tabs" id="trTours" role="group" aria-label="Tours"></div></div>
       <p class="tr-sub"><b>WIN A TROPHY</b></p>
       <div class="tr-route" id="trRoute"></div>
       <div class="tr-foot"><p class="tr-note"><b>20 PTS</b> OPEN THE FINAL</p><button class="go tr-go" id="trGo"><span>START</span></button></div>
