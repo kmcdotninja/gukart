@@ -20,10 +20,11 @@ import {
   showRoute,
   hideRoute,
   pickTour,
-  tourOpen,
+  routeBack,
 } from './cup.js';
 import { maybeChest } from './chest.js';
 import { paintBadge } from './garage-screen.js';
+import { anyFresh } from './fresh.js';
 
 export function travelTo(id, then = '', circ = null) {
   const c = CHAPTERS.find(x => x.id === id),
@@ -53,7 +54,8 @@ export function renderChapter() {
   const c = CHAPTERS[game.chIndex],
     t = cupOf(),
     won = trophyOf(),
-    n = TOUR.races.length;
+    races = t?.races || TOUR.races, // (a tour begun before its route changed keeps its own)
+    n = races.length;
   // (just WORLD TOUR while there's only the first to race; its number once a second is open)
   $('#tourName').textContent = TOUR === TOURS[0] && !trophyOf(TOURS[0].id) ? 'WORLD TOUR' : TOUR.name.toUpperCase();
   $('#tourSub').textContent = !t
@@ -64,7 +66,7 @@ export function renderChapter() {
       ? 'THE FINAL'
       : `RACE ${t.i + 1} OF ${n}`;
   // a mark per race: done (orange), next (white), the Final (a gold flag)
-  $('#tourMarks').innerHTML = TOUR.races
+  $('#tourMarks').innerHTML = races
     .map(
       (r, i) =>
         `<li class="${t && i < t.i ? 'done' : ''} ${(t ? t.i : 0) === i ? 'next' : ''} ${i === n - 1 ? 'fin' : ''}"></li>`,
@@ -85,6 +87,7 @@ export function renderChapter() {
     sub.hidden = c.playable;
   }
   $('#wallet').textContent = store.get('wallet', 0).toLocaleString('en');
+  $('#mapNew').hidden = !anyFresh(); // (a new circuit somewhere to race)
   maybeChest(); // a chest earned since you were last here drops in
 }
 const soundBtn = $('#soundBtn');
@@ -98,23 +101,19 @@ export function initHome() {
   // the World Tour: start it, or carry on (in another city, the game goes there first)
   $('#goBtn').addEventListener('click', () => {
     Sound.init();
-    // a new tour: its route first; and once a second tour is open, always the route page (its switch picks the tour,
-    // its button starts or carries on)
-    if (!cupOf() || TOURS.filter(x => tourOpen(x.id)).length > 1) {
-      $('#menu').hidden = true; // (the route page is a room of its own, like Quick Race's: home isn't under it)
-      return showRoute();
-    }
-    screenOut($('#menu'));
-    playCup(); // (it goes to the race's city and circuit first, if they aren't the ones built)
+    // the tours first (one card each, a lock on one not open yet); a tour's route, then its START or CONTINUE
+    $('#menu').hidden = true; // (the page is a room of its own, like Quick Race's: home isn't under it)
+    showRoute();
   });
   $('#trBack').addEventListener('click', () => {
+    if (routeBack()) return; // (a tour's route goes back to the tours)
     hideRoute();
     renderChapter(); // (the tile shows the tour last picked)
     screenIn($('#menu'));
   });
-  $('#trTours').addEventListener('click', e => {
-    const b = e.target.closest('[data-tour]');
-    if (b) pickTour(b.dataset.tour);
+  $('#trRoute').addEventListener('click', e => {
+    const b = e.target.closest('[data-pick]');
+    if (b) pickTour(b.dataset.pick);
   });
   $('#trGo').addEventListener('click', () => {
     hideRoute();

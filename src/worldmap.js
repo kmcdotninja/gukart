@@ -10,6 +10,7 @@ import { travelTo } from './home.js';
 import { openGarage } from './garage-screen.js';
 import { raceIntro, startRace } from './race-flow.js';
 import { game, chapter } from './game.js';
+import { isFresh } from './fresh.js';
 
 // opening the map: the camera flies straight up out of the race until it's looking down on the whole island, and the map
 // fades in over exactly that view; closing dives back down to the racing
@@ -42,6 +43,7 @@ export function openMap() {
         ch: c.n,
         open: c.id === chapter.id && (!x.id || x.id === game.circuit?.id),
         built: true,
+        fresh: isFresh(c.id, x.id),
       })),
     ),
     onIsland: is => {

@@ -11,6 +11,7 @@ import { chapter, circuitOf, game } from './game.js';
 import { setNight } from './scene.js';
 import { raceIntro, startRace } from './race-flow.js';
 import { travelTo } from './home.js';
+import { isFresh, cityFresh } from './fresh.js';
 import './quick.css';
 
 let modesFrom = 'garage';
@@ -95,12 +96,28 @@ function render(name) {
     ).join('');
   if (name === 'city')
     $('#qCity').innerHTML = cities()
-      .map(c => card(on(c.id === pick.city), `data-city="${c.id}"`, placePic(c.id), c.name.toUpperCase(), c.tagline))
+      .map(c =>
+        card(
+          `${on(c.id === pick.city)} ${cityFresh(c.id) ? 'is-new' : ''}`,
+          `data-city="${c.id}"`,
+          placePic(c.id),
+          c.name.toUpperCase(),
+          c.tagline,
+        ),
+      )
       .join('');
   if (name === 'circ') {
     const c = CHAPTERS.find(x => x.id === pick.city);
     $('#qCirc').innerHTML = (c.circuits || [])
-      .map(x => card(on(x.id === pick.circ), `data-circ="${x.id}"`, placePic(c.id, x.id), x.name.toUpperCase(), c.name))
+      .map(x =>
+        card(
+          `${on(x.id === pick.circ)} ${isFresh(c.id, x.id) ? 'is-new' : ''}`,
+          `data-circ="${x.id}"`,
+          placePic(c.id, x.id),
+          x.name.toUpperCase(),
+          c.name,
+        ),
+      )
       .join('');
   }
   if (name === 'time')

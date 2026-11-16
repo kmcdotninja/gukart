@@ -376,6 +376,7 @@ export const CHAPTERS = [
     tagline: 'The Capital',
     reward: 1400,
     playable: true,
+    fresh: true, // (its circuits carry a NEW label until each is raced: src/fresh.js)
     desc: 'Down Independence Avenue past Eagle Square and the National Assembly, round the business district interchange among the towers, along Jabi Lake, under the City Gate and round the cloverleaf with Zuma Rock ahead.',
     circuits: ABUJA_CIRCUITS,
   },

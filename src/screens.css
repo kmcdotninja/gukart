@@ -1170,47 +1170,44 @@ body.onfire #hud::before {
     repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
     radial-gradient(120% 85% at 50% 50%, rgba(6, 10, 28, 0) 45%, rgba(6, 10, 28, 0.75));
 }
-/* the switch between the tours, at the right of the top bar: a big numbered button each, a lock on one not open yet */
-.tr-tabs {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
+/* the tours, before a route: one big card each (a button), a big lock over one not open yet; the route's dashed line,
+   note and START wait for a tour to be picked */
+#tourRoute.picking .tr-route::before,
+#tourRoute.picking .tr-foot {
+  visibility: hidden;
 }
-.tr-tab {
-  min-width: 52px;
-  height: 44px;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+.tour-card {
   border: 0;
-  background: rgba(13, 18, 38, 0.85);
-  color: #cfd6ee;
-  font-family: var(--race);
-  font-style: italic;
-  font-weight: 900;
-  font-size: 24px;
-  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.tr-tab.on {
-  background: var(--orange, #ff6a00);
-  color: #fff;
+.tour-card.locked {
+  cursor: default;
 }
-.tr-tab svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-  opacity: 0.8;
+.tour-card.locked img {
+  filter: grayscale(0.9) brightness(0.45);
 }
-/* a locked tour: its route dimmed, the button off */
-#tourRoute.is-locked .tr-stop {
-  filter: grayscale(0.85) brightness(0.55);
+.tc-lock {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(5, 9, 24, 0.75);
+  border: 3px solid rgba(255, 255, 255, 0.85);
 }
-#tourRoute.is-locked .tr-go {
-  filter: grayscale(1);
-  opacity: 0.6;
+.tc-lock svg {
+  width: 52px;
+  height: 52px;
+  fill: #fff;
 }
 #tourRoute[hidden] {
   display: none;
@@ -1253,12 +1250,7 @@ body.onfire #hud::before {
   margin: 10px 0;
 }
 .tr-route::before {
-  content: '';
-  position: absolute;
-  left: 4%;
-  right: 4%;
-  top: 50%;
-  border-top: 3px dashed rgba(255, 106, 0, 0.75);
+  content: none; /* (the dashed line runs only between the cards: each plane carries it across its gap) */
 }
 .tr-stop {
   --cut: 14px;
@@ -1347,6 +1339,21 @@ body.onfire #hud::before {
   border: 2px solid var(--line);
   border-radius: 50%;
 }
+.tr-fly::before,
+.tr-fly::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  border-top: 3px dashed rgba(255, 255, 255, 0.9);
+  transform: translateY(-50%);
+}
+.tr-fly::before {
+  right: 100%;
+}
+.tr-fly::after {
+  left: 100%;
+}
 .tr-fly svg {
   width: 17px;
   fill: var(--line);
@@ -1356,9 +1363,11 @@ body.onfire #hud::before {
   overflow-x: auto;
   scrollbar-width: none;
   touch-action: pan-x;
+  justify-content: safe center; /* (the cards together in the middle) */
 }
+/* every card one set size, however wide the screen: never stretched to fill it */
 .tr-stop.city {
-  flex: 1 0 220px;
+  flex: 0 0 300px;
   height: min(360px, 50vh);
 }
 .tr-stop.city .tr-t small {
@@ -1366,7 +1375,7 @@ body.onfire #hud::before {
 }
 /* (the last city's card is the same size as the others: its gold frame and THE FINAL tag mark it) */
 .tr-stop.city.fin {
-  flex: 1 0 220px;
+  flex: 0 0 300px;
   height: min(360px, 50vh);
 }
 .tr-stop.fin {
@@ -1432,11 +1441,14 @@ body.onfire #hud::before {
     height: 36px;
     font-size: 20px;
   }
-  .tr-tab {
-    min-width: 44px;
-    height: 40px;
-    font-size: 21px;
-    padding: 0 8px;
+  .tc-lock {
+    width: 76px;
+    height: 76px;
+    top: 50%;
+  }
+  .tc-lock svg {
+    width: 38px;
+    height: 38px;
   }
   .tr-sub {
     font-size: 16px;
@@ -1449,12 +1461,7 @@ body.onfire #hud::before {
     margin: 12px 0;
   }
   .tr-route::before {
-    left: 30px;
-    right: auto;
-    top: 4%;
-    bottom: 4%;
-    border-top: 0;
-    border-left: 3px dashed rgba(255, 106, 0, 0.75);
+    content: none;
   }
   .tr-stop,
   .tr-stop.fin {
@@ -1494,11 +1501,11 @@ body.onfire #hud::before {
   }
   .tr-stop.city,
   .tr-stop.city.fin {
-    flex: 1 0 96px;
+    flex: 0 0 min(180px, 24vh);
     height: auto;
   }
   .tr-fly {
-    display: none;
+    display: none; /* (stacked, the cards sit close: no line between them) */
   }
   .tr-foot {
     flex-direction: column;
@@ -2213,4 +2220,49 @@ body.onfire #hud::before {
   clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   pointer-events: none;
+}
+
+/* NEW: a circuit not raced yet (src/fresh.js), a bright tag in the corner of its chip, card or the MAP tile */
+.new-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #ffc400;
+  color: #1b1300;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  vertical-align: middle;
+}
+.new-tag[hidden] {
+  display: none;
+}
+.tile-new {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  margin: 0;
+  font-size: 18px;
+  padding: 3px 10px;
+}
+#modes .q-card.is-new::before {
+  content: 'NEW';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  padding: 3px 10px;
+  background: #ffc400;
+  color: #1b1300;
+  font-family: var(--race);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }

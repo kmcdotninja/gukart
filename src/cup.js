@@ -1,7 +1,8 @@
-// The World Tour: the game's championship, raced city by city over every circuit (Kano's two, Doha's three, Kaduna's
-// three, then Singapore's, ending with the Final at Marina Bay, at night). Each race pays 10, 7, 5, 3, 2, 1 points; 55
-// points from the first eleven unlock the Final (about third place on average). After the Final the top three overall go up on
-// the podium, and if you're one of them you take home its trophy (gold, silver, bronze) and the prize.
+// The World Tours: the game's championships, raced city by city. World Tour 1: Kano's two circuits, Doha's three,
+// Kaduna's three, the Final at night in Kaduna's City Centre. World Tour 2 (opened by a trophy in the first): Kano City,
+// Abuja's three, Singapore's four, the Final at night at Marina Bay. Each race pays 10, 7, 5, 3, 2, 1 points; 35 points
+// from the seven before the Final unlock it (about third place on average). After the Final the top three overall go up
+// on the podium, and if you're one of them you take home that tour's trophy (gold, silver, bronze) and the prize.
 // Forgiving: a bad race never knocks you out; quitting halfway means that race is run again when you come back (the
 // home screen's CONTINUE); after any finish you can retry the race, twice per tour. Short of 20 points after race 4,
 // a retry is the way to the Final, or START OVER. The tour is saved after every race.
@@ -31,8 +32,7 @@ export const TOURS = [
   {
     id: 'tour1',
     name: 'World Tour 1',
-    // every circuit, a city at a time (one flight between each): Kano, Doha, Kaduna, then Singapore and the Final at
-    // Marina Bay
+    // a city at a time (one flight between each): Kano, Doha, then Kaduna and the Final at night in its City Centre
     races: [
       ['kano', 'old'],
       ['kano', 'dala'],
@@ -40,27 +40,27 @@ export const TOURS = [
       ['doha', 'pearl'],
       ['doha', 'lusail'],
       ['kaduna', 'abu'],
-      ['kaduna', 'city'],
       ['kaduna', 'zazzau'],
-      ['singapore', 'gardens'],
-      ['singapore', 'river'],
-      ['singapore', 'changi'],
-      ['singapore', 'marina'],
+      ['kaduna', 'city'],
     ],
-    gate: 55, // (third place on average over the eleven races before the Final)
+    gate: 35, // (third place on average over the seven races before the Final)
   },
   {
     id: 'tour2',
     name: 'World Tour 2',
-    // opened by a trophy in World Tour 1: Kano City, then Abuja, the Final at night in the Central Area. Harder from the
-    // start (it picks up where World Tour 1's middle left off). Abu Dhabi and Lagos join it as they're built
+    // opened by a trophy in World Tour 1: Kano City, Abuja, then Singapore and the Final at night at Marina Bay. Harder
+    // from the start (it picks up where World Tour 1's middle left off). Abu Dhabi and Lagos join it as they're built
     races: [
       ['kano', 'metro'],
       ['abuja', 'jabi'],
       ['abuja', 'gateway'],
       ['abuja', 'central'],
+      ['singapore', 'gardens'],
+      ['singapore', 'river'],
+      ['singapore', 'changi'],
+      ['singapore', 'marina'],
     ],
-    gate: 15, // (third place on average over the three races before the Final)
+    gate: 35, // (third place on average over the seven races before the Final)
     level0: 0.5,
   },
 ];
@@ -79,8 +79,14 @@ export function setTour(id) {
 const keyOf = id => (id === 'tour1' ? 'tour' : 'tour.' + id);
 export const cupOf = () => {
   const t = store.get(keyOf(TOUR.id), null);
-  return t && t.id === TOUR.id && t.races?.length === TOUR.races.length ? t : null; // (a tour saved when it was five races is dropped)
+  // a tour saved as it is now; or a World Tour 1 begun when it was twelve races (Singapore and all), which carries on
+  // to its own Final (it raced from the races it saved). One saved when it was five races is dropped
+  const ok =
+    t?.id === TOUR.id && (t.races?.length === TOUR.races.length || (t.id === 'tour1' && t.races?.length === 12));
+  return ok ? t : null;
 };
+// the points that open a tour's Final: as it was when that tour began
+const gateOf = t => t?.gate ?? (t?.races?.length === 12 ? 55 : TOUR.gate);
 const save = t => store.set(keyOf(t.id), t);
 // a racer's name in this tour (drawn when it started; older saved tours fall back to the defaults)
 const nameOf = (id, t = cupOf()) =>
@@ -93,7 +99,7 @@ export const isFinal = t => t.i === t.races.length - 1;
 // the World Tour is hard, and it gets harder as it goes: from Kano's first race (already past QUICK RACE's NORMAL) to the
 // Final at Marina Bay (as hard as HARD). Every racer is out to win a trophy; it can't be turned down
 export function tourLevel(t = cupOf()) {
-  const n = TOUR.races.length,
+  const n = (t?.races || TOUR.races).length,
     u0 = TOUR.level0 || 0,
     u = u0 + (1 - u0) * (t ? Math.min(1, t.i / (n - 1)) : 0);
   return { pace: 1.04 + 0.09 * u, lo: 0.95 + 0.05 * u, hi: 1.14 + 0.06 * u }; // (the Final is as hard as HARD)
@@ -123,7 +129,7 @@ export const toGatePts = t => {
   t.res.slice(0, t.races.length - 1).forEach(order => (p += POINTS[order.indexOf('buddy')] ?? 0));
   return p;
 };
-export const qualified = t => toGatePts(t) >= TOUR.gate;
+export const qualified = t => toGatePts(t) >= gateOf(t);
 
 // the race card's three lines
 export function introLines() {
@@ -133,10 +139,10 @@ export function introLines() {
   return [
     isFinal(t) ? 'THE FINAL' : `RACE ${t.i + 1} OF ${n}`,
     t.i === 0
-      ? `${TOUR.gate} PTS OPEN THE FINAL`
+      ? `${gateOf(t)} PTS OPEN THE FINAL`
       : isFinal(t)
         ? `YOU'RE ${me.place}${ordinal(me.place).toUpperCase()}`
-        : `${toGatePts(t)} / ${TOUR.gate} PTS TO THE FINAL`,
+        : `${toGatePts(t)} / ${gateOf(t)} PTS TO THE FINAL`,
     isFinal(t) ? 'TOP 3 WIN A TROPHY' : `${POINTS[0]} PTS FOR A WIN`,
   ];
 }
@@ -147,33 +153,77 @@ const LOCK =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg>';
 const PLANE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-6z"/></svg>';
+// The World Tour page opens on the tours: one big card each (its picture, its races, your trophy or how far you are),
+// a big lock over one not open yet. Tap an open one and its route comes up; back goes back to the tours
+let routeOn = false; // (the route of one tour is up, not the tours)
 export function showRoute() {
-  paintRoute();
+  paintTours();
   // the room behind it: Quick Race's underpass, a still picture (main.js draws it while the page is up)
   game.tourRoom = true;
   game.modesRoom.resize(innerWidth / innerHeight);
   game.modesRoom.dirty = 4;
   show($('#tourRoute'));
 }
-// the route of the tour picked, with a switch between the tours along the top (a locked one shows what opens it)
+const TOUR_PIC = { tour1: '/places/kaduna-city-night.jpg', tour2: '/places/abuja.jpg' };
+function paintTours() {
+  routeOn = false;
+  const m = $('#tourRoute');
+  m.classList.add('picking');
+  $('#tourRoute .tag span').textContent = 'WORLD TOUR';
+  $('#tourRoute .tr-sub').innerHTML = '<b>PICK A TOUR</b>';
+  $('#trRoute').innerHTML = TOURS.map((x, i) => {
+    const open = tourOpen(x.id),
+      saved = store.get(keyOf(x.id), null),
+      won = trophyOf(x.id),
+      note = !open
+        ? `WIN A TROPHY IN TOUR ${i}`
+        : saved?.id === x.id && saved.races
+          ? `RACE ${saved.i + 1} OF ${saved.races.length}`
+          : won
+            ? `${x.races.length} RACES · ${TROPHY[won - 1]} WON`
+            : `${x.races.length} RACES`;
+    return `<button class="tr-stop city tour-card${open ? '' : ' locked'}" data-pick="${x.id}" ${open ? '' : 'aria-disabled="true"'} aria-label="${x.name}${open ? '' : ', locked'}"><img src="${TOUR_PIC[x.id] || '/places/kano.jpg'}" alt=""><b class="tr-n"><span>${i + 1}</span></b>${open ? '' : `<i class="tc-lock">${LOCK}</i>`}<p class="tr-t"><small>${note}</small><span>${x.name.toUpperCase()}</span></p></button>`;
+  }).join('');
+  $('#trRoute').scrollLeft = $('#trRoute').scrollTop = 0;
+}
+// tap a tour: an open one shows its route; a locked one shakes no
+export function pickTour(id) {
+  if (!tourOpen(id)) {
+    Haptics.buzz?.(40);
+    $(`[data-pick="${id}"]`)?.animate(
+      [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-8px)' },
+        { transform: 'translateX(8px)' },
+        { transform: 'translateX(0)' },
+      ],
+      { duration: 260 },
+    );
+    return;
+  }
+  setTour(id);
+  paintRoute();
+  Haptics.buzz?.(10);
+}
+// back: from a tour's route to the tours (true), or from the tours home (false)
+export function routeBack() {
+  if (!routeOn) return false;
+  paintTours();
+  return true;
+}
+// the route of the tour picked
 function paintRoute() {
-  $('#trTours').innerHTML = TOURS.map(
-    (x, i) =>
-      `<button class="tr-tab${x.id === TOUR.id ? ' on' : ''}${tourOpen(x.id) ? '' : ' locked'}" data-tour="${x.id}" aria-pressed="${x.id === TOUR.id}">${i + 1}${tourOpen(x.id) ? '' : LOCK}</button>`,
-  ).join('');
+  routeOn = true;
+  $('#tourRoute').classList.remove('picking');
   $('#tourRoute .tag span').textContent = TOUR.name.toUpperCase();
-  const open = tourOpen(TOUR.id);
-  $('#tourRoute').classList.toggle('is-locked', !open);
-  $('#tourRoute .tr-sub').innerHTML = open
-    ? '<b>WIN A TROPHY</b>'
-    : `<b>LOCKED</b> · WIN A TROPHY IN ${TOURS[TOURS.findIndex(x => x.id === TOUR.id) - 1].name.toUpperCase()}`;
-  $('#trGo').disabled = !open;
-  $('#trGo span').textContent = !open ? 'LOCKED' : cupOf() ? 'CONTINUE' : 'START';
+  $('#tourRoute .tr-sub').innerHTML = '<b>WIN A TROPHY</b>';
+  $('#trGo span').textContent = cupOf() ? 'CONTINUE' : 'START';
   // one card per city, in the order the tour visits them: its picture, how many circuits are raced there, and on the
   // last one the Final. (However many cities and circuits a tour has, the page stays this simple.)
-  const n = TOUR.races.length,
+  const R = cupOf()?.races || TOUR.races, // (a tour begun before its route changed shows its own)
+    n = R.length,
     legs = [];
-  TOUR.races.forEach(([city, circ], i) => {
+  R.forEach(([city, circ], i) => {
     if (legs.at(-1)?.city !== city) legs.push({ city, stops: [] });
     legs.at(-1).stops.push([circ, i]);
   });
@@ -186,14 +236,8 @@ function paintRoute() {
       return `${li ? `<i class="tr-fly">${PLANE}</i>` : ''}<div class="tr-stop city${last ? ' fin' : ''}"><img src="/places/${leg.city}${last ? '-night' : ''}.jpg" alt=""><b class="tr-n"><span>${li + 1}</span></b>${last ? `<em class="tr-pts">THE FINAL</em>` : ''}<p class="tr-t"><small>${k} ${k === 1 ? 'CIRCUIT' : 'CIRCUITS'}${last ? ` · FINAL AT ${finName}` : ''}</small><span>${c.name.toUpperCase()}</span></p></div>`;
     })
     .join('');
-  $('#tourRoute .tr-note').innerHTML = `<b>${n} RACES</b> · ${TOUR.gate} PTS OPEN THE FINAL`;
+  $('#tourRoute .tr-note').innerHTML = `<b>${n} RACES</b> · ${gateOf(cupOf())} PTS OPEN THE FINAL`;
   $('#trRoute').scrollLeft = $('#trRoute').scrollTop = 0;
-}
-export function pickTour(id) {
-  if (id === TOUR.id) return;
-  setTour(id);
-  paintRoute();
-  Haptics.buzz?.(10);
 }
 export function hideRoute() {
   game.tourRoom = false;
@@ -206,7 +250,7 @@ export function hideRoute() {
 export function playCup() {
   let t = cupOf();
   if (!t) {
-    t = { id: TOUR.id, races: TOUR.races, i: 0, res: [], retries: RETRIES, names: rivalNames() };
+    t = { id: TOUR.id, races: TOUR.races, gate: TOUR.gate, i: 0, res: [], retries: RETRIES, names: rivalNames() };
     save(t);
   }
   game.mode = 'cup';
@@ -248,7 +292,7 @@ export function afterCupRace() {
         : 'NOT IN THE FINAL'
       : ok
         ? 'FINAL UNLOCKED'
-        : `${toGatePts(t)} / ${TOUR.gate} TO THE FINAL`;
+        : `${toGatePts(t)} / ${gateOf(t)} TO THE FINAL`;
   // the button says what's next in big words; where it is goes small underneath (one line each, never wrapped)
   const where = raceName(t.races[t.i < n ? t.i : n - 1]).toUpperCase();
   // the tour's last race: no FINAL STANDINGS button to find (nobody pressed it). The card shows this race's result for

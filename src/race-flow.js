@@ -18,6 +18,7 @@ import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tou
 import { rivalNames } from './buddy.js';
 import { releaseInput } from './input.js';
 import { endSchool, schoolReset } from './school.js';
+import { markRaced } from './fresh.js';
 
 export const INTRO = 2.4; // seconds: the drone sweep down the grid before the countdown
 // The circuit's introduction (F1 TV): the camera orbits over the whole circuit with its name and what the race is for,
@@ -176,6 +177,7 @@ const iOS =
 // a cup race is run as a Race (6 racers, 3 laps); the cup is kept round it (src/cup.js)
 const raceMode = () => (game.mode === 'cup' ? 'gp' : game.mode);
 export function startRace() {
+  markRaced(chapter.id, game.circuit?.id); // (a NEW circuit isn't new once it's raced)
   hidePodium();
   releaseInput();
   Sound.init();
