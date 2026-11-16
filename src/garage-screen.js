@@ -256,10 +256,13 @@ function pickVehicle(id) {
   card.classList.add('enter');
 }
 // each city's garage keeps its own lights (Kano's room starts dark, Doha's workshop in daylight)
-// each city has its own garage room (Kano's navy room, Doha's workshop); the garage you open is the one for the chapter
+// each city has its garage room (Doha's and Kano's workshop, Singapore's and Abuja's studio, Kaduna's navy room); the garage you open is the one for the chapter
 // on the home card, built on the spot if it isn't the one built (the garage is its own scene: no reload)
 const garageCity = () => (CHAPTERS[game.chIndex]?.playable ? CHAPTERS[game.chIndex].id : chapter.id);
-const roomOf = id => (id === 'doha' ? 'workshop' : id === 'singapore' ? 'studio' : 'navy');
+// (three rooms: the workshop in daylight for Doha and Kano, the white studio for Singapore and Abuja, the navy room for
+// Kaduna and the rest)
+const ROOM = { doha: 'workshop', kano: 'workshop', singapore: 'studio', abuja: 'studio' };
+const roomOf = id => ROOM[id] || 'navy';
 const LIGHTS_KEY = (id = game.garage?.city || chapter.id) => (id === 'kano' ? 'garageLights' : 'garageLights.' + id);
 export function makeGarage(id) {
   if (game.garage) {
@@ -269,7 +272,7 @@ export function makeGarage(id) {
       for (const m of [].concat(o.material || [])) m.dispose?.();
     });
   }
-  game.garage = new Garage(game.TEX, { room: roomOf(id) });
+  game.garage = new Garage(game.TEX, { room: roomOf(id), city: id });
   game.garage.city = id;
   game.garage.setLights(store.get(LIGHTS_KEY(id), id === 'doha'));
   $('#gLights').classList.toggle('on', game.garage.lightsOn);
@@ -278,7 +281,9 @@ export function makeGarage(id) {
 }
 export function openGarage() {
   const id = garageCity();
-  if (!game.garage || roomOf(game.garage.city) !== roomOf(id)) makeGarage(id);
+  // (a room is rebuilt for another city when it's another room, or the studio, whose neon is each city's own)
+  if (!game.garage || roomOf(game.garage.city) !== roomOf(id) || (roomOf(id) === 'studio' && game.garage.city !== id))
+    makeGarage(id);
   else game.garage.city = id;
   game.state = 'garage';
   renderGarage();

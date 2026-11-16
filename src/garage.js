@@ -43,7 +43,7 @@ function hazardTex(w = 256, h = 64) {
 }
 
 export class Garage {
-  constructor(tex, { room = 'navy' } = {}) {
+  constructor(tex, { room = 'navy', city = '' } = {}) {
     this.tex = tex;
     this.room = room;
     const navy = room === 'navy',
@@ -585,7 +585,8 @@ export class Garage {
         eg.position.set(-RW + 0.8, 4.6, 7);
         S.add(eg);
       }
-      // Marina Bay in neon on the backdrop: the three towers and the deck across them, the wheel, the lotus museum
+      // the city in neon on the backdrop: Singapore's Marina Bay (the three towers and the deck across them, the wheel,
+      // the lotus museum); Abuja's Aso Rock, the National Mosque's dome and minarets, the Millennium Tower
       const skyT = canvasTex(1024, 384, (x, w, h) => {
         x.lineCap = x.lineJoin = 'round';
         const glow = (col, draw) => {
@@ -603,6 +604,46 @@ export class Garage {
           }
           x.globalAlpha = 1;
         };
+        if (city === 'abuja') {
+          glow('#22e6ff', () => {
+            x.moveTo(30, h - 30); // Aso Rock, its great rounded back
+            x.bezierCurveTo(90, 70, 330, 40, 440, h - 30);
+            x.moveTo(150, 170); // (a streak down its face)
+            x.quadraticCurveTo(190, 240, 180, h - 40);
+          });
+          glow('#ffc93f', () => {
+            x.moveTo(500, h - 30); // the National Mosque: its hall, the gold dome, a minaret at each corner
+            x.lineTo(500, h - 120);
+            x.lineTo(660, h - 120);
+            x.lineTo(660, h - 30);
+            x.moveTo(520, h - 120);
+            x.arc(580, h - 120, 60, Math.PI, 0);
+            x.moveTo(580, h - 180);
+            x.lineTo(580, h - 200);
+            for (const mx of [470, 690]) {
+              x.moveTo(mx, h - 30);
+              x.lineTo(mx, 80);
+              x.lineTo(mx - 8, 96);
+              x.moveTo(mx, 80);
+              x.lineTo(mx + 8, 96);
+            }
+          });
+          glow('#ff3fd0', () => {
+            x.moveTo(860, h - 30); // the Millennium Tower: the needle, the disc of its restaurant near the top
+            x.lineTo(860, 40);
+            x.moveTo(800, 120);
+            x.quadraticCurveTo(860, 96, 920, 120);
+            x.quadraticCurveTo(860, 144, 800, 120);
+            x.moveTo(830, h - 30);
+            x.lineTo(860, 200);
+            x.lineTo(890, h - 30);
+          });
+          glow('#22e6ff', () => {
+            x.moveTo(20, h - 30);
+            x.lineTo(w - 20, h - 30);
+          });
+          return;
+        }
         glow('#22e6ff', () => {
           for (const tx of [380, 500, 620]) {
             x.moveTo(tx - 34, h - 30);
