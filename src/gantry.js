@@ -56,6 +56,25 @@ export const GANTRIES = {
     frame: '#d8dde3',
   },
   'kaduna.zazzau': { style: 'frame', frame: '#b0714a', banner: '#1a1410', ink: '#e8c46a', text: 'ZAZZAU GRAND PRIX' },
+  // Abuja: the flag's green and white, the capital's gold, the airport road's blue
+  'abuja.central': {
+    style: 'banner',
+    panels: [
+      ['EAGLE SQUARE', '#008751', '#ffffff'],
+      ['ABUJA GRAND PRIX', '#ffffff', '#008751'],
+      ['GUKART', '#008751', '#ffffff'],
+    ],
+    frame: '#e6e8ec',
+  },
+  'abuja.jabi': { style: 'board', board: '#0f6f86', ink: '#ffffff', text: 'JABI LAKE GRAND PRIX', frame: '#e9e3d6' },
+  'abuja.gateway': {
+    style: 'arch',
+    frame: '#f4f4f0',
+    banner: '#0d4f2f',
+    ink: '#f2cf63',
+    text: 'CITY GATE GRAND PRIX',
+    num: '1976',
+  },
   'singapore.marina': {
     style: 'frame',
     frame: '#e2231a',

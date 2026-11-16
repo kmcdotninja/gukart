@@ -541,7 +541,7 @@ export function buildRoad(scene, tr, tex) {
       : tr.city === 'singapore'
         ? new THREE.MeshLambertMaterial({ map: SG.paverTex(), side: THREE.DoubleSide }) // (Singapore: slabs and a verge)
         : new THREE.MeshLambertMaterial({
-            color: tr.city === 'kaduna' ? '#cf9f78' : '#d9c7a2', // (Kaduna's verges are red laterite)
+            color: tr.city === 'abuja' ? '#8fae5c' : tr.city === 'kaduna' ? '#cf9f78' : '#d9c7a2', // (Kaduna's verges are red laterite; Abuja's are kept green)
             map: tex.dirt,
             side: THREE.DoubleSide,
           });

@@ -12,6 +12,7 @@ const SANS = (n, w = 800) => `${w} ${n}px "Barlow Condensed", "Arial Narrow", sa
 export const STAMP_INK = {
   kano: '#c4122f',
   kaduna: '#11823b',
+  abuja: '#0d6b3f',
   doha: '#8a1538',
   singapore: '#1f3fb0',
   abudhabi: '#0f8f86',
@@ -128,6 +129,21 @@ const LAND = {
       x.closePath();
       for (const w of [-42, 34]) x.rect(w, -28, 8, 12);
     }),
+  // the City Gate: a great arch on two legs, the road under it, a band across its crown
+  citygate: x => {
+    fill(x, () => {
+      x.moveTo(-66, 0);
+      x.lineTo(-58, -64);
+      x.quadraticCurveTo(0, -96, 58, -64);
+      x.lineTo(66, 0);
+      x.lineTo(46, 0);
+      x.lineTo(40, -50);
+      x.quadraticCurveTo(0, -72, -40, -50);
+      x.lineTo(-46, 0);
+      x.closePath();
+    });
+    x.fillRect(-72, 0, 144, 4);
+  },
   // a domed hall on a colonnade
   dome: x => {
     fill(x, () => {
@@ -300,6 +316,18 @@ const STAMPS = {
     plane(x, -80, 80, 0.9, true);
     plane(x, 80, 80, 0.9, true);
     arc(x, 'IMMIGRATION', 118, false, 18, 1.15);
+  },
+  // a hexagon: ARRIVAL over the City Gate, ABUJA between rules, the capital territory under it, planes either side
+  abuja: x => {
+    FRAME.poly(x, 6, 168, 128);
+    words(x, 'ARRIVAL', -88, SANS, 18, 100, 0.12);
+    at(x, 0, -26, 0.6, LAND.citygate);
+    rule(x, 120, -16);
+    words(x, 'ABUJA', 28, SERIF, 66, 230);
+    rule(x, 120, 58);
+    words(x, 'FEDERAL CAPITAL TERRITORY', 82, SANS, 18, 220, 0.06);
+    plane(x, -118, 0, 0.8);
+    plane(x, 118, 0, 0.8);
   },
   // a ticket with bitten corners, like London's: the domed hall, KADUNA between rules, the republic under it, planes in
   // the corners

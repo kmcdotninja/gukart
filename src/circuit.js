@@ -86,7 +86,7 @@ export async function buildCircuit(tex, step = async () => {}) {
         ? dressDoha
         : chapter.id === 'singapore'
           ? dressSingapore
-          : chapter.id === 'kaduna' || game.circuit?.id === 'metro'
+          : chapter.id === 'kaduna' || chapter.id === 'abuja' || game.circuit?.id === 'metro'
             ? dressKaduna
             : null,
   });

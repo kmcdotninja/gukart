@@ -52,6 +52,7 @@ export function setNight(on) {
       (chapter.id === 'doha' ||
         chapter.id === 'singapore' ||
         chapter.id === 'kaduna' ||
+        chapter.id === 'abuja' ||
         (chapter.id === 'kano' && game.circuit?.id === 'metro')),
     sg = on && chapter.id === 'singapore',
     L = (d, n, c, g) => (on ? (sg ? g : city ? c : n) : d); // day, a dark night, a big city's night, Singapore's

@@ -18,6 +18,7 @@ import { canvasTex, starKnot, loopKnot, diamondBand } from './textures.js';
 import { boxM } from './doha.js';
 import { tunnel } from './tunnels.js';
 import { dressKanoCity } from './kanocity.js';
+import { dressAbuja } from './abuja.js';
 import { fbm } from './util.js';
 
 const TAU = Math.PI * 2;
@@ -25,7 +26,10 @@ const FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 
 export function dressKaduna(k) {
   const { scene, tr, rand, rr, pick, free, reserve, W } = k;
-  const CIRC = k.circuit; // 'abu' | 'city' | 'zazzau'
+  const CIRC = k.circuit; // 'abu' | 'city' | 'zazzau' (Kano City: 'metro'; Abuja: 'central' | 'jabi' | 'gateway')
+  // (Abuja is a modern city dressed by this, its own landmarks from abuja.js; built up like Kaduna's city centre)
+  const AB = tr.city === 'abuja',
+    URBAN = CIRC === 'city' || CIRC === 'metro' || AB;
   // the River Kaduna (and the water all round) is brown-green, not the sea
   k.water.material.color.set('#6c7a55');
   k.water.material.specular?.set('#c9cfae');
@@ -299,6 +303,7 @@ export function dressKaduna(k) {
       const i = tr.idx(s),
         p = tr.point(s, 0),
         a = head(s);
+      if (p.y < -0.8) continue; // (where the road dives under the water a glass tube carries it: Abuja's lake, abuja.js)
       parts.push(new THREE.BoxGeometry(W + 4, 1.6, 4.2).translate(0, -0.85, 0).rotateY(a).translate(p.x, p.y, p.z));
       for (const sd of [1, -1]) {
         const q = tr.beside(i, sd * (W / 2 + 1.4));
@@ -325,11 +330,12 @@ export function dressKaduna(k) {
         me.receiveShadow = me.castShadow = true;
         scene.add(me);
       }
-    place('RIVER KADUNA', 'The old railway bridge alongside', tr.point(f.s + f.len / 2, 0), f.s + f.len / 2, {
-      back: 40,
-      h: 5,
-      lat: -6,
-    });
+    if (!AB)
+      place('RIVER KADUNA', 'The old railway bridge alongside', tr.point(f.s + f.len / 2, 0), f.s + f.len / 2, {
+        back: 40,
+        h: 5,
+        lat: -6,
+      });
   }
 
   /* ---------- the old railway bridge: steel trusses on stone piers, a little upstream ---------- */
@@ -1826,7 +1832,7 @@ export function dressKaduna(k) {
     place('CENTRAL MARKET', 'Through the blue arch', p, f.s, { back: 40, h: 3, lookH: 9 });
   }
   for (const f of fOf('market'))
-    if (CIRC === 'city')
+    if (CIRC === 'city' || AB)
       for (let s = f.s; s < f.s + f.len; s += 26)
         for (const sd of [1, -1]) {
           // the market's sheds: long low roofs of zinc on posts, stalls under them
@@ -2243,7 +2249,8 @@ export function dressKaduna(k) {
   }
 
   // the tunnel through the granite at Zazzau (tunnels.js): its hill granite and scrub, its signs in Hausa
-  for (const f of fOf('tunnel'))
+  for (const f of AB ? [] : fOf('tunnel'))
+    // (Abuja dresses its own: Zuma Rock, abuja.js)
     tunnel(k, f, {
       place,
       look: {
@@ -2276,6 +2283,43 @@ export function dressKaduna(k) {
       animated,
       glow,
       night: fn => nightFns.push(fn),
+    });
+
+  // Abuja's own landmarks (abuja.js), on this modern city
+  if (AB)
+    dressAbuja(k, {
+      lam,
+      bx,
+      cy,
+      frame,
+      group,
+      mesh,
+      place,
+      board,
+      signBoth,
+      fOf,
+      P,
+      head,
+      inside,
+      white,
+      steelM,
+      concrete,
+      darkM,
+      lawnM,
+      grassM,
+      tryTree,
+      tree,
+      animated,
+      glow,
+      night: fn => nightFns.push(fn),
+      add,
+      at,
+      tile,
+      litOf,
+      grain,
+      keke,
+      bus,
+      billboard,
     });
 
   /* ---------- the land round each circuit ---------- */
@@ -2336,16 +2380,16 @@ export function dressKaduna(k) {
       if (tr.elevated[i]) continue;
       const a = head(s) + (rand() < 0.3 ? rr(-0.4, 0.4) : 0),
         roll = rand();
-      if (roll < (CIRC === 'abu' ? 0.5 : CIRC === 'metro' ? 0.25 : 0.35)) {
+      if (roll < (CIRC === 'abu' ? 0.5 : CIRC === 'metro' || AB ? 0.25 : 0.35)) {
         if (!free(p.x, p.z, 4, W / 2 + 8)) continue;
         reserve(p.x, p.z, 4);
         tree(p.x, p.z, pick(['neem', 'neem', 'mango', 'mahogany', 'doum']), rr(0.9, 1.2));
-      } else if (roll < (CIRC === 'metro' ? 0.5 : 0.8)) {
+      } else if (roll < (CIRC === 'metro' || AB ? 0.5 : 0.8)) {
         // (Kano City: more of it built up in lit shop blocks and flats)
         if (!free(p.x, p.z, 10, W / 2 + 14)) continue;
         reserve(p.x, p.z, 10);
         bungalow(p.x, p.z, a);
-      } else if (CIRC === 'city' || CIRC === 'metro') {
+      } else if (URBAN) {
         if (!free(p.x, p.z, 12, W / 2 + 18)) continue;
         reserve(p.x, p.z, 12);
         shopBlock(p.x, p.z, a, rr(14, 22), rr(14, 20), rr(3, 7) | 0);
@@ -2356,7 +2400,7 @@ export function dressKaduna(k) {
       }
     }
     // a few towers downtown, and a mosque's dome and minaret among the roofs
-    if (CIRC === 'city' || CIRC === 'metro') {
+    if (URBAN) {
       for (let n = 0; n < 40; n++) {
         const s = rand() * tr.len,
           sd = rand() < 0.5 ? 1 : -1,

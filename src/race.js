@@ -11,7 +11,8 @@ const _spray = new THREE.Vector3();
 // laps by the circuit's length, so every race runs about the same time: 3 on a lap up to 2.6 km, 2 on the long ones
 // (Kano City, City Centre, the Singapore circuits). Set when a circuit is built (src/circuit.js)
 export let LAPS = 3;
-export const lapsFor = len => (len > 2600 ? 2 : 3);
+// 3 laps round a short circuit, 2 round a long one, and one lap round the very long ones (Abuja's: a lap is a journey)
+export const lapsFor = len => (len > 4500 ? 1 : len > 2600 ? 2 : 3);
 export function setLaps(n) {
   LAPS = n;
 }

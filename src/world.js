@@ -79,12 +79,14 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     rr = (a, b) => a + (b - a) * rand(),
     pick = a => a[(rand() * a.length) | 0];
   const { N, P, out, center: C } = tr;
-  const R0 = tr.radius + 150; // island radius
+  // (Abuja is far inland: no sea round it, a wide plain of city out to the hills on the horizon)
+  const landlocked = opts.city === 'abuja',
+    R0 = tr.radius + (landlocked ? 420 : 150); // island radius
   const city = opts.city || 'kano',
     doha = city === 'doha',
     // (Kaduna, and Kano City's metropolis: a modern Nigerian city dressed by kaduna.js; its river and its ground come from
     // the features too, and the old Kano pieces still work)
-    kd = city === 'kaduna' || opts.gantry === 'kano.metro',
+    kd = city === 'kaduna' || city === 'abuja' || opts.gantry === 'kano.metro',
     coast = doha || city === 'singapore' || kd; // (a big modern city on the water: its sea comes from the circuit's features, its own scenery)
   let isLand = () => true;
   const occ = [];
@@ -188,6 +190,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     kano: { top: '#2f6cc0', mid: '#94bde2', hz: '#ead9bd', cover: 0.5, lit: '#fffaf1', shade: '#c2bcb6' },
     doha: { top: '#2766cc', mid: '#8dbcec', hz: '#ece4d4', cover: 0.36, lit: '#ffffff', shade: '#c8c9cf' },
     kaduna: { top: '#2869c6', mid: '#8bbbe8', hz: '#dfe6e6', cover: 0.56, lit: '#ffffff', shade: '#b4bbc5' },
+    abuja: { top: '#2564c8', mid: '#87b9ea', hz: '#e2e7ea', cover: 0.48, lit: '#ffffff', shade: '#b8bfc9' }, // (the capital: a clear high sky, fair-weather cumulus over the rocks)
     singapore: { top: '#2461c0', mid: '#86b5e6', hz: '#dbe5ee', cover: 0.62, lit: '#ffffff', shade: '#a9b2c2' },
   };
   const skyDay = SKY_DAY[city] || SKY_DAY.kano;
@@ -283,8 +286,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   const hr = clamp(hill.d - W / 2 - 22, 25, 80),
     hh = hr * 0.85;
 
-  const size = R0 * 2 + 700,
-    segs = opts.low ? 130 : 180;
+  const size = R0 * 2 + (landlocked ? 2600 : 700),
+    segs = landlocked ? (opts.low ? 200 : 280) : opts.low ? 130 : 180; // (Abuja's wider land keeps the same detail)
   const gg = new THREE.PlaneGeometry(size, size, segs, segs).rotateX(-Math.PI / 2).translate(C.x, 0, C.z);
   const gp = gg.attributes.position,
     cols = new Float32Array(gp.count * 3),
@@ -327,7 +330,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         ins = tr.isInside(x, z),
         s = n.i * tr.seg;
       const wob = 14 * Math.sin(s * 0.02) + 22 * (fbm(x * 0.006, z * 0.006) - 0.45); // coasts that wander, not ruler lines
-      let sea = r > Rs;
+      let sea = r > Rs && !landlocked;
       for (const f of shores) if (inStretch(s, f) && (f.side === 'in') === ins && d > f.d + wob) sea = true;
       if (marina && ins && d > marina.d + wob) sea = true;
       if (tr.lowb[n.i] && !tr.wway[n.i]) sea = true; // the water bridge: open sea under it and either side
@@ -379,11 +382,13 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     }
     // Doha's ground is sand with a little green; Singapore's is lawn and garden between grey paving, a stone sea wall;
     // Kaduna's is the savanna's red laterite and dry grass, the river banks a muddy brown
+    // Abuja's is green: lawns, verges and parks kept watered, the leafiest city in the country
     const sg = city === 'singapore',
-      cSand = new THREE.Color(sg ? '#6f9e46' : kd ? '#b98c60' : '#efe0bd'),
-      cPave = new THREE.Color(sg ? '#b9b8b4' : kd ? '#cdb79a' : '#d9d2c4'),
-      cGreen = new THREE.Color(sg ? '#4f8a3a' : kd ? '#7c9a46' : '#8fb35a'),
-      cBeach = new THREE.Color(sg ? '#c9c4b8' : kd ? '#9b7a58' : '#f8ecd0');
+      ab = landlocked,
+      cSand = new THREE.Color(ab ? '#86ab4c' : sg ? '#6f9e46' : kd ? '#b98c60' : '#efe0bd'),
+      cPave = new THREE.Color(ab ? '#c9c3b2' : sg ? '#b9b8b4' : kd ? '#cdb79a' : '#d9d2c4'),
+      cGreen = new THREE.Color(ab ? '#5f9238' : sg ? '#4f8a3a' : kd ? '#7c9a46' : '#8fb35a'),
+      cBeach = new THREE.Color(ab ? '#b49a74' : sg ? '#c9c4b8' : kd ? '#9b7a58' : '#f8ecd0');
     // (road points within 60 m of where it runs down under the water)
     const nearTube = new Uint8Array(N);
     for (let i = 0; i < N; i++)

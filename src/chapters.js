@@ -5,6 +5,7 @@ import { turtle, closer } from './turtle.js';
 import { dalaTrack, kanoCityTrack } from './kano2.js';
 import { marinaTrack, gardensTrack, riverTrack, changiTrack } from './sgtracks.js';
 import { abuTrack, kdTrack, zazzauTrack } from './kdtracks.js';
+import { centralTrack, jabiTrack, gatewayTrack } from './abtracks.js';
 
 // Kano is a figure of eight: the two lobes meet at one crossing, where the flyover leg rides 12 m over the start straight.
 // No spirals, no loops: straight ramps up and down, humps that throw you in the air, jumps over the canals.
@@ -315,6 +316,15 @@ export const KADUNA_CIRCUITS = [
   { id: 'zazzau', name: 'Zazzau', track: closer(zazzauTrack), fn: zazzauTrack },
 ];
 
+// Abuja is three circuits (src/abtracks.js), its roads stacked in layers as the capital's are: the Central Area (Eagle
+// Square, the Three Arms Zone, the business district and its interchange), Jabi (Unity Fountain, Wuse, the N16
+// interchange, Jabi Lake) and the Gateway (the City Gate, the stadium, the Apo-Karshi rock cut, the cloverleaf)
+export const ABUJA_CIRCUITS = [
+  { id: 'central', name: 'Central Area', track: closer(centralTrack), fn: centralTrack },
+  { id: 'jabi', name: 'Jabi', track: closer(jabiTrack), fn: jabiTrack },
+  { id: 'gateway', name: 'The Gateway', track: closer(gatewayTrack), fn: gatewayTrack },
+];
+
 // Kano is three circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had), Dala Hill,
 // and Kano City through the modern metropolis
 export const KANO_CIRCUITS = [
@@ -359,8 +369,19 @@ export const CHAPTERS = [
     circuits: KADUNA_CIRCUITS,
   },
   {
-    id: 'abudhabi',
+    id: 'abuja',
     n: 4,
+    name: 'Abuja',
+    local: 'Nigeria',
+    tagline: 'The Capital',
+    reward: 1400,
+    playable: true,
+    desc: 'Down Independence Avenue past Eagle Square and the National Assembly, round the business district interchange among the towers, along Jabi Lake, under the City Gate and round the cloverleaf with Zuma Rock ahead.',
+    circuits: ABUJA_CIRCUITS,
+  },
+  {
+    id: 'abudhabi',
+    n: 5,
     name: 'Abu Dhabi',
     local: 'UAE',
     tagline: 'City of Islands',
@@ -370,7 +391,7 @@ export const CHAPTERS = [
   },
   {
     id: 'singapore',
-    n: 5,
+    n: 6,
     name: 'Singapore',
     local: 'Marina Bay',
     tagline: 'The Garden City',
@@ -381,7 +402,7 @@ export const CHAPTERS = [
   },
   {
     id: 'lagos',
-    n: 6,
+    n: 7,
     name: 'Lagos',
     local: 'Nigeria',
     tagline: 'City on the Lagoon',

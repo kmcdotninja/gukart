@@ -31,6 +31,9 @@ const PICK = {
   'kaduna.abu': 'COMPUTER SCIENCE', // down the corridor between the labs
   'kaduna.city': 'THE SQUARE GATE', // the gate of Murtala Muhammed Square, the bridge through it
   'kaduna.zazzau': "THE EMIR'S PALACE", // the horsemen on the square
+  'abuja.central': 'THE HELIX', // the two stacked turns among the towers
+  'abuja.jabi': 'UNDER JABI LAKE', // the glass tube along the lake bed
+  'abuja.gateway': 'THE CITY GATE', // the white arch over the airport road
 };
 // each city's own card: its best-known sight [circuit, shot]
 const CITY_PIC = {
@@ -38,6 +41,7 @@ const CITY_PIC = {
   doha: ['doha.msheireb', 'THE CORNICHE'],
   singapore: ['singapore.marina', 'THE SKYLINE'],
   kaduna: ['kaduna.city', 'THE SQUARE GATE'],
+  abuja: ['abuja.central', 'THE HELIX'],
 };
 // one fixed picture per mode, whatever circuit is built [circuit, shot]
 const MODE_PIC = {

@@ -90,7 +90,7 @@ function circuitFlyby(then) {
         kicker: game.final ? 'THE FINAL' : chapter.name.toUpperCase(),
         name: cname,
         sub: goalLine(),
-        chips: game.mode === 'free' ? [`${km} KM`] : [`${LAPS} LAPS`, `${km} KM`],
+        chips: game.mode === 'free' ? [`${km} KM`] : [`${LAPS} ${LAPS > 1 ? 'LAPS' : 'LAP'}`, `${km} KM`],
       },
       ...pick.map(p => ({
         kind: 'place',
