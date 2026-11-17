@@ -42,7 +42,7 @@ import { paintPowerButton } from './powers-race.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
-import { playCup } from './cup.js';
+import { playCup, settleTour } from './cup.js';
 import './style.css';
 import './screens.css';
 
@@ -374,6 +374,7 @@ async function boot() {
   // the game opens in the time of day it is where you are (a recording keeps whatever it was set to, so it's the same
   // every time); the sun/moon button still switches it, and after each race it swaps (src/race-flow.js)
   setNight(CAPTURE ? store.get('night', false) : clockNight());
+  settleTour(); // (a tour whose Final was run but never closed: it ends now, trophy and prize)
   attract();
   renderChapter();
   try {

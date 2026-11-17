@@ -365,7 +365,8 @@ export function cupNext() {
 }
 
 // the end of the tour: the top three overall on the podium, then your trophy and its prize
-function finalStandings(t) {
+// a tour with every race run is over: your trophy and its prize, and the next one starts fresh
+function settle(t) {
   const tb = table(t),
     me = tb.find(r => r.id === 'buddy'),
     won = me.place <= 3 ? me.place : 0,
@@ -373,9 +374,19 @@ function finalStandings(t) {
   const nextT = TOURS[TOURS.findIndex(x => x.id === TOUR.id) + 1],
     opens = won && nextT && !tourOpen(nextT.id); // (this trophy opens the next tour)
   if (won && (!trophyOf() || won < trophyOf())) store.set('trophy.' + TOUR.id, won);
-  store.set(keyOf(TOUR.id), null); // the tour is over: the next one starts fresh
+  store.set(keyOf(TOUR.id), null);
   const from = store.get('wallet', 0);
   earn(prize);
+  return { tb, me, won, prize, nextT, opens, from };
+}
+// a tour left after its Final before the standings came up (HOME on the last race's card, or the page closed then):
+// settled quietly, so it's never left "racing" a race past the end
+export function settleTour() {
+  const t = cupOf();
+  if (t && t.i >= t.races.length) settle(t);
+}
+function finalStandings(t) {
+  const { tb, me, won, prize, nextT, opens, from } = settle(t);
   hide($('#results'), null, -1);
   game.state = 'podium';
   const kartOf = id => game.race.all.find(k => k.def.id === id);

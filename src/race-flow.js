@@ -14,7 +14,7 @@ import { endDrive } from './results.js';
 import { hidePodium } from './podium.js';
 import { setNight, scene, cam } from './scene.js';
 import * as THREE from 'three';
-import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tourLevel } from './cup.js';
+import { introLines, cupNext, retryCupRace, newCup, cupOf, endTour, isFinal, tourLevel, settleTour } from './cup.js';
 import { rivalNames } from './buddy.js';
 import { releaseInput } from './input.js';
 import { endSchool, schoolReset } from './school.js';
@@ -252,6 +252,7 @@ export const goHome = () => toMenu();
 // home again. After a race you finished, day turns to night (or night to day), so everyone gets to race both
 function toMenu(raced = false) {
   if (raced === true) setNight(!game.night);
+  settleTour(); // (HOME on the tour's last race card, before the standings: the tour still ends, trophy and all)
   game.state = 'menu';
   attract();
   renderChapter();
