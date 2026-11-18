@@ -40,6 +40,7 @@ import { initSchool, schoolUpdate } from './school.js';
 import { initPhoto } from './photo.js';
 import { paintPowerButton } from './powers-race.js';
 import { initMirror, renderMirror } from './mirror.js';
+import { stuntCam, stuntCamClear } from './stuntcam.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
@@ -97,15 +98,26 @@ function gridRev(dt) {
   }
   return rev;
 }
+// the stunt cam's look: black bars in from the top and bottom, the edges darkened (no words: src/style.css .cine)
+const cine = { el: Object.assign(document.createElement('div'), { className: 'cine', hidden: true }), w: 0 };
+document.body.append(cine.el);
 function frame(now) {
   if (!CAPTURE) requestAnimationFrame(frame);
   perfTick();
   let dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  // a takedown's beat of slow motion (src/race.js knocked)
-  if (game.race?.slowT > 0 && game.state === 'race') {
-    game.race.slowT -= dt;
-    dt *= 0.32;
+  // slow motion (src/race.js slowScale): only the stunt cam on a big jump's flip
+  const rdt = dt; // (the real frame time: the stunt cam's flair runs on it)
+  if (game.race && game.state === 'race') dt *= game.race.slowScale(dt);
+  else if (game.race?.sm) game.race.sm.w = 0;
+  {
+    const w = game.state === 'race' ? game.race?.sm?.w || 0 : 0;
+    if (w !== cine.w) {
+      cine.w = w;
+      cine.el.style.setProperty('--cine', w.toFixed(3));
+      cine.el.hidden = w <= 0;
+      document.body.classList.toggle('cinema', w > 0.05); // (the mirror steps aside for the shot)
+    }
   }
   if (document.body.dataset.state !== game.state) {
     if (game.state === 'count') revUsed = false; // (each start: it blips by itself until you rev it)
@@ -176,6 +188,11 @@ function frame(now) {
       ['race', 'finish', 'podium', 'results', 'menu', 'tomap', 'map'].includes(game.state) ? 'race' : 'idle',
     );
   updatePodium(dt);
+  if (game.state === 'count' || game.state === 'race' || game.state === 'finish') stuntCam(game.race, dt, rdt, renderer.domElement, cam);
+  else if (game.race?.sm?.w === 0 && !game.race.sm.cleared) {
+    stuntCamClear(renderer.domElement);
+    game.race.sm.cleared = true;
+  }
   game.world.update(dt, game.clock, cam);
 
   updateCamera(dt);
@@ -326,7 +343,8 @@ function frame(now) {
     paintStandings();
   }
   renderer.render(scene, cam);
-  if (game.state === 'race' || game.state === 'finish') renderMirror(renderer, scene, game.race.player?.m.root, game.race.incoming);
+  if ((game.state === 'race' || game.state === 'finish') && !document.body.classList.contains('cinema'))
+    renderMirror(renderer, scene, game.race.player?.m.root, game.race.incoming);
 }
 
 async function boot() {

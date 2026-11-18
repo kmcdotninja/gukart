@@ -53,7 +53,7 @@ export function updateCamera(dt) {
   let rate;
   // first person while racing (Settings > View): you see from Buddy's seat, his arms out to the wheel, the kart's nose
   // in front of you
-  const fpOn = game.view === 'fp' && (game.state === 'race' || game.state === 'count');
+  const fpOn = game.view === 'fp' && (game.state === 'race' || game.state === 'count') && !(game.race.sm?.w > 0.05); // (the stunt cam shows the kart)
   fpBody(k.m, !fpOn);
   game.race.fpView = fpOn;
   if (game.state === 'flyby' && game.flyby) {
@@ -460,6 +460,29 @@ export function updateCamera(dt) {
       wantUp.lerp(back.u.clone().add(F.u).normalize(), loopW).normalize(); // halfway between the camera's road and the kart's: no lag, no snap
       rate = 9 + 16 * loopW;
       upRate = 6 + 14 * loopW;
+    }
+    // the stunt cam (src/race.js slowScale): in slow motion on a big jump's flip, the camera slides from where it is,
+    // behind the kart, smoothly out round to the side of it, low and close, so you see the whole stunt; it slides back
+    // behind as the slow motion lets go. (It starts and ends on the chase camera: never a cut)
+    const sm = game.race.sm;
+    if (sm?.w > 0.001 && game.state === 'race') {
+      const w = sm.w * sm.w * (3 - 2 * sm.w),
+        u = Math.min(1, sm.held / 1.8),
+        a = sm.side * (Math.PI - 1.45 * u * u * (3 - 2 * u)), // (off the nose: from straight behind round to beside)
+        R = d + lift,
+        up = new THREE.Vector3(0, 1, 0),
+        side = new THREE.Vector3().crossVectors(up, F.t).normalize(),
+        nose = F.t.clone().setY(0).normalize();
+      const orbit = kp
+        .clone()
+        .addScaledVector(nose, Math.cos(a) * R)
+        .addScaledVector(side, Math.sin(a) * R)
+        .addScaledVector(up, 3.5 + lift - 1.8 * u);
+      want.lerp(orbit, w);
+      wantLook.lerp(kp.clone().addScaledVector(up, 0.8), w);
+      wantUp.lerp(up, w).normalize();
+      rate = rate + (14 - rate) * w; // (the step is slowed: it keeps up with the shot without snapping)
+      upRate = Math.max(upRate, 12 * sm.w);
     }
   }
   const e = 1 - Math.exp(-dt * rate);

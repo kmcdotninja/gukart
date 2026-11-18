@@ -835,7 +835,8 @@ export class Race {
     this.comboT = 0;
     this.wrongT = 0;
     this.shake = 0;
-    this.slowT = 0; // (a takedown's beat of slow motion: main.js runs the game slower while it's above 0)
+    // (the stunt cam: slowScale; its flair, src/stuntcam.js, reads the counters: flash, stamp + name, landed)
+    this.sm = { on: false, w: 0, held: 0, done: false, side: 1, used: false, flash: 0, stamp: 0, name: '', landed: 0 };
     this.playerRank = 5;
     this.rank();
     this.place(0, true);
@@ -1146,9 +1147,9 @@ export class Race {
       P.koAt = this.time;
       this.addScore(150 * P.koStreak, 'Takedown');
       this.ev.takedown(k.name, P.takedowns, P.koStreak);
-      // the moment: a beat of slow motion, a punch of the camera, the sound, and gold stars, a ring and confetti on them
+      // the moment: a punch of the camera, the sound, and gold stars, a ring and confetti on them (no slow motion: with
+      // shots that reach their target, takedowns come often, and every one stalling the race felt like lag)
       Sound.takedown(P.koStreak);
-      this.slowT = 0.5;
       this.shake = Math.max(this.shake, 0.4);
       const at = k.m.root.position.clone().setY(k.m.root.position.y + 1.5);
       this.fx.ring(at, '#ffd36a', 30);
@@ -2350,12 +2351,56 @@ export class Race {
     }
     if (k === this.player) {
       Sound.blip(560 + 90 * k.stunts.length, 0.2, 'triangle', 0.1, 1.8);
+      // a big jump's first stunt: the stunt cam (slow motion, the camera out to the side round the kart). Only on the
+      // last lap and only once a race, so it stays a moment (free roam has no last lap: once there too); and only with
+      // time in the air to show it off
+      const sm = this.sm,
+        lastLap = this.mode === 'free' || k.lap >= LAPS - 1;
+      if (!sm.on && !sm.done && lastLap && !k.stunts.length && this.airLeft(k) > 0.85 && !k.finished) {
+        sm.done = true;
+        sm.on = true;
+        sm.held = 0;
+        sm.side = Math.random() < 0.5 ? 1 : -1;
+        sm.used = true;
+        sm.flash++;
+        Sound.slowmo?.(true);
+      }
+      // each stunt in the slow motion: its name slammed across the screen
+      if (sm.on) {
+        sm.name = S.name;
+        sm.stamp++;
+      }
     }
+  }
+  // the time (s) before a kart in the air comes down: from its height and how fast it's rising or falling
+  airLeft(k) {
+    return (k.vy + Math.sqrt(Math.max(0, k.vy * k.vy + 2 * GRAV * Math.max(0, k.air)))) / GRAV;
+  }
+  // how fast the race runs this frame (main.js scales its step by it), from the real frame time dt: the stunt cam's
+  // slow motion (eased in, held while the stunts go round, eased out just before touchdown, never long). Nothing else
+  // slows the race
+  slowScale(dt) {
+    const sm = this.sm,
+      P = this.player;
+    if (sm.on) {
+      sm.held += dt;
+      if (!P.fly || P.finished || sm.held > 2.6 || this.airLeft(P) < 0.4) {
+        sm.on = false;
+        Sound.slowmo?.(false);
+      }
+    }
+    // (eased in and out over about half a second: no jolt)
+    sm.w += ((sm.on ? 1 : 0) - sm.w) * Math.min(1, dt * 5);
+    if (sm.w < 0.002) sm.w = 0;
+    const e = sm.w * sm.w * (3 - 2 * sm.w);
+    return 1 - 0.7 * e;
   }
   // touchdown after stunts: clean, and they pay (a boost by how hard they were, times the combo, and points); still
   // going round, and it's a wobble and lost speed instead
   landStunts(k) {
-    const P = this.player;
+    const P = this.player,
+      shown = k === P && this.sm.used; // (the stunt cam showed this jump: the landing is its finish)
+    if (k === P) this.sm.used = false;
     if (k.stunt) {
       const id = k.stunt,
         u = k.stuntT / STUNTS[id].dur;
@@ -2382,7 +2427,17 @@ export class Race {
       this.shake = Math.max(this.shake, 0.1 + 0.05 * k.stunts.length);
       const last = STUNTS[k.stunts[k.stunts.length - 1]].name;
       this.addScore(r.score, k.stunts.length > 1 ? `Combo x${k.stunts.length}` : last);
-      this.ev.flash(k.stunts.length > 1 ? `COMBO x${k.stunts.length}` : last); // (one short word: nothing to read at speed)
+      if (shown) {
+        // the finish of the stunt cam: its stamp punches out (no second banner), a shockwave across the ground, dust
+        this.sm.landed++;
+        const at = k.m.root.position.clone();
+        at.y += 0.3;
+        this.fx.ring(at, '#ffffff', 26);
+        this.fx.ring(at, '#8fe6ff', 16);
+        for (let i = 0; i < 6; i++) this.fx.spark(at, i % 2 ? '#d8cbb4' : '#ffffff', 3 + i * 0.8, 0.5);
+        this.shake = Math.max(this.shake, 0.4);
+        Sound.thump?.(90, 40, 0.35, 0.3);
+      } else this.ev.flash(k.stunts.length > 1 ? `COMBO x${k.stunts.length}` : last); // (one short word: nothing to read at speed)
       if (!STUNTS[k.stunts[k.stunts.length - 1]].buddy) this.act(k, 'pop', 0.8);
     }
   }

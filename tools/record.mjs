@@ -10,6 +10,8 @@
 //   node tools/record.mjs --photo                           (photo mode: the last seconds of a race on Kano's Old City,
 //                                                            the line, the results with the replay behind them, PHOTO,
 //                                                            the camera swung round the kart, the shutter, the Polaroid)
+//   node tools/record.mjs --stunt                           (the stunt cam: Buddy on autopilot off Lusail's marina jump, the
+//                                                            slow motion, the shot round the kart and its flair, 9 s, 1080p)
 //   node tools/record.mjs --showcase                        (home on The Pearl, its map, the garage: four cars, the Brute unlocked and
 //                                                            painted black, then a race on The Pearl at night through the
 //                                                            aquarium, 45 s, 1920x1080; --city singapore --circuit changi:
@@ -35,23 +37,27 @@ const arg = (name, def) => {
 const showcase = process.argv.includes('--showcase');
 const lap = process.argv.includes('--lap');
 const photo = process.argv.includes('--photo');
+const stunt = process.argv.includes('--stunt');
 const launch = process.argv.includes('--launch') || showcase;
 const circuit = arg('circuit', photo || lap ? 'old' : showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
 // the city the circuit is in (and whose garage it opens): Doha unless told otherwise (--city singapore --circuit changi)
 const city = arg('city', photo || lap ? 'kano' : 'doha');
 const FPS = 60;
-const frames = +arg('frames', 0) || Math.round(+arg('seconds', photo ? 19 : lap ? 150 : launch ? 45 : 60) * FPS); // (--lap stops itself when the lap is done)
+const frames =
+  +arg('frames', 0) || Math.round(+arg('seconds', stunt ? 9 : photo ? 19 : lap ? 150 : launch ? 45 : 60) * FPS); // (--lap stops itself when the lap is done)
 const out = arg(
   'out',
-  lap
-    ? 'recordings/old-city-lap.mp4'
-    : photo
-      ? 'recordings/photo-mode.mp4'
-      : showcase
-        ? 'recordings/showcase.mp4'
-        : launch
-          ? 'recordings/launch.mp4'
-          : `recordings/${circuit}.mp4`,
+  stunt
+    ? 'recordings/stunt-cam.mp4'
+    : lap
+      ? 'recordings/old-city-lap.mp4'
+      : photo
+        ? 'recordings/photo-mode.mp4'
+        : showcase
+          ? 'recordings/showcase.mp4'
+          : launch
+            ? 'recordings/launch.mp4'
+            : `recordings/${circuit}.mp4`,
 );
 // the launch video, one take with no titles: Doha's home, into the garage, through the vehicles, the muscle car dressed
 // in Buddy Orange with flames and turbo wheels, saved, then PLAY and a race on Msheireb. [second, what is clicked]
@@ -116,10 +122,10 @@ const LAP = [
   [13.2, '#qNext'],
   [13.9, '#qNext'],
 ];
-const [W, H] = arg('size', showcase || lap ? '1920x1080' : '1512x982') // (the showcase is plain 1080p)
+const [W, H] = arg('size', showcase || lap || stunt ? '1920x1080' : '1512x982') // (the showcase is plain 1080p)
   .split('x')
   .map(Number);
-const scale = +arg('scale', showcase || lap ? 1 : 2);
+const scale = +arg('scale', showcase || lap || stunt ? 1 : 2);
 const DT = 1000 / FPS;
 const mute = process.argv.includes('--mute');
 const RATE = 48000; // 800 samples a frame
@@ -262,7 +268,7 @@ if (!launch && !lap) {
   for (let i = 0; i < 30; i++) await step();
 }
 // the sound starts with the video: its first sample is the first frame
-if (!mute && !photo) await page.evaluate(() => window.gukart.Sound.init());
+if (!mute && !photo && !stunt) await page.evaluate(() => window.gukart.Sound.init());
 // RACE (open it, then its NEXT), then the QUICK RACE setup already on this circuit and time of day: NEXT (city), NEXT (circuit), GO
 if (!launch && !lap)
   await page.evaluate(() => {
@@ -287,6 +293,30 @@ if (photo) {
     P.s = g.track.len - 230;
     P.lat = 0;
     P.prog = P.lap * g.track.len + P.s;
+  });
+  if (!mute) await page.evaluate(() => window.gukart.Sound.init());
+}
+// the stunt cam: the race run on unseen until it's under way, then Buddy (on autopilot) put on the run-up to the marina
+// jump at full speed; the recording (and its sound) starts there
+if (stunt) {
+  for (let i = 0; i < 2400; i++) {
+    await step();
+    if (await page.evaluate(() => window.gukart.game.state === 'race')) break;
+  }
+  for (let i = 0; i < 60; i++) await step();
+  await page.evaluate(() => {
+    const R = window.gukart.game.race,
+      P = R.player,
+      kk = R.tr.kickers[0];
+    P.ai = true;
+    P.lap = (R.tr.len > 4500 ? 1 : R.tr.len > 2600 ? 2 : 3) - 1; // (the stunt cam is the last lap's: lapsFor in src/race.js)
+    P.s = R.tr.wrapS(kk.s - 110);
+    P.lat = 0;
+    P.speed = 58;
+    P.prog = P.lap * R.tr.len + P.s;
+    R.sm.done = false;
+    for (const k of R.karts)
+      if (k !== P && Math.abs(R.dS(k.s, P.s)) < 40) k.s = R.tr.wrapS(P.s - 60 - Math.random() * 30);
   });
   if (!mute) await page.evaluate(() => window.gukart.Sound.init());
 }

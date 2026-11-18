@@ -620,6 +620,17 @@ export const Sound = {
       boost,
     });
   },
+  // the stunt cam (src/race.js): going in, a deep falling whoosh and a low boom, the world slowing; coming out, the
+  // whoosh rising back up to speed
+  slowmo(on) {
+    if (on) {
+      this.thump(70, 32, 0.9, 0.34);
+      this.burst({ f0: 1800, f1: 160, dur: 0.75, vol: 0.22, q: 0.7, type: 'lowpass', attack: 0.02 });
+      this.burst({ f0: 3200, f1: 700, dur: 0.6, vol: 0.05, q: 1.2, attack: 0.04 });
+    } else {
+      this.burst({ f0: 220, f1: 2600, dur: 0.45, vol: 0.16, q: 0.9, attack: 0.18 });
+    }
+  },
   passBy(side = 0) {
     if (!this.ctx || !this.on || this.quiet) return; // (quiet: the race behind the menu makes no sound)
     const c = this.ctx,
