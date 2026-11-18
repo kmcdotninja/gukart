@@ -703,6 +703,34 @@ export class Robot {
         setHs(c, TA, pl(p, 0.8, 0.9, 0.95, 1) * 0.7);
         break;
       }
+      case 'superman': {
+        // the SUPERMAN stunt (src/stunts.js): up out of the seat and out flat over the car, arms reaching ahead, legs
+        // straight out behind, then back down into the seat before the wheels touch
+        const up = pl(p, 0, 0.16, 0.78, 0.94);
+        c.sit = 1 - up;
+        g.y = 1.5 * up;
+        g.z = 0.3 * up;
+        g.rx = 1.5 * up;
+        setH(c, 'L', H([-0.22, 0.55, 0.9], [-1, -0.2, -0.6]), up);
+        setH(c, 'R', H([0.22, 0.55, 0.9], [1, -0.2, -0.6]), up);
+        c.kickL = c.kickR = up;
+        c.legs = [-0.5 * up, 0, -0.5 * up, 0];
+        c.head = lerpA(c.head, [-0.9, 0, 0], up);
+        break;
+      }
+      case 'standwave': {
+        // the CROWD WAVE stunt: standing on the seat as the car rides up on two wheels, both arms up waving to the crowd
+        const k = pl(p, 0, 0.14, 0.82, 0.96);
+        c.sit = 1 - 0.8 * k;
+        g.y = 0.2 * k + Math.abs(Math.sin(p * TAU * 3)) * 0.12 * k;
+        const w = Math.sin(p * TAU * 4);
+        setH(c, 'L', w > 0 ? WAVE : UPV, k);
+        setH(c, 'R', mir(w > 0 ? UPV : WAVE), k);
+        c.L.t[0] += w * 0.12 * k;
+        c.R.t[0] -= w * 0.12 * k;
+        c.head = lerpA(c.head, [-0.15, Math.sin(p * TAU * 2) * 0.5, 0.15], k);
+        break;
+      }
       case 'taunt': {
         // turn right round in the seat and laugh at whoever's behind, one paw waving
         const k = pl(p, 0, 0.15, 0.78, 1);

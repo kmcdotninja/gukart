@@ -186,6 +186,8 @@ export { VSTATS } from './vehicles.js';
 import { VSTATS } from './vehicles.js';
 import { initPowers, resetPowers, firePower, updatePowers, posePower } from './powers-race.js';
 import { roofHeights } from './roofs.js';
+import { STUNTS, pickStunt, stuntReward } from './stunts.js';
+import { makeTyreFire } from './tyrefire.js';
 const POWER_ROAD = 0.35; // (how much of a power's SPEED shows on the road: 3 gives 1.7x)
 const DRIFT_COL = ['#ffffff', '#6fd3ff', '#ff9a1f', '#d65cff'];
 const FLAME_COL = ['#ff9a1f', '#6fd3ff', '#ff9a1f', '#d65cff', '#ff3b1f', '#9fe4ff', '#ffd23a'];
@@ -594,7 +596,7 @@ export class Race {
       }
 
     // projectile and mine meshes
-    this.boltGeo = new THREE.CylinderGeometry(0.13, 0.13, 2.6, 6).rotateX(Math.PI / 2);
+    this.boltGeo = new THREE.CylinderGeometry(0.3, 0.3, 4, 8).rotateX(Math.PI / 2); // (a fat, bright bolt you can follow)
     this.boltMat = new THREE.MeshBasicMaterial({
       color: '#9fe4ff',
       blending: THREE.AdditiveBlending,
@@ -716,7 +718,15 @@ export class Race {
         markD: 0,
         trick: 0,
         trickA: 0,
+        trickP: 0,
+        trickR: 0,
+        trickL: 0,
         trickDone: false,
+        stunt: null, // the stunt going round now (src/stunts.js), its side, and the ones done this jump
+        stuntT: 0,
+        stuntSide: 1,
+        stunts: [],
+        slipT: 0, // how long it's been tucked in behind someone (the slipstream)
         tumble: 0,
         tumbleA: 0,
         visYaw: 0,
@@ -791,6 +801,7 @@ export class Race {
     this.comboT = 0;
     this.wrongT = 0;
     this.shake = 0;
+    this.slowT = 0; // (a takedown's beat of slow motion: main.js runs the game slower while it's above 0)
     this.playerRank = 5;
     this.rank();
     this.place(0, true);
@@ -935,7 +946,7 @@ export class Race {
       });
       k.cool = 0.13;
       k.flashT = 0.06;
-      if (P) Sound.blip(1400, 0.07, 'square', 0.05, 0.4);
+      if (P) Sound.zap();
     } else if (w === 'rocket') {
       const m = new THREE.Mesh(this.rocketGeo, this.rocketMat);
       m.castShadow = true;
@@ -953,7 +964,7 @@ export class Race {
       });
       k.cool = 0.5;
       k.flashT = 0.12;
-      if (P) Sound.blip(160, 0.5, 'sawtooth', 0.14, 2.5);
+      if (P) Sound.rocket();
     } else if (w === 'shock') {
       const pos = this.tr.point(k.s, k.lat, 1.5);
       this.fx.ring(pos, '#b18cff', 46);
@@ -1053,16 +1064,31 @@ export class Race {
       } // dropped back and off the line of whoever hit them
       this.knocked(k, by);
       const pp = this.player.m.root.position;
-      if (k === this.player || by === this.player || Math.hypot(pos.x - pp.x, pos.z - pp.z) < 40) Sound.hit();
+      if (k === this.player || by === this.player || Math.hypot(pos.x - pp.x, pos.z - pp.z) < 40) {
+        if (type === 'boom') Sound.explode(k === this.player || by === this.player ? 1 : 0.6);
+        else Sound.hit();
+      }
     }
     if (k === this.player) this.shake = Math.max(this.shake, type === 'zap' ? 0.15 : 0.6);
   }
   knocked(k, by) {
     if (by === this.player && k !== this.player) {
-      this.act(this.player, 'fist', 1);
-      this.player.takedowns++;
-      this.addScore(150, 'Takedown');
-      this.ev.takedown(k.name, this.player.takedowns);
+      const P = this.player;
+      this.act(P, 'fist', 1);
+      P.takedowns++;
+      // a streak: takedowns within five seconds of each other
+      P.koStreak = this.time - (P.koAt ?? -99) < 5 ? (P.koStreak || 1) + 1 : 1;
+      P.koAt = this.time;
+      this.addScore(150 * P.koStreak, 'Takedown');
+      this.ev.takedown(k.name, P.takedowns, P.koStreak);
+      // the moment: a beat of slow motion, a punch of the camera, the sound, and gold stars, a ring and confetti on them
+      Sound.takedown(P.koStreak);
+      this.slowT = 0.5;
+      this.shake = Math.max(this.shake, 0.4);
+      const at = k.m.root.position.clone().setY(k.m.root.position.y + 1.5);
+      this.fx.ring(at, '#ffd36a', 30);
+      for (let i = 0; i < 3; i++) this.fx.spark(at, i % 2 ? '#ffd36a' : '#ffffff', 6 + i * 2, 0.5);
+      this.confetti.burst(at.clone().setY(at.y + 2), 70, 7);
     }
     if (k === this.player && by && by !== k) this.ev.toast(`Hit by ${by.name}`);
     if (k === this.player) this.ev.hurt?.();
@@ -1118,20 +1144,7 @@ export class Race {
         k.driftHeld = inp.drift;
         if (inp.firePressed || (inp.fire && k.weapon === 'blaster')) this.fire(k);
         if (inp.powerPressed) firePower(this, k); // the special power: the POWER button or Q
-        if (inp.nitroPressed && k.nitro >= 0.3 && k.spin <= 0) {
-          k.nitro -= 0.33;
-          k.boost = Math.max(k.boost, this.upg.has('nitro') ? 1.7 : 1.3); // (longer with the Big Nitro upgrade)
-          k.boostLvl = 5;
-          Sound.boost();
-          this.shake = 0.15;
-          this.ev.nitro(k.nitro);
-          this.note('boost', k);
-        }
-        if (inp.driftPressed && k.air > 0.5 && !k.trickDone && k.spin <= 0) {
-          k.trick = 0.45;
-          k.trickDone = true;
-          Sound.blip(600, 0.2, 'triangle', 0.1, 1.8);
-        }
+        if (inp.nitroPressed) this.useNitro(k);
       }
       k.cool -= dt;
       k.flashT -= dt;
@@ -1204,6 +1217,22 @@ export class Race {
       if (k === P && this.upg.has('turbo')) top *= 1.05; // the Turbo Kit upgrade
       if (k.offroad && k.boost <= 0 && !(k.fire > 0)) top *= st.off;
       if (k.fire > 0) top = Math.max(top, MAX * st.top) * 1.15;
+      // the slipstream: tucked in close behind someone for a moment, you're pulled along faster than your own top speed
+      {
+        let tucked = false;
+        if (grounded && k.speed > 20 && racing)
+          for (const o of this.karts)
+            if (o !== k) {
+              const d = this.dS(o.s, k.s);
+              if (d > 3 && d < 24 && Math.abs(o.lat - k.lat) < 3.6) {
+                tucked = true;
+                break;
+              }
+            }
+        k.slipT = tucked ? k.slipT + dt : Math.max(0, k.slipT - dt * 1.5);
+        k.slip = k.slipT > 0.6 ? 1 : 0;
+        if (k.slip) top *= 1.07;
+      }
       if (k.boost > 0) {
         top = Math.max(top, MAX) * (k.boostLvl === 4 ? 1.38 : 1.3);
         k.boost -= dt;
@@ -1379,18 +1408,15 @@ export class Race {
             k.spin = 0.8;
             this.fx.spark(tr.point(k.s, k.lat, 1), '#9fd8ff', 8, 0.4);
             if (k === P) this.ev.toast('Splash!');
-          } else if (k === P) {
-            if (k.trickDone && k.spin <= 0) {
-              k.boost = Math.max(k.boost, 0.9);
-              k.boostLvl = 6;
-              Sound.boost();
-              this.addScore(80, 'Trick landing');
-              this.ev.flash('Trick!');
-              this.act(k, 'pop', 0.8);
-            } else if (k.airT > 0.9) this.addScore(40, 'Big air');
-            if (hard) this.shake = Math.max(this.shake, 0.18);
+          } else {
+            this.landStunts(k);
+            if (k === P) {
+              if (!k.trickDone && k.airT > 0.9) this.addScore(40, 'Big air');
+              if (hard) this.shake = Math.max(this.shake, 0.18);
+            }
           }
           k.trickDone = false;
+          k.stunts = [];
           k.tumble = 0;
           if (k.airT > 0.25)
             for (let n = 0; n < 4 + k.squash * 14; n++) this.puff(k, k.offroad ? '#e2c79c' : '#e8dcc6');
@@ -1487,10 +1513,38 @@ export class Race {
       if (k.moveT > 0) k.moveT -= dt;
       else k.move = null;
       if (k.finished && k !== P && k.move !== 'cheer') this.act(k, 'cheer', 1e9);
-      if (k.trick > 0) {
-        k.trick -= dt;
-        k.trickA = (1 - Math.max(0, k.trick) / 0.45) * Math.PI * 2;
-      } else k.trickA = 0;
+      // the stunt going round: its pose along its length; done, it's banked for the landing
+      if (k.stunt) {
+        const S = STUNTS[k.stunt];
+        k.stuntT += dt;
+        const u = Math.min(1, k.stuntT / S.dur),
+          p = S.pose(u, k.stuntSide);
+        k.trickA = p.yaw;
+        k.trickP = p.pitch;
+        k.trickR = p.roll;
+        k.trickL = p.lift;
+        if (u >= 1) {
+          k.stunts.push(k.stunt);
+          k.stunt = null;
+          k.trickA = k.trickP = k.trickR = k.trickL = 0;
+        }
+      } else k.trickA = k.trickP = k.trickR = k.trickL = 0;
+      // stunts happen by themselves on a big jump (src/stunts.js): once you're properly off the ground, a stunt that has
+      // time to finish before you come down (the time left worked out from your height and how fast you're rising or
+      // falling), picked by what you're doing (steering, braking, both or neither); still high enough after it, the
+      // next one chains on for a combo. So they always land clean. The rivals do the same, picking their own (now and
+      // then they don't bother)
+      if (k.fly && !k.stunt && k.spin <= 0 && k.stunts.length < 3 && k.airT > 0.12 && !k.tumble) {
+        const left = (k.vy + Math.sqrt(Math.max(0, k.vy * k.vy + 2 * GRAV * Math.max(0, k.air)))) / GRAV;
+        if (k !== P) k.aiStuntRoll ??= Math.random();
+        const r = k.aiStuntRoll ?? 0,
+          steer = k === P ? inp.steer : r < 0.3 ? 0 : r < 0.65 ? -1 : 1,
+          brake = k === P ? inp.brake : r > 0.8 || r < 0.12;
+        const id = pickStunt(steer, brake, k.stunts.length);
+        if (left > STUNTS[id].dur + 0.08 && (k === P || (k.aiStuntRoll ?? 0) < 0.85))
+          this.startStunt(k, id, Math.sign(steer) || 1);
+      }
+      if (!k.fly) k.aiStuntRoll = undefined;
       if (k.tumble > 0) k.tumbleA += dt * 7;
       else k.tumbleA = 0;
     }
@@ -1620,14 +1674,19 @@ export class Race {
         if (n.ring) n.ring.visible = n.m.visible;
         continue;
       }
-      if (Math.abs(this.dS(P.s, n.s)) < 2.6 && Math.abs(P.lat - n.lat) < 2.6 && !P.br && P.air < 3) {
-        n.t = 8;
-        n.m.visible = false;
-        if (n.ring) n.ring.visible = false;
-        P.nitro = Math.min(1, P.nitro + 0.34);
-        Sound.blip(900, 0.2, 'sine', 0.12, 1.8);
-        this.ev.nitro(P.nitro);
-      }
+      // (anyone can take a can: the rivals keep nitro of their own and use it, so a can you miss may be used on you)
+      for (const k of ks)
+        if (Math.abs(this.dS(k.s, n.s)) < 2.6 && Math.abs(k.lat - n.lat) < 2.6 && !k.br && k.air < 3) {
+          n.t = 8;
+          n.m.visible = false;
+          if (n.ring) n.ring.visible = false;
+          k.nitro = Math.min(1, k.nitro + 0.34);
+          if (k === P) {
+            Sound.blip(900, 0.2, 'sine', 0.12, 1.8);
+            this.ev.nitro(P.nitro);
+          }
+          break;
+        }
     }
     for (const pd of this.pads)
       for (const k of ks) {
@@ -1650,7 +1709,7 @@ export class Race {
       if (p.target && !p.target.finished) {
         const ahead = this.dS(p.target.s, p.s);
         if (ahead > -2 && ahead < 200)
-          p.lat = lerp(p.lat, p.target.lat, Math.min(1, dt * (p.type === 'rocket' ? 5 : 2.5)));
+          p.lat = lerp(p.lat, p.target.lat, Math.min(1, dt * (p.type === 'rocket' ? 5 : 10))); // (the blaster's bolts lock on fast)
       }
       p.lat = clamp(p.lat, -W / 2 - 2, W / 2 + 2);
       const F = tr.frame(p.s, this.F);
@@ -1658,16 +1717,21 @@ export class Race {
       this.mx.makeBasis(F.l, F.u, F.t);
       p.m.quaternion.setFromRotationMatrix(this.mx);
       if (p.type === 'rocket') this.fx.spark(p.m.position, '#ff9a1f', 1.4, 0.2);
+      else if (Math.random() < 0.5) this.fx.spark(p.m.position, '#9fe4ff', 0.9, 0.12); // (the bolt's trail)
       for (const k of ks) {
         if (k === p.owner || k.br || (k.finished && k !== P)) continue;
         const d = this.dS(k.s, p.s);
-        if (d > -step - 2 && d < 2.2 && Math.abs(k.lat - p.lat) < 2.6 && k.air < 3) {
+        if (d > -step - 2 && d < 2.2 && Math.abs(k.lat - p.lat) < (p.type === 'bolt' ? 3.2 : 2.6) && k.air < 3) {
           this.hit(k, p.type === 'bolt' ? 'zap' : 'boom', p.owner);
           p.life = 0;
           break;
         }
       }
-      if (p.life <= 0 && p.type === 'rocket') this.fx.boom(p.m.position, false);
+      if (p.life <= 0 && p.type === 'rocket') {
+        this.fx.boom(p.m.position, false);
+        const d = this.dS(p.s, this.player.s);
+        if (Math.abs(d) < 90) Sound.explode(Math.max(0.25, 1 - Math.abs(d) / 90));
+      }
     }
     this.projs = this.projs.filter(p => {
       if (p.life > 0) return true;
@@ -1840,7 +1904,14 @@ export class Race {
     const aim = clamp((want - k.rh) * 2.6 + (tr.K[i] * k.speed) / (TURN * grip), -1, 1);
     k.steer += (aim - k.steer) * Math.min(1, dt * 7); // hands, not a switch
     k.throttle = 1;
-    k.driftHeld = false;
+    // the rivals drift too: through a long, tight-enough bend they hold a drift and let it go on the way out, for the
+    // same mini-turbos you get; and with nitro in the bottle they fire it on a straight
+    let bend = 0;
+    for (let a = 8; a <= 48; a += 8) bend += tr.K[tr.idx(k.s + a)];
+    bend /= 6;
+    const turning = Math.abs(bend) > 1 / 120 && Math.sign(bend) === Math.sign(k.steer || bend);
+    k.driftHeld = k.drift ? Math.abs(bend) > 1 / 200 : turning && k.speed > 26 && !tr.elevated[i];
+    if (k.nitro >= 0.3 && Math.abs(bend) < 1 / 600 && k.speed > 30 && Math.random() < dt * 0.4) this.useNitro(k);
     // weapons, after a short think
     if (k.weapon) {
       k.wT -= dt;
@@ -1945,8 +2016,10 @@ export class Race {
       // (it leans out of the corner a little: firm springs, not a soft car rolling over on its tyres)
       m.body.rotation.z = lerp(m.body.rotation.z, clamp(k.yawRate * Math.abs(k.speed) * 0.002, -0.065, 0.065), e);
       // flips and tricks turn the whole vehicle; the body alone leans, pitches and bounces on its suspension
-      m.rig.rotation.x = k.tumble > 0 ? k.tumbleA : 0;
+      m.rig.rotation.x = (k.tumble > 0 ? k.tumbleA : 0) - k.trickP;
       m.rig.rotation.y = k.trickA;
+      m.rig.rotation.z = k.trickR;
+      m.rig.position.y = k.trickL;
       m.body.rotation.x = lerp(
         m.body.rotation.x,
         k.fly
@@ -1974,6 +2047,69 @@ export class Race {
     }
   }
 
+  // a shot of nitro (yours from the button, a rival's when it sees a straight): a third of the bottle for a boost
+  useNitro(k) {
+    if (k.nitro < 0.3 || k.spin > 0) return false;
+    k.nitro -= 0.33;
+    k.boost = Math.max(k.boost, k === this.player && this.upg.has('nitro') ? 1.7 : 1.3); // (longer with the Big Nitro upgrade)
+    k.boostLvl = 5;
+    if (k === this.player) {
+      Sound.boost();
+      this.shake = 0.15;
+      this.ev.nitro(k.nitro);
+    }
+    this.note('boost', k);
+    return true;
+  }
+  // a stunt starts (src/stunts.js): its pose runs in update; a stunt with a move of Buddy's starts that too
+  startStunt(k, id, side) {
+    const S = STUNTS[id];
+    k.stunt = id;
+    k.stuntT = 0;
+    k.stuntSide = side;
+    k.trickDone = true;
+    if (S.buddy) {
+      k.move = S.buddy;
+      k.moveT = k.moveD = S.dur;
+    }
+    if (k === this.player) {
+      Sound.blip(560 + 90 * k.stunts.length, 0.2, 'triangle', 0.1, 1.8);
+    }
+  }
+  // touchdown after stunts: clean, and they pay (a boost by how hard they were, times the combo, and points); still
+  // going round, and it's a wobble and lost speed instead
+  landStunts(k) {
+    const P = this.player;
+    if (k.stunt) {
+      const id = k.stunt,
+        u = k.stuntT / STUNTS[id].dur;
+      k.stunt = null;
+      k.trickA = k.trickP = k.trickR = k.trickL = 0;
+      if (u < 0.82) {
+        k.speed *= 0.65;
+        k.spin = Math.max(k.spin, 0.55);
+        if (k === P) {
+          this.ev.toast('Sloppy landing');
+          this.shake = Math.max(this.shake, 0.2);
+        }
+        return;
+      }
+      k.stunts.push(id); // (near enough round: it counts)
+    }
+    const r = k.spin <= 0 ? stuntReward(k.stunts) : null;
+    if (!r) return;
+    k.boost = Math.max(k.boost, r.boost);
+    k.boostLvl = 6;
+    if (k === P) {
+      Sound.boost();
+      Sound.stuntLand(k.stunts.length);
+      this.shake = Math.max(this.shake, 0.1 + 0.05 * k.stunts.length);
+      const last = STUNTS[k.stunts[k.stunts.length - 1]].name;
+      this.addScore(r.score, k.stunts.length > 1 ? `Combo x${k.stunts.length}` : last);
+      this.ev.flash(k.stunts.length > 1 ? `COMBO x${k.stunts.length}` : last); // (one short word: nothing to read at speed)
+      if (!STUNTS[k.stunts[k.stunts.length - 1]].buddy) this.act(k, 'pop', 0.8);
+    }
+  }
   // Buddy's moves: pop up out of the seat and back, turn round laughing, cheer at the finish
   act(k, move, dur) {
     if (k.move === 'cheer' && !(k === this.player && k.finished)) return;
@@ -2057,16 +2193,29 @@ export class Race {
       P = this.player;
     for (const k of this.karts) {
       const m = k.m;
+      if (k.revPop > 0) k.revPop -= dt; // (a backfire on the grid: a flash of flame from the pipes)
       const hot = k.fire > 0,
-        big = k.boost > 0 || hot,
+        big = k.boost > 0 || hot || k.revPop > 0,
         rev = clamp(Math.max(0, k.speed) / MAX, 0, 1);
-      // on fire: the tyres throw red-hot sparks, a flame trail along the road behind you
-      if (hot)
-        for (const w of m.wheels)
-          if (Math.random() < 0.65) {
-            w.spin.getWorldPosition(this.v3);
-            this.fx.spark(this.v3, Math.random() < 0.5 ? '#ff3a12' : '#ffb21f', 1.7, 0.32);
-          }
+      // on fire (or the Sand Rail's WHEELIE LAUNCH): fire pouring off the back tyres from where they meet the road,
+      // streaming away behind, embers thrown up (src/tyrefire.js; built onto this car the first time it burns)
+      if (k.pwTyreFire > 0) k.pwTyreFire -= dt;
+      const burn = (hot || k.pwTyreFire > 0) && !k.fly;
+      if (burn || k.tf) {
+        if (!k.tf || k.tfRoot !== m.root) {
+          k.tf?.dispose();
+          k.tf = makeTyreFire(m.root, m.wheels);
+          k.tfRoot = m.root;
+        }
+        k.tf.update(dt, burn, rev);
+        if (burn)
+          for (const c of k.tf.contacts)
+            if (Math.random() < 0.5) {
+              this.v3.copy(c);
+              this.v3.y += 0.3;
+              this.fx.spark(this.v3, Math.random() < 0.5 ? '#ff6a1a' : '#ffd27a', 0.9, 0.4);
+            }
+      }
       m.flames.forEach((fl, j) => {
         fl.material.color.set(
           hot ? '#ff3a12' : big ? (k.boostLvl === 5 ? m.nitroCol : FLAME_COL[k.boostLvl] || FLAME_COL[0]) : '#ff8a2a',

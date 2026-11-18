@@ -243,7 +243,7 @@ export class EngineVoice {
       this.shift();
     } else if (!s.air && this.gear > 0 && s.speed < G[this.gear - 1] * 0.78) this.gear--;
     want = s.air ? want : p.idle + span * Math.min(1.04, s.speed / (G[this.gear] * (s.boost ? 1.12 : 1)));
-    if (s.speed < 0.02 && !s.air) want = p.idle + (p.redline - p.idle) * thr * 0.5; // standing: the throttle revs it (the countdown)
+    if (s.speed < 0.02 && !s.air) want = p.idle + (p.redline - p.idle) * thr * (s.rev ? 0.93 : 0.5); // standing: the throttle revs it (on the grid, right up near the redline)
     // what the driving does to the revs: a drift spins the wheels up, a hard turn scrubs them down, and they never sit
     // perfectly still (a slow wander of a per cent or two), so a long flat-out stretch still moves
     this.wt += dt;
@@ -573,11 +573,11 @@ export const Sound = {
     );
     this.sqF.frequency.setTargetAtTime(900 + Math.sin(t * 13) * 120 + o.speed * 400, t, 0.05);
     this.wdG.gain.setTargetAtTime(
-      o.running ? (Math.max(0, o.speed - 0.3) * 0.05 + (o.air ? 0.03 : 0)) * lv : 0,
+      o.running ? (Math.max(0, o.speed - 0.4) * 0.03 + (o.air ? 0.015 : 0) + (o.rush || 0) * 0.012) * lv : 0, // (a hush of air under the engine, no more)
       t,
       0.2,
     );
-    this.wdF.frequency.setTargetAtTime(400 + o.speed * 1400, t, 0.2);
+    this.wdF.frequency.setTargetAtTime(400 + o.speed * 1100, t, 0.2);
   },
   // the two nearest rivals: r = [{ type, speed, dist (metres, + ahead), side (-1..1), rel (their speed minus yours, m/s) }]
   rivals(list, dt = 0.016) {
@@ -870,6 +870,121 @@ export const Sound = {
   },
   hit() {
     this.blip(300, 0.4, 'square', 0.15, 0.3);
+  },
+  // a noise burst through a filter with its own envelope: the bones of the rocket and the explosion
+  burst(o) {
+    if (!this.ctx || !this.on || this.quiet) return;
+    const c = this.ctx,
+      t = c.currentTime + (o.at || 0),
+      s = c.createBufferSource(),
+      f = c.createBiquadFilter(),
+      g = c.createGain();
+    s.buffer = noise(c);
+    f.type = o.type || 'bandpass';
+    f.Q.value = o.q ?? 0.9;
+    f.frequency.setValueAtTime(o.f0, t);
+    f.frequency.exponentialRampToValueAtTime(o.f1, t + o.dur * 0.8);
+    g.gain.setValueAtTime(0.0005, t);
+    g.gain.exponentialRampToValueAtTime(o.vol, t + (o.attack || 0.02));
+    g.gain.exponentialRampToValueAtTime(0.0005, t + o.dur);
+    s.connect(f);
+    f.connect(g);
+    g.connect(this.bus);
+    s.start(t, Math.random());
+    s.stop(t + o.dur + 0.05);
+  },
+  // a low sine dropping in pitch: the thump under a launch or a blast
+  thump(f0, f1, dur, vol, at = 0) {
+    if (!this.ctx || !this.on || this.quiet) return;
+    const c = this.ctx,
+      t = c.currentTime + at,
+      o = c.createOscillator(),
+      g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    o.connect(g);
+    g.connect(this.bus);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  },
+  // a backfire as the throttle snaps shut after a big rev: the engine's own pop, and a sharp crack with it
+  backfire() {
+    this.voice?.pop?.();
+    this.burst({ f0: 2400, f1: 600, dur: 0.12, vol: 0.12, q: 0.7, attack: 0.004 });
+    this.burst({ f0: 1800, f1: 500, dur: 0.1, vol: 0.08, q: 0.7, at: 0.09 });
+  },
+  // the blaster: a sharp laser pew, a bright tone diving fast, a click of noise on the front of it
+  zap() {
+    if (!this.ctx || !this.on || this.quiet) return;
+    const c = this.ctx,
+      t = c.currentTime,
+      o = c.createOscillator(),
+      g = c.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(2200, t);
+    o.frequency.exponentialRampToValueAtTime(380, t + 0.13);
+    g.gain.setValueAtTime(0.11, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.15);
+    o.connect(g);
+    g.connect(this.bus);
+    o.start(t);
+    o.stop(t + 0.17);
+    this.burst({ f0: 4000, f1: 2500, dur: 0.05, vol: 0.05, q: 0.7 });
+  },
+  // a rocket away: a deep kick, a roaring whoosh sweeping up as it leaves, and a crackling tail
+  rocket() {
+    this.thump(140, 45, 0.35, 0.32);
+    this.burst({ f0: 260, f1: 2400, dur: 0.75, vol: 0.32, q: 1.1, attack: 0.03 });
+    this.burst({ f0: 3500, f1: 1800, dur: 1.1, vol: 0.06, q: 0.6, type: 'highpass', attack: 0.08 });
+    this.blip(220, 0.35, 'sawtooth', 0.05, 2.6);
+  },
+  // something blowing up near you: a deep boom, a roar of low noise, debris crackling after
+  explode(near = 1) {
+    this.thump(90, 30, 0.7, 0.4 * near);
+    this.burst({ f0: 900, f1: 120, dur: 0.9, vol: 0.32 * near, q: 0.5, type: 'lowpass', attack: 0.01 });
+    this.burst({ f0: 2800, f1: 900, dur: 0.5, vol: 0.05 * near, q: 0.8, at: 0.12 });
+  },
+  // a bright bell note (a sine with a quick shimmer above it), for chimes
+  bell(freq, at = 0, vol = 0.12, dur = 0.5) {
+    if (!this.ctx || !this.on || this.quiet) return;
+    const c = this.ctx,
+      t = c.currentTime + at;
+    for (const [m, v] of [
+      [1, 1],
+      [2.01, 0.35],
+      [3.02, 0.12],
+    ]) {
+      const o = c.createOscillator(),
+        g = c.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq * m;
+      g.gain.setValueAtTime(0.0005, t);
+      g.gain.exponentialRampToValueAtTime(vol * v, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+      o.connect(g);
+      g.connect(this.bus);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+  },
+  // a stunt landed clean: a quick rising chime, one note more for each stunt in the combo, a cheer for a combo
+  stuntLand(n = 1) {
+    const notes = [784, 988, 1175, 1568, 1976];
+    for (let i = 0; i < Math.min(5, 2 + n); i++) this.bell(notes[i], i * 0.07, 0.1, 0.45);
+    if (n > 1) this.cheer();
+  },
+  // a takedown: a heavy punch of an impact, then a victory chime (higher with each in a row) and the crowd
+  takedown(streak = 1) {
+    this.thump(110, 38, 0.4, 0.42);
+    this.burst({ f0: 1600, f1: 300, dur: 0.35, vol: 0.22, q: 0.6, type: 'lowpass', attack: 0.005 });
+    this.burst({ f0: 3200, f1: 1800, dur: 0.18, vol: 0.08, q: 1 });
+    const up = Math.pow(2, Math.min(streak - 1, 3) / 12) * (streak > 1 ? 1.06 : 1),
+      notes = [523, 659, 784, 1047];
+    notes.forEach((f, i) => this.bell(f * up, 0.16 + i * 0.075, 0.13, i === 3 ? 0.9 : 0.4));
+    setTimeout(() => this.cheer(), 160);
   },
   // the crowd at the Final's start: a swell of band-passed noise, two bands, rising and dying away over a few seconds
   cheer() {

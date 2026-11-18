@@ -261,18 +261,8 @@ export function updatePowers(race, dt) {
         k.pwFx.mistTex.offset.y -= dt * 1.5;
       }
     }
-    // WHEELIE LAUNCH: fire off the back tyres
-    if (fx.tyreFire)
-      for (const sx of [-0.9, 0.9])
-        puff(
-          race,
-          k.m.root.localToWorld(V.set(sx, 0.4, -1.6)),
-          Math.random() < 0.5 ? '#ff5a10' : '#ffc23a',
-          0.7 + Math.random() * 0.6,
-          V2.set(0, 2.5, 0),
-          0.6,
-          3,
-        );
+    // WHEELIE LAUNCH: fire pouring off the back tyres (race.js draws it, src/tyrefire.js: held on while this is)
+    if (fx.tyreFire) k.pwTyreFire = 0.12;
     // FIRE TRAIL: patches of fire laid behind the tyres
     if (fx.fire && Math.random() < dt * 30) race.pwFire.push({ s: k.s - 2.2, lat: k.lat, life: 99, owner: k }); // (out when the power ends)
     // HARPOON: within reach of the car ahead, the boom snaps out, catches it and throws it off the road

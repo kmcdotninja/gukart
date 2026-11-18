@@ -588,10 +588,10 @@ button:focus-visible {
 }
 #loading .ld-hero {
   position: absolute;
-  left: 24.38%;
-  top: 23.24%;
-  width: 46.93%;
-}
+  left: 24.69%;
+  top: 23.61%;
+  width: 46.35%;
+} /* (the cut-out's box in the poster, as tools/_loader.mjs reports it when it renders them) */
 #loading .ld-hero img {
   display: block;
   width: 100%;
@@ -608,9 +608,9 @@ button:focus-visible {
     width: 70%;
   } /* phones: up in the sky, clear of Buddy, centred (15% + 70% + 15%) */
   #loading .ld-hero {
-    left: 4.91%;
-    top: 37.97%;
-    width: 83.7%;
+    left: 5.28%;
+    top: 38.18%;
+    width: 82.96%;
   }
 }
 @media (min-aspect-ratio: 16 / 9) {
@@ -2630,6 +2630,33 @@ body:has(#garage:not([hidden])) #menu {
   color: var(--white);
   padding: 2px 30px 6px 22px;
   clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+.center.ko .pop {
+  white-space: nowrap;
+}
+/* a takedown: a flash of warm light round the edges of the screen */
+body.ko-flash::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: radial-gradient(ellipse at center, rgba(255, 240, 200, 0) 45%, rgba(255, 160, 40, 0.5) 100%);
+  animation: koflash 0.45s ease-out forwards;
+}
+@keyframes koflash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.ko-flash::after {
+    animation: none;
+    opacity: 0;
+  }
 }
 @keyframes pop {
   0% {

@@ -197,9 +197,16 @@ export const events = {
     setTimeout(() => addEventListener('pointerdown', tap, { once: true }), 300); // (not the tap that was still held)
     setTimeout(toPodium, 3100); // (1.5 s of Buddy, 1.6 s of YOU CAME 1ST)
   },
+  // (one short word while you drive: no names or second lines. A streak is heard, the chime climbing, not read)
   takedown(name, n) {
     hud.kos.textContent = n;
     banner('TAKEDOWN', 'ko', 900);
+    // a flash of light round the edges of the screen
+    document.body.classList.remove('ko-flash');
+    void document.body.offsetWidth;
+    document.body.classList.add('ko-flash');
+    setTimeout(() => document.body.classList.remove('ko-flash'), 450);
+    Haptics.big?.();
   },
   flash(text) {
     banner(text.toUpperCase(), 'ko', 700);

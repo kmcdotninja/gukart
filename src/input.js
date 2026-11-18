@@ -17,7 +17,8 @@ let touchSteer = 0,
   fireTouch = false,
   btnSteer = 0,
   btnTarget = 0,
-  hardT = 0;
+  hardT = 0,
+  revTouch = false; // (a finger held on the screen during the countdown: revving)
 let gDrag = null;
 const endTouch = e => {
   if (e.pointerId === touchId) {
@@ -78,6 +79,8 @@ export function readInput(dt) {
   inp.drift = !!(keys.Space || keys.ShiftLeft || keys.ShiftRight || hardT > 0.35);
   inp.fire = !!(keys.KeyF || keys.KeyE || keys.KeyJ || fireTouch);
   inp.brake = !!(keys.ArrowDown || keys.KeyS || brakeTouch);
+  // on the grid: forward (the up arrow or W), or a finger held anywhere on the screen, revs the engine
+  inp.rev = game.state === 'count' && !!(keys.ArrowUp || keys.KeyW || revTouch);
 }
 
 // wire up this screen's buttons and listeners (called once, from main.js)
@@ -97,6 +100,11 @@ export function initInput() {
   addEventListener('keyup', e => {
     keys[e.code] = false;
   });
+  // revving on the grid with a finger: hold anywhere on the screen while the lights count down
+  addEventListener('pointerdown', e => {
+    if (game.state === 'count' && e.pointerType !== 'mouse') revTouch = true;
+  });
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => (revTouch = false));
   addEventListener('blur', releaseInput);
   addEventListener('pagehide', releaseInput);
   document.addEventListener('visibilitychange', () => document.hidden && releaseInput());

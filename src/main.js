@@ -43,6 +43,7 @@ import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
 import { playCup, settleTour } from './cup.js';
+import { speedFx } from './speedfx.js';
 import './style.css';
 import './screens.css';
 
@@ -77,12 +78,37 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('fresh')) {
 const LOCAL = /^(localhost|127\.|192\.168\.|10\.|\[::1\])/.test(location.hostname);
 if (!CAPTURE && !LOCAL) inject();
 const perfTick = perfHud(renderer, () => game.state); // ?perf=1: the stutter readout (src/perf.js)
+// revving on the grid: forward held (or a finger on the screen) opens the throttle, quick to rise, slower to fall; let
+// go after a big rev and it backfires, a crackle and a flash of flame from the pipes. Never touched, it blips by itself
+let rev = 0,
+  revUsed = false;
+function gridRev(dt) {
+  const held = game.race.input.rev,
+    p = game.race.player;
+  if (held) revUsed = true;
+  if (!revUsed) return Math.sin(game.clock * 4.3) + Math.sin(game.clock * 1.7) > 1.1 ? 0.9 : 0.08;
+  const was = rev;
+  rev += ((held ? 1 : 0.06) - rev) * Math.min(1, dt * (held ? 7 : 4));
+  if (!held && was > 0.75 && rev <= 0.75) {
+    Sound.backfire?.();
+    p.revPop = 0.35;
+  }
+  return rev;
+}
 function frame(now) {
   if (!CAPTURE) requestAnimationFrame(frame);
   perfTick();
-  const dt = Math.min(0.05, (now - last) / 1000);
+  let dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (document.body.dataset.state !== game.state) document.body.dataset.state = game.state; // what's on screen, for the smoke test (tools/smoke.mjs)
+  // a takedown's beat of slow motion (src/race.js knocked)
+  if (game.race?.slowT > 0 && game.state === 'race') {
+    game.race.slowT -= dt;
+    dt *= 0.32;
+  }
+  if (document.body.dataset.state !== game.state) {
+    if (game.state === 'count') revUsed = false; // (each start: it blips by itself until you rev it)
+    document.body.dataset.state = game.state;
+  } // what's on screen, for the smoke test (tools/smoke.mjs)
   Music.tick(game.state); // the music follows the game, whatever is on screen (src/music.js)
   if (game.state === 'paused') {
     renderer.render(scene, cam);
@@ -151,6 +177,7 @@ function frame(now) {
   game.world.update(dt, game.clock, cam);
 
   updateCamera(dt);
+  speedFx(dt, game.state === 'race' || game.state === 'finish');
 
   if (game.state === 'race' || game.state === 'finish' || game.state === 'count') {
     const p = game.race.player;
@@ -230,21 +257,14 @@ function frame(now) {
         type: p.m.type,
         speed: Math.max(0, p.speed) / 66,
         // racing: on the gas unless braking. On the grid: blips of the throttle, revving at the line
-        throttle:
-          game.state === 'race'
-            ? game.race.input.brake
-              ? 0
-              : 1
-            : game.state === 'count'
-              ? Math.sin(game.clock * 4.3) + Math.sin(game.clock * 1.7) > 1.1
-                ? 0.9
-                : 0.08
-              : 0.15,
+        throttle: game.state === 'race' ? (game.race.input.brake ? 0 : 1) : game.state === 'count' ? gridRev(dt) : 0.15,
+        rev: game.state === 'count',
         brake: game.race.input.brake,
         air: p.fly && p.airT > 0.12,
         drift: !!p.drift,
         corner: p.corner || 0, // (how hard the tyres are working through a turn: a squeal)
         boost: p.boost > 0,
+        rush: p.boost > 0 ? 1 : p.slip ? 0.7 : 0, // (the wind roars on a boost, rushes in a slipstream)
         steer: Math.max(-1, Math.min(1, p.wheelA * 2)),
         running: true,
       },

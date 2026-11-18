@@ -1503,14 +1503,38 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
     add((g['rb' + [w, h, d, r]] ||= roundedBox(w, h, d, r, 2)), mat, x, y, z, parent);
   const pipes = [],
     flames = [];
+  const chromeDS = (G.chromeDS ||= chrome.clone());
+  chromeDS.side = THREE.DoubleSide;
+  const sootM = (G.sootM ||= new THREE.MeshBasicMaterial({ color: '#0b0a09', side: THREE.DoubleSide }));
   const exhaust = (a, b, r = 0.07) => {
-    // a short pipe out of the engine, ending in a flame that shows only on a boost
-    tube(a, b, r, chrome);
+    // a short pipe out of the engine: open at its end (an open tube, not a capped rod) in a flared tip with a rolled
+    // chrome lip, sooty black inside so you look down into it; a flame shows from it on a boost
+    const A = new THREE.Vector3(...a),
+      Bv = new THREE.Vector3(...b),
+      dir = Bv.clone().sub(A).normalize();
+    const pipe = add((g.pipeOpen ||= new THREE.CylinderGeometry(1, 1, 1, 16, 1, true)), chromeDS, 0, 0, 0);
+    pipe.position.copy(A).add(Bv).multiplyScalar(0.5);
+    pipe.scale.set(r, A.distanceTo(Bv), r);
+    pipe.quaternion.setFromUnitVectors(Y, dir);
     const tip = new THREE.Object3D();
-    tip.position.set(...b);
-    tip.quaternion.setFromUnitVectors(Y, new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize());
+    tip.position.copy(Bv);
+    tip.quaternion.setFromUnitVectors(Y, dir);
     chassis.add(tip);
     pipes.push(tip);
+    // (in the tip's own space +y points out of the pipe)
+    const flare = new THREE.Mesh((g.pipeFlare ||= new THREE.CylinderGeometry(1.2, 1, 1.4, 20, 1, true)), chromeDS);
+    flare.scale.setScalar(r);
+    flare.position.y = -0.7 * r;
+    const lip = new THREE.Mesh((g.pipeLip ||= new THREE.TorusGeometry(1.2, 0.16, 8, 24).rotateX(Math.PI / 2)), chrome);
+    lip.scale.setScalar(r);
+    const soot = new THREE.Mesh((g.pipeSoot ||= new THREE.CylinderGeometry(0.92, 0.9, 3, 16, 1, true)), sootM); // (just inside the pipe's wall)
+    soot.scale.setScalar(r);
+    soot.position.y = -1.6 * r;
+    const back = new THREE.Mesh((g.pipeBack ||= new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2)), sootM);
+    back.scale.setScalar(r);
+    back.position.y = -2.8 * r;
+    for (const m of [flare, lip]) m.castShadow = true;
+    tip.add(flare, lip, soot, back);
     const fl = new THREE.Mesh(
       (g.flameUp ||= new THREE.ConeGeometry(0.22, 1.1, 10).translate(0, 0.55, 0)),
       new THREE.MeshBasicMaterial({
@@ -2282,8 +2306,18 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
       box(0.07, 0.24, 1.5, 0.02, chrome, sx * 1.04, 0.44, -0.2); // a steel sill plate
       box(0.05, 0.5, 0.5, 0.02, dark, sx * 1.2, 1.1, -1.7); // a dark panel towards the tail
       exhaust([sx * 0.82, 1.9, -1.05], [sx * 0.88, 1.98, -2.55], 0.21); // the silencer
-      const tip = add((g.bruteTip2 ||= new THREE.CylinderGeometry(0.14, 0.17, 0.3, 16)), trim, sx * 0.885, 1.99, -2.66);
+      // its tip: a hollow sleeve in the trim colour (open, so you see down the pipe), sooty inside
+      const trimDS = (G['trimDS' + trim.uuid] ||= Object.assign(trim.clone(), { side: THREE.DoubleSide }));
+      const tip = add(
+        (g.bruteTip2 ||= new THREE.CylinderGeometry(0.17, 0.22, 0.3, 20, 1, true)),
+        trimDS,
+        sx * 0.885,
+        1.99,
+        -2.66,
+      );
       tip.rotation.x = Math.PI / 2;
+      const tipIn = add((g.bruteTipIn ||= new THREE.CircleGeometry(0.16, 16)), sootM, sx * 0.885, 1.99, -2.6);
+      tipIn.rotation.y = Math.PI;
       // the chevron on the door: two white slashes and a dark one
       const chev = (G.bruteK ||= (() => {
         const c = document.createElement('canvas');

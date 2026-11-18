@@ -21,6 +21,8 @@ import {
   applyTunes,
 } from './vehicles.js';
 import { store } from './util.js';
+import { STUNTS, STUNT_ORDER, stuntReward } from './stunts.js';
+import { makeTyreFire } from './tyrefire.js';
 import { puffT, makeThrusters, makeVapour, makeBall, makeBoom, makeCannon, makeCannonball } from './powerfx.js';
 
 const $ = s => document.querySelector(s);
@@ -94,7 +96,8 @@ const shadowsOn = root =>
 // your car on a rig the power moves; the two rivals in the next lane, one ahead and one behind
 const rig = new THREE.Group();
 S.add(rig);
-let car = null,
+let carFire = null, // (the back tyres' fire, built onto the car the first time it burns)
+  car = null,
   thrusters = null;
 // the Roadster's four thrusters, hidden under the car: a nozzle at each corner of the floor that drops out and fires a
 // jet straight down (a hot core, a blue flame, a glow on the road under it)
@@ -372,6 +375,10 @@ const stop = () => {
   reticles.forEach(r => (r.visible = false));
 };
 $('#play').onclick = () => {
+  stuntPlay = null;
+  for (const b of document.querySelectorAll('#stunts button')) b.classList.remove('on');
+  $('.powname small').textContent = 'SPECIAL POWER';
+  $('#powName').textContent = POWERS[type].name;
   playT = 0;
   resetRivals();
   // (powers thrown at the road ahead are watched from behind the car, looking down the road after them)
@@ -391,6 +398,88 @@ addEventListener('keydown', e => {
     $('#play').click();
   }
 });
+
+/* ---------- the stunts (src/stunts.js), played on the stage: off a jump, the stunt (or a combo) in the air, and the
+   landing's boost ---------- */
+const COMBOS = [
+  ['backflip', 'superman'],
+  ['roll', 'wave'],
+  ['tornado', 'superman', 'wave'],
+];
+let stuntPlay = null; // { ids, t, side, air (seconds off the ground), slots: [start, end] per stunt, reward }
+function playStunts(ids) {
+  stop();
+  const LEAD = 0.25,
+    GAP = 0.12,
+    slots = [];
+  let t = LEAD;
+  for (const id of ids) {
+    slots.push([t, t + STUNTS[id].dur]);
+    t += STUNTS[id].dur + GAP;
+  }
+  stuntPlay = { ids, t: 0, side: Math.random() < 0.5 ? -1 : 1, air: t + 0.15, slots, reward: stuntReward(ids) };
+  orbit.target.z = 0;
+  $('.powname small').textContent = ids.length > 1 ? `COMBO X${ids.length}` : 'STUNT';
+  $('#powName').textContent = ids.map(id => STUNTS[id].name).join(' + ');
+  for (const b of document.querySelectorAll('#stunts button'))
+    b.classList.toggle('on', b.dataset.ids === ids.join(','));
+}
+$('#stunts').innerHTML =
+  STUNT_ORDER.map(
+    id =>
+      `<button data-ids="${id}"><b>${STUNTS[id].name}</b><small>${STUNTS[id].how} · ${STUNTS[id].boost.toFixed(1)} S BOOST</small></button>`,
+  ).join('') +
+  COMBOS.map(c => {
+    const r = stuntReward(c);
+    return `<button class="combo" data-ids="${c.join(',')}"><b>COMBO x${c.length}</b><small>${c.map(id => STUNTS[id].name).join(' + ')} · ${r.boost.toFixed(1)} S</small></button>`;
+  }).join('');
+$('#stunts').onclick = e => {
+  const b = e.target.closest('button[data-ids]');
+  if (b) playStunts(b.dataset.ids.split(','));
+};
+// the stunt's pose this frame (or null when none is playing): the car's lift and turn, Buddy's move, the boost
+function stuntPose(dt) {
+  const S = stuntPlay;
+  if (!S) return null;
+  S.t += dt;
+  const fly = S.air,
+    H = 2.2 + fly * 2.4;
+  const p = { y: 0, pitch: 0, roll: 0, yaw: 0, squash: 1, boost: 1, fx: {}, move: null, u: 0 };
+  if (S.t < fly) {
+    const x = S.t / fly;
+    p.y = 4 * H * x * (1 - x);
+    S.ids.forEach((id, i) => {
+      const [a, b] = S.slots[i];
+      if (S.t >= a && S.t < b) {
+        const u = (S.t - a) / (b - a),
+          q = STUNTS[id].pose(u, S.side);
+        p.yaw = q.yaw;
+        p.pitch = q.pitch;
+        p.roll = q.roll;
+        p.y += q.lift;
+        if (STUNTS[id].buddy) {
+          p.move = STUNTS[id].buddy;
+          p.u = u;
+        }
+      }
+    });
+  } else {
+    // touchdown: a squash, then the boost for as long as the stunts earned
+    const lt = S.t - fly;
+    p.squash = 1 - 0.18 * Math.exp(-lt * 9) * Math.cos(lt * 20);
+    if (lt < S.reward.boost) {
+      p.boost = 1.6;
+      p.fx.flame = true;
+    } else if (lt > S.reward.boost + 0.6) {
+      stuntPlay = null;
+      for (const b of document.querySelectorAll('#stunts button')) b.classList.remove('on');
+      $('.powname small').textContent = 'SPECIAL POWER';
+      $('#powName').textContent = POWERS[type].name;
+    }
+  }
+  $('#tl').style.width = Math.min(100, (S.t / (fly + S.reward.boost)) * 100) + '%';
+  return p;
+}
 
 /* ---------- the loop ---------- */
 const v3 = new THREE.Vector3(),
@@ -414,6 +503,8 @@ function frame(now) {
       $('#tl').style.width = '0%';
     }
   }
+  const sp = playT < 0 ? stuntPose(dt) : null;
+  if (sp) pose = sp;
   const p = pose || { y: 0, pitch: 0, roll: 0, yaw: 0, squash: 1, boost: 1, fx: {} },
     P = POWERS[type],
     speed = BASE * p.boost;
@@ -554,25 +645,26 @@ function frame(now) {
       for (const sx of [-1, 1])
         puff(v3.set(sx * 2.4, 0.3, -1), '#d8cdb8', 1.2, new THREE.Vector3(sx * 10, 1, -4), 2, 1.4, 0.8);
     }
-    // WHEELIE LAUNCH: fire pouring off the back tyres, licking up round them and streaming away behind
-    if (p.fx.tyreFire)
-      for (const w of car.wheels) {
-        w.spin.getWorldPosition(v3);
-        if (v3.z > surge - 0.2) continue; // (the back ones)
-        const r = w.r || 0.4;
-        for (let i = 0; i < 3; i++)
-          puff(
-            v3
-              .clone()
-              .add(new THREE.Vector3((Math.random() - 0.5) * 0.5, -r * 0.4 + Math.random() * r * 1.4, -r * 0.6)),
-            ['#ff3d10', '#ff7a1a', '#ffc23a'][i],
-            0.6 + Math.random() * 0.7,
-            new THREE.Vector3((Math.random() - 0.5) * 1.5, 2 + Math.random() * 2, -10 - Math.random() * 6),
-            0.6,
-            3.2,
-            0.8,
-          );
+    // WHEELIE LAUNCH: fire pouring off the back tyres from where they meet the road (src/tyrefire.js, as in a race)
+    if (p.fx.tyreFire || carFire) {
+      if (!carFire || carFire.root !== car.root) {
+        carFire?.dispose();
+        carFire = Object.assign(makeTyreFire(car.root, car.wheels), { root: car.root });
       }
+      carFire.update(dt, !!p.fx.tyreFire, Math.min(1, p.boost / 2));
+      if (p.fx.tyreFire)
+        for (const c of carFire.contacts)
+          if (Math.random() < 0.6)
+            puff(
+              v3.copy(c).setY(0.6),
+              '#ffb24a',
+              0.25,
+              new THREE.Vector3((Math.random() - 0.5) * 2, 3 + Math.random() * 3, -8),
+              0.2,
+              2.5,
+              0.3,
+            );
+    }
     // FIRE TRAIL: flames left burning on the road behind the tyres
     if (p.fx.fire)
       for (const sx of [-0.9, 0.9])
@@ -729,7 +821,9 @@ function frame(now) {
       t: now / 1000,
       steer: 0,
       boost: p.boost > 1,
-      air: p.y > 0.5 ? 1 : 0,
+      air: p.y > 0.5 && !p.move ? 1 : 0,
+      move: p.move || null,
+      u: p.u || 0,
       wheel: car.wheelRing,
       wheelR: car.wheelR,
       speed: 0.6,
