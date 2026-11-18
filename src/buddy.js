@@ -965,7 +965,7 @@ const showWheel = (R, w, n, sw) =>
       caps: mergeGeometries(caps),
     };
   })());
-// a balloon tyre: a fat round carcass on a small bead, and three staggered rows of square lugs round the tread
+// a balloon tyre: a fat round carcass on a small bead (its tread is in the rubber's own drawing)
 const balloonGeo = {};
 const balloonTyre = (r, w) =>
   (balloonGeo[r + ':' + w] ||= (() => {
@@ -983,25 +983,11 @@ const balloonTyre = (r, w) =>
         [0.76, h * 1.1],
         [0.66, h * 0.99],
         [0.62, h * 0.84],
-      ],
-      tyre = new THREE.LatheGeometry(
-        pr.map(([a, b]) => new THREE.Vector2(a * r, b)),
-        40,
-      ).rotateZ(Math.PI / 2),
-      lugs = [],
-      n = 11;
-    for (let row = -1; row <= 1; row++)
-      for (let q = 0; q < n; q++) {
-        const a = ((q + (row ? 0.5 : 0)) / n) * Math.PI * 2,
-          edge = row !== 0;
-        lugs.push(
-          new THREE.BoxGeometry(w * (edge ? 0.3 : 0.26), r * 0.1, r * 0.34)
-            .rotateZ(row * -0.32) // the outer rows lean over the shoulder
-            .translate(row * w * 0.36, r * (edge ? 0.955 : 0.995), 0)
-            .rotateX(a),
-        );
-      }
-    return { tyre, lugs: mergeGeometries(lugs) };
+      ];
+    return new THREE.LatheGeometry(
+      pr.map(([a, b]) => new THREE.Vector2(a * r, b)),
+      40,
+    ).rotateZ(Math.PI / 2);
   })());
 // the rubber: smooth sidewalls with a ring, and a tread band of blocks and grooves (road tread on the kart, knobbly off-road
 // blocks on the rest); the same drawing gives the grooves their depth (bump)
@@ -2530,19 +2516,11 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
         spin.add(m);
       }
       if (V.balloon) {
-        // a fat tyre; with off-road rubber, big lugs standing off the tread
-        const bt = balloonTyre(r, ww),
-          carcass = new THREE.Mesh(bt.tyre, rubberMat(tk));
+        // a fat tyre, its tread moulded into the rubber like the original tyres (the blocks drawn and given depth by the
+        // bump), not boxes stood off it
+        const carcass = new THREE.Mesh(balloonTyre(r, ww), rubberMat(tk));
         carcass.castShadow = carcass.receiveShadow = true;
         spin.add(carcass);
-        if (tk === 'off') {
-          const lugs = new THREE.Mesh(
-            bt.lugs,
-            (G.lugS ||= new THREE.MeshStandardMaterial({ color: '#2b2a2c', roughness: 0.92 })),
-          );
-          lugs.castShadow = true;
-          spin.add(lugs);
-        }
       } else {
         const t = new THREE.Mesh(tyre(r, ww), rubberMat(tk));
         t.castShadow = t.receiveShadow = true;
