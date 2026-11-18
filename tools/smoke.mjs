@@ -282,6 +282,15 @@ try {
   const other = page.locator('#map .isl[data-city="doha"]:not(.sel)');
   if (await other.count()) {
     await other.first().click();
+    // (the map is already up: wait for the swap itself to finish, the veil gone and the map open again)
+    await page
+      .waitForFunction(() => document.querySelector('#swapVeil')?.hidden === false, null, { timeout: 5000 })
+      .catch(() => {});
+    await page.waitForFunction(
+      () => document.querySelector('#swapVeil')?.hidden !== false && document.body.dataset.state === 'map',
+      null,
+      { timeout: 120000 },
+    );
     await expectVisible(page, '#map', 'another Doha circuit swaps in without a reload', 120000);
   } else fail('Doha has no other circuit to pick');
   await click(page, '#mapBack');
