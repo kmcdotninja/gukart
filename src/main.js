@@ -39,6 +39,7 @@ import { initRaceFlow } from './race-flow.js';
 import { initSchool, schoolUpdate } from './school.js';
 import { initPhoto } from './photo.js';
 import { paintPowerButton } from './powers-race.js';
+import { initMirror, renderMirror } from './mirror.js';
 import { inject } from '@vercel/analytics';
 import { updatePodium, showPodium } from './podium.js';
 import { salvo, updateFireworks } from './fireworks.js';
@@ -59,6 +60,7 @@ initWorldmap();
 initRaceFlow();
 initSchool();
 initPhoto();
+initMirror();
 
 // ---- the frame loop
 let last = performance.now();
@@ -324,6 +326,7 @@ function frame(now) {
     paintStandings();
   }
   renderer.render(scene, cam);
+  if (game.state === 'race' || game.state === 'finish') renderMirror(renderer, scene, game.race.player?.m.root, game.race.incoming);
 }
 
 async function boot() {

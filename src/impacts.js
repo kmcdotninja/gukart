@@ -9,6 +9,7 @@
 //   a blaster bolt: a shower of sparks off the surface, a few small chips, a small scorch
 // The race adds the rest: the blast's push on cars near it, the sound and the camera's shake by distance.
 import * as THREE from 'three';
+import { initHoles, holeMaterial, punch, stepHoles, clearHoles } from './holes.js';
 
 // the numbers of it, shared with the Physics Studio (physics.html), whose sliders change them live
 export const PHYS = {
@@ -200,6 +201,7 @@ export class Impacts {
           polygonOffsetFactor: -4,
         }),
       );
+      holeMaterial(m.material); // (a hole shot through the wall goes through its scorch too)
       m.visible = false;
       m.renderOrder = 2;
       m.userData.noHit = true;
@@ -207,6 +209,7 @@ export class Impacts {
       return { m, life: 0 };
     });
     this.si = 0;
+    initHoles(scene); // (the holes shot through walls: src/holes.js)
     this.o = o;
     this.z = new THREE.Vector3(0, 0, 1);
     this._c = new THREE.Vector3();
@@ -261,9 +264,31 @@ export class Impacts {
     v.y += rnd(5, 9);
     this.piece('nose', at, v, new THREE.Vector3(0.36, 0.42, 0.36), null);
   }
+  // a locked-on shot going straight through a wall on its way to its target (src/race.js, the Physics Studio): a hole
+  // punched in where it goes in (a scorched ring, a few chips back at you) and blown out where it comes out on the far
+  // side (the pieces of the wall thrown on the way it was going, a burnt ring round that side too). It flies on.
+  // entry/exit: world points; nIn: out of the near face (back at the shot); nOut: out of the far face (the shot's way)
+  // object: what it went through; the hole is cut in it, and you see through it to the other side (src/holes.js)
+  pierce(entry, nIn, exit, nOut, colour, rocket = true, object = null) {
+    // (the hole: a rocket's wider than a man is tall, torn and burnt round; a bolt's a big as a tyre)
+    const r = rocket ? 1.4 : 0.55;
+    punch(entry, exit, r, object);
+    this.impact(entry, nIn, 'bolt', colour, { mark: r * 3.2 });
+    this.impact(exit, nOut, 'bolt', colour, { mark: r * 3.8 });
+    const n = nOut.clone().normalize(),
+      at = exit.clone().addScaledVector(n, 0.2);
+    for (let i = 0; i < (rocket ? 3 : 1); i++) this.fx.spark(at.clone().addScaledVector(n, i * 0.8), '#b8ab98', rocket ? 3 + i : 1.5, 0.8);
+    const count = rocket ? Math.round(PHYS.debris * 0.6) : 3;
+    for (let i = 0; i < count; i++) {
+      const v = this.cone(n, 0.5, (rocket ? 10 : 6) + Math.random() * 8);
+      v.y += 2;
+      const sz = rocket ? rnd(0.15, 0.45) : rnd(0.08, 0.18);
+      this.piece(i % 2 ? 'flake' : 'chip', at, v, new THREE.Vector3(sz, sz * rnd(0.5, 1), sz * rnd(0.6, 1)), colour);
+    }
+  }
   // a shot hits a surface at point (world), its normal pointing out of the surface; colour: the surface's own
   // (scorch: false when it's a car that was hit: the burn mark is for walls and the road)
-  impact(point, normal, kind, colour = '#9a8a78', { scorch = true } = {}) {
+  impact(point, normal, kind, colour = '#9a8a78', { scorch = true, mark = 0 } = {}) {
     const big = kind === 'rocket',
       n = normal.clone().normalize(),
       at = point.clone().addScaledVector(n, 0.15),
@@ -300,7 +325,7 @@ export class Impacts {
     s.m.position.copy(point).addScaledVector(n, 0.04);
     s.m.quaternion.setFromUnitVectors(this.z, n);
     s.m.rotateZ(Math.random() * Math.PI * 2);
-    s.m.scale.setScalar(big ? 3.6 + Math.random() : 0.9);
+    s.m.scale.setScalar(mark || (big ? 3.6 + Math.random() : 0.9)); // (mark: a hole's own size)
     s.m.material.opacity = 1;
     s.m.visible = true;
     s.life = big ? 30 : 12;
@@ -327,6 +352,7 @@ export class Impacts {
   // A piece lands on its lowest corner (never sunk into the ground), bounces, skids with friction and, slowing, lies
   // down flat on its nearest side; it lies there, then shrinks away
   update(dt, groundAt, inside) {
+    stepHoles(dt);
     const o = this.o,
       c = this._c;
     for (const K of Object.values(this.kinds)) {
@@ -411,5 +437,6 @@ export class Impacts {
       s.life = 0;
       s.m.visible = false;
     }
+    clearHoles();
   }
 }

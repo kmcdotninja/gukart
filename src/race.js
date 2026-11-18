@@ -184,7 +184,7 @@ export const WEAPONS = {
   blaster: { name: 'Blaster', ammo: 16, color: '#6fd3ff' },
   rocket: { name: 'Rocket', ammo: 2, color: '#ff6a00' },
   shock: { name: 'Shockwave', ammo: 1, color: '#b18cff' },
-  mines: { name: 'Mines', ammo: 3, color: '#ffc400' },
+  mines: { name: 'Mines', ammo: 1, color: '#ffc400' }, // (one: a road strewn with them was no fun)
   yaji: { name: 'Yaji boost', ammo: 3, color: '#ff3b3b' },
   fire: { name: 'Fire', ammo: 1, color: '#ff4d1f' }, // rare: sets you on fire the moment it lands (fire mode, below)
   shield: { name: 'Shield', ammo: 1, color: '#4fe3ff' }, // goes up the moment it lands: blocks everything for 10 s, or 3 big hits
@@ -654,6 +654,7 @@ export class Race {
     this.v1 = new THREE.Vector3();
     this.v2 = new THREE.Vector3();
     this.v3 = new THREE.Vector3();
+    this.v3b = new THREE.Vector3();
     this.v4 = new THREE.Vector3();
     this.up = new THREE.Vector3();
     // tyre marks: dark streaks on asphalt, ruts in the sand
@@ -812,7 +813,10 @@ export class Race {
       n.m.visible = true;
       if (n.ring) n.ring.visible = true;
     }
-    for (const p of this.projs) this.scene.remove(p.m);
+    for (const p of this.projs) {
+      p.voice?.stop();
+      this.scene.remove(p.m);
+    }
     for (const m of this.mines) this.scene.remove(m.m);
     this.impacts?.clear();
     this.projs = [];
@@ -866,9 +870,9 @@ export class Race {
       r <= 2
         ? [
             ['fire', 0.04],
-            ['mines', 0.3],
-            ['blaster', 0.25],
-            ['shield', 0.2],
+            ['mines', 0.07],
+            ['blaster', 0.36],
+            ['shield', 0.32],
             ['shock', 0.15],
             ['rocket', 0.07],
             ['yaji', 0.03],
@@ -886,9 +890,9 @@ export class Race {
               ['fire', 0.05],
               ['blaster', 0.3],
               ['rocket', 0.18],
-              ['shield', 0.14],
-              ['mines', 0.13],
-              ['shock', 0.13],
+              ['shield', 0.17],
+              ['mines', 0.04],
+              ['shock', 0.19],
               ['yaji', 0.12],
             ];
     let acc = 0,
@@ -989,8 +993,9 @@ export class Race {
         life: 4,
         m,
         h: 1.7,
-        target: this.targetAhead(k, 150, 16), // (someone close enough ahead to see it land)
+        target: this.targetAhead(k), // (anyone ahead, as far as it can fly: it follows the road to them)
       });
+      if (this.projs.at(-1).target) this.projs.at(-1).life = 8; // (locked on, it has the fuel to run them down)
       k.cool = 0.5;
       k.flashT = 0.12;
       if (P) Sound.rocket();
@@ -1011,7 +1016,9 @@ export class Race {
         F = this.tr.frame(s, this.tr.newFrame());
       m.matrix.makeBasis(F.l, F.u, F.t).setPosition(F.p.clone().addScaledVector(F.l, k.lat).addScaledVector(F.u, 0.03));
       m.matrixAutoUpdate = false;
-      this.mines.push({ s, lat: k.lat, m, light, ring, arm: 0.5, life: 50 });
+      // (never more than three down at once, the oldest goes; and each one only lasts 18 s)
+      if (this.mines.length >= 3) this.mines[0].life = 0;
+      this.mines.push({ s, lat: k.lat, m, light, ring, arm: 0.5, life: 18 });
       k.cool = 0.35;
       if (P) Sound.blip(300, 0.15, 'triangle', 0.12, 0.6);
     } else if (w === 'yaji') {
@@ -1770,6 +1777,7 @@ export class Race {
     // the shots fly through the world (not along the road): straight, a rocket or a bolt with a target turning onto it
     // at its own rate; each step is checked against the cars, the buildings, walls and gates along the road (a ray the
     // length of the step), and the road or ground under it. Whatever it meets first, it hits
+    this.incoming = Infinity; // (the nearest shot coming for you: the mirror flashes with it)
     for (const p of this.projs) {
       p.life -= dt;
       if (!p.pos) {
@@ -1777,7 +1785,13 @@ export class Race {
         p.dir = tr.T[tr.idx(p.s)].clone().normalize();
       }
       const T = p.target && !p.target.finished ? p.target : null;
-      if (T) {
+      // locked on to someone ahead, it follows the road to them, turning round every bend, closing on their line and
+      // rising or dropping with them (over a jump): it reaches them unless they dodge it. Nothing on the way stops it:
+      // a wall or a building it clips is blown open as it goes through, and it flies on. A shot with no one to chase
+      // (or one they've dodged) flies straight through the world and goes off on whatever is in front of it
+      const ahead = T ? this.dS(T.s, p.s) : -1,
+        onRoad = T && ahead > -2 && ahead < 270; // (all the way out to the lock-on range)
+      if (T && !onRoad) {
         const want = this.v3
           .copy(T.m.root.position)
           .setY(T.m.root.position.y + 1.1)
@@ -1787,10 +1801,50 @@ export class Race {
       }
       const step = p.v * dt,
         from = p.pos.clone();
-      p.pos.addScaledVector(p.dir, step);
-      p.s = tr.nearest(p.pos.x, p.pos.z).i * tr.seg; // (where along the lap it is, for anything that asks)
+      if (onRoad) {
+        // close behind them but not yet on their line: it hangs back at their speed while it swings in, rather than
+        // overshooting them
+        const off = Math.abs(T.lat - p.lat) > 2;
+        p.s = tr.wrapS(p.s + (off && ahead < 8 ? Math.min(step, Math.max(0, ahead - 2) + Math.max(0, T.speed) * dt) : step));
+        // onto their line by the time it gets to them (however close they were), but only so fast sideways: a hard
+        // swerve at the last moment dodges it
+        const reach = Math.max(0.05, ahead / Math.max(8, p.v - Math.max(0, T.speed))),
+          want = (T.lat - p.lat) * Math.min(1, dt / (reach * 0.7)),
+          side = (p.type === 'rocket' ? 22 : 30) * dt;
+        p.lat = clamp(p.lat + clamp(want, -side, side), -W / 2 - 4, W / 2 + 4);
+        const F = tr.frame(p.s, this.F);
+        p.pos.copy(F.p).addScaledVector(F.l, p.lat).addScaledVector(F.u, p.h);
+        p.dy = lerp(p.dy || 0, T.m.root.position.y + 1.1 - p.pos.y, Math.min(1, dt * (ahead < 25 ? 8 : 2)));
+        p.pos.y += p.dy;
+        if (p.pos.distanceToSquared(from) > 1e-6) p.dir.subVectors(p.pos, from).normalize();
+      } else {
+        p.pos.addScaledVector(p.dir, step);
+        p.s = tr.nearest(p.pos.x, p.pos.z).i * tr.seg; // (where along the lap it is, for anything that asks)
+        const F = tr.frame(p.s, this.F);
+        p.lat = this.v3.subVectors(p.pos, F.p).dot(F.l); // (and across it: where it picks up the road if it locks on)
+      }
       p.m.position.copy(p.pos);
       p.m.quaternion.setFromUnitVectors(this.zAxis, p.dir);
+      // its sound, heard from where it is: a rocket's roar, a bolt's tearing hiss, louder as it closes, on its side of
+      // you, its pitch dropping as it goes past. One coming for you you hear from further off, so you can dodge it
+      {
+        const d = p.pos.distanceTo(P.m.root.position),
+          forYou = p.target === P && p.owner !== P && !P.finished;
+        if (forYou) this.incoming = Math.min(this.incoming, d);
+        if (!p.voice && d < (forYou ? 220 : 120) && this.projs.filter(q => q.voice).length < 5)
+          p.voice = Sound.shot?.(p.type === 'rocket');
+        if (p.voice) {
+          const right = this.v3.set(-1, 0, 0).applyQuaternion(P.m.root.quaternion),
+            pan = d > 0.5 ? this.v3b.subVectors(p.pos, P.m.root.position).dot(right) / d : 0,
+            closing = p.lastD != null ? (p.lastD - d) / Math.max(dt, 1e-3) : 0;
+          p.voice.set(d, closing, pan, forYou ? 1.5 : 1);
+          if (d > 260) {
+            p.voice.stop();
+            p.voice = null;
+          }
+        }
+        p.lastD = d;
+      }
       if (p.type === 'rocket') {
         // its flame and a thick trail of smoke behind it, so you can follow it all the way in
         this.fx.spark(p.pos, Math.random() < 0.5 ? '#ffd27a' : '#ff8a1f', 2.2, 0.18);
@@ -1801,8 +1855,15 @@ export class Race {
       for (const k of ks) {
         if (k === p.owner || k.br || (k.finished && k !== P)) continue;
         const kp = k.m.root.position,
-          d = distToSeg(kp.x, kp.y + 1, kp.z, from, p.pos);
-        if (d < (p.type === 'bolt' ? 2.6 : 2.3)) {
+          d = distToSeg(kp.x, kp.y + 1, kp.z, from, p.pos),
+          // (following the road, measured along it as well: it has caught up to them, on their line)
+          caught =
+            onRoad &&
+            !k.br &&
+            Math.abs(k.lat - p.lat) < (p.type === 'bolt' ? 2.6 : 2.3) &&
+            this.dS(k.s, p.s) < 1.5 &&
+            this.dS(k.s, p.s) > -step - 1.5;
+        if (caught || d < (p.type === 'bolt' ? 2.6 : 2.3)) {
           if (p.type === 'rocket') {
             // a direct hit: the blast throws it on the way the rocket was going, and catches the cars round it
             const at = kp.clone().addScaledVector(p.dir, -3);
@@ -1817,6 +1878,25 @@ export class Race {
         }
       }
       if (done) continue;
+      if (onRoad) {
+        // (inside a wall it's going through: nothing more until it's out the far side)
+        const w = (p.inWall = (p.inWall || 0) - step) > 0 ? null : this.shotHits(from, p.dir, step);
+        if (w) {
+          // the far side: back along its line from a little past the wall, the first face met is where it comes out
+          // (only that thing, from further past it if it's deep: a building's far wall, not the next one along)
+          const back = p.dir.clone().negate();
+          let out = null;
+          for (const D of [6, 16, 40])
+            if ((out = this.shotHits(w.point.clone().addScaledVector(p.dir, D), back, D - 0.5, w.object))) break;
+          // (a panel, a sign: no far face of its own, a short hole through it)
+          out ||= { point: w.point.clone().addScaledVector(p.dir, 0.3), normal: p.dir.clone() };
+          this.impacts.pierce(w.point, w.normal, out.point, out.normal, w.colour, p.type === 'rocket', w.object);
+          p.inWall = out.point.distanceTo(from) + 0.3;
+          const dd = w.point.distanceTo(P.m.root.position);
+          if (dd < 60) Sound.hitMark?.(p.type === 'rocket');
+        }
+        continue;
+      }
       // the world: a building, a wall, a gate, a barrier in the way; or down onto the road or the ground
       const w = this.shotHits(from, p.dir, step);
       if (w) {
@@ -1838,6 +1918,7 @@ export class Race {
     this.impacts.update(dt, (x, z) => this.groundAt(x, z));
     this.projs = this.projs.filter(p => {
       if (p.life > 0) return true;
+      p.voice?.stop();
       this.scene.remove(p.m);
       return false;
     });
@@ -1845,7 +1926,7 @@ export class Race {
       mn.arm -= dt;
       mn.life -= dt;
       mn.light.visible = mn.arm <= 0 && Math.sin(this.clock * 12) > 0;
-      mn.ring.material.opacity = mn.arm <= 0 ? 0.3 + 0.3 * Math.max(0, Math.sin(this.clock * 12)) : 0;
+      mn.ring.material.opacity = mn.arm <= 0 ? 0.6 + 0.4 * Math.max(0, Math.sin(this.clock * 12)) : 0;
       if (mn.arm <= 0)
         for (const k of ks)
           if (!k.br && Math.abs(this.dS(k.s, mn.s)) < 2.2 && Math.abs(k.lat - mn.lat) < 2.4 && k.air < 1.5) {
@@ -2162,7 +2243,8 @@ export class Race {
   }
   // a shot's step against the city: the buildings, walls, gates and barriers (not the cars, the road, the ground, the
   // sky or the effects; the road and ground are by height, groundAt). Worked out once a race: what can be hit
-  shotHits(from, dir, len) {
+  // (only: that one thing alone)
+  shotHits(from, dir, len, only = null) {
     if (!this.hitList) {
       const skip = new Set(this.all.map(k => k.m.root));
       this.hitList = [];
@@ -2181,7 +2263,7 @@ export class Race {
     this.ray.set(from, dir);
     this.ray.near = 0;
     this.ray.far = len + 0.3;
-    const h = this.ray.intersectObjects(this.hitList, false)[0];
+    const h = (only ? this.ray.intersectObject(only, false) : this.ray.intersectObjects(this.hitList, false))[0];
     if (!h) return null;
     const o = h.object,
       normal = (h.face?.normal || this.v3.set(0, 1, 0)).clone();
@@ -2202,7 +2284,7 @@ export class Race {
       if (m?.color && !m.map) colour = '#' + m.color.getHexString();
       else if (m?.color) colour = '#' + m.color.clone().multiplyScalar(0.8).getHexString();
     }
-    return { point: h.point, normal, colour };
+    return { point: h.point, normal, colour, object: o };
   }
   // a shot hits the world: the impact (src/impacts.js); a rocket's blast throws cars near it, and you hear and feel it
   // by how near you are

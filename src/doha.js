@@ -16,6 +16,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { canvasTex } from './textures.js';
 import { qaSign, QA_BROWN } from './doharoad.js';
 import { aquarium } from './aquarium.js';
+import { lusailInside } from './stadium.js';
 
 // a facade drawn once and repeated by the metre (the geometry's UVs are in metres / the tile size)
 export function facade(draw, w = 128, h = 128) {
@@ -1277,11 +1278,10 @@ export function dressDoha(k) {
       const e = ends.reduce((acc, e2) => acc + Math.abs(Math.hypot(e2.x - q.x, e2.z - q.z) - R), 0);
       if (!c || e < c.e) c = { x: q.x, z: q.z, e };
     }
+    // the gold skin: a bowl flaring out as it rises
+    const bowlR = h => 52 + 18 * Math.sin((h / 34) * Math.PI * 0.55);
     const pts = [];
-    for (let k2 = 0; k2 <= 12; k2++) {
-      const t = k2 / 12;
-      pts.push(new THREE.Vector2(52 + 18 * Math.sin(t * Math.PI * 0.55), t * 34));
-    }
+    for (let k2 = 0; k2 <= 12; k2++) pts.push(new THREE.Vector2(bowlR((k2 / 12) * 34), (k2 / 12) * 34));
     const bowl = new THREE.LatheGeometry(pts, 64);
     {
       const uv = bowl.attributes.uv;
@@ -1291,34 +1291,13 @@ export function dressDoha(k) {
     st.position.set(c.x, 0, c.z);
     st.castShadow = true;
     scene.add(st);
-    // the roof: a white ring sloping gently in, open in the middle over the pitch
-    const roof = new THREE.Mesh(
-      new THREE.RingGeometry(24, 69, 64, 1).rotateX(-Math.PI / 2),
-      lam('#f5f3ee', { side: THREE.DoubleSide }),
-    );
-    roof.position.set(c.x, 34.5, c.z);
-    scene.add(roof);
-    const pitch = new THREE.Mesh(new THREE.CircleGeometry(24, 32).rotateX(-Math.PI / 2), lam('#4f9a3c'));
-    pitch.position.set(c.x, 2, c.z);
-    scene.add(pitch);
-    // floodlights over the pitch at night, seen through the open roof
-    const flood = new THREE.Mesh(
-      new THREE.CircleGeometry(24, 32).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: '#fff8e6',
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    );
-    flood.position.set(c.x, 2.1, c.z);
-    scene.add(flood);
-    glowing.push({
-      fn: n => {
-        flood.material.opacity = n * 0.5;
-      },
-    });
+    // inside it, a real football ground (src/stadium.js): the pitch and its goals, two tiers of seating all the way
+    // round, the white roof ring open over the pitch, the floodlights along its edge, a big screen over each end
+    const ground = lusailInside({ bowlR, top: 34 });
+    ground.group.position.set(c.x, 0, c.z);
+    ground.group.rotation.y = head(arcEnd); // (the pitch lies along the road out of the bend)
+    scene.add(ground.group);
+    glowing.push({ fn: ground.night });
     reserve(c.x, c.z, 72);
     k.stadium = { x: c.x, z: c.z };
     void free;

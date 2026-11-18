@@ -3980,3 +3980,48 @@ body.tilt-steer .steer-pad {
 #loading .ld-travel b {
   text-shadow: 0 3px 18px rgba(5, 9, 24, 0.75);
 }
+
+/* the rear-view mirror (src/mirror.js; desktop, M moves it): a wide glass in a dark rounded frame. Hanging under the
+   progress bar on a short stem, as the mirror hangs in a car; or down at the bottom of the screen */
+.mirror {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.mirror[hidden] {
+  display: none;
+}
+.mirror-stem {
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(90deg, #2a2f3d, #4a5266, #2a2f3d);
+  border-radius: 2px 2px 0 0;
+}
+.mirror-glass {
+  width: clamp(240px, 24vw, 340px);
+  aspect-ratio: 3.6;
+  border-radius: 14px / 40%;
+  border: 5px solid #161a24;
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.18),
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    inset 0 0 14px rgba(0, 0, 0, 0.35);
+  /* (the picture is drawn under this frame, straight onto the game's canvas: the glass itself stays clear) */
+}
+.mirror[data-at='bottom'] {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--sb, 0px) + 18px);
+  transform: translateX(-50%);
+}
+.mirror[data-at='bottom'] .mirror-stem {
+  display: none;
+}
+.mirror-glass.warn {
+  border-color: #ff2a2a;
+  box-shadow:
+    0 0 0 1.5px rgba(255, 120, 120, 0.6),
+    0 0 22px rgba(255, 40, 40, 0.8);
+}

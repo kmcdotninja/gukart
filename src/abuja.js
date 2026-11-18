@@ -17,6 +17,7 @@ import { boxM } from './doha.js';
 import { aquarium } from './aquarium.js';
 import { signTex } from './textures.js';
 import { tunnel } from './tunnels.js';
+import { footballPitch, standTex } from './stadium.js';
 
 const TAU = Math.PI * 2;
 const FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
@@ -1907,15 +1908,25 @@ export function dressAbuja(k, h) {
         for (let n = 0; n < uv.count; n++) uv.setX(n, uv.getX(n) * 30);
       }
       put(wallG.translate(0, 13, 0), lam('#ffffff', { map: wallT, side: THREE.DoubleSide })); // (free() cleared its ground: the road test samples its whole square)
+      // the stands: one sweep of seating all the way round, green seats and a crowd, an aisle every few metres
+      const seatsT = standTex({ seat: '#1f8a4c', seat2: '#f2f2f2', rows: 26 });
+      seatsT.repeat.set(40, 1);
       put(
         new THREE.CylinderGeometry(R - 2, R - 40, 22, 64, 1, true).translate(0, 12, 0),
-        lam('#9fb2bf', { side: THREE.DoubleSide }),
+        lam('#ffffff', { map: seatsT, side: THREE.DoubleSide }),
       );
       put(new THREE.CylinderGeometry(R - 40, R - 40, 0.4, 48).translate(0, 0.3, 0), lawnM);
+      // and on the grass a real pitch: stripes, the lines, the goals and their nets (src/stadium.js)
+      const pitch = footballPitch({ L: 60, Wd: 38, run: 2 });
+      pitch.position.set(fr.x, 0.53, fr.z);
+      pitch.rotation.y = fr.a;
+      scene.add(pitch);
+      put(new THREE.RingGeometry(R - 43, R - 40.2, 64, 1).rotateX(-Math.PI / 2).translate(0, 0.54, 0), lam('#b4553a')); // the running track round it
+      // the roof: a flat white ring over the stands, open over the pitch
       put(
         new THREE.TorusGeometry(R - 6, 9, 4, 64)
           .rotateX(Math.PI / 2)
-          .scale(1, 1, 0.12)
+          .scale(1, 0.12, 1)
           .translate(0, 30, 0),
         white,
       );

@@ -440,9 +440,21 @@ export function pitStraight(key, title, W, tr, add) {
     emissiveIntensity: 0,
   });
   const glow = [[wallM, 0.5]];
+  // only where the road lies flat on the ground: never up a loop-the-loop, a flyover or down an underpass (Lusail's loop
+  // ends 60 m before the line, and its boards were laid at ground height with the loop's heading: they lay across
+  // the road and leaned into it, like a divider)
+  const flat = s => {
+    for (let d = -6; d <= 6; d += 3) {
+      const k = tr.idx(tr.wrapS(s + d));
+      if (tr.inLoop[k] || tr.elevated[k] || tr.trench[k] || tr.lowb[k] || Math.abs(tr.P[k].y) > 0.4 || Math.abs(tr.T[k].y) > 0.08)
+        return false;
+    }
+    return true;
+  };
   // the pit wall, both sides, just beyond the kerb
   for (const sd of [-1, 1])
     for (let s = -150; s < 150; s += 8) {
+      if (!flat(s) || !flat(s + 8)) continue;
       const i = tr.idx(tr.wrapS(s)),
         p = tr.beside(i, sd * (W / 2 + 2.9)),
         a = Math.atan2(tr.T[i].x, tr.T[i].z);
@@ -472,6 +484,7 @@ export function pitStraight(key, title, W, tr, add) {
   });
   for (const sd of [-1, 1])
     for (const s of [-60, 40]) {
+      if (!flat(s - 12) || !flat(s + 12)) continue;
       const i = tr.idx(tr.wrapS(s)),
         p = tr.beside(i, sd * (W / 2 + 7)),
         a = Math.atan2(tr.T[i].x, tr.T[i].z);
@@ -492,7 +505,7 @@ export function pitStraight(key, title, W, tr, add) {
     B = pts.at(-1),
     L = Math.hypot(B.x - A.x, B.z - A.z),
     dev = Math.max(...pts.map(q => Math.abs((B.x - A.x) * (A.z - q.z) - (A.x - q.x) * (B.z - A.z)) / L));
-  if (dev > 4) return { glow, building: null };
+  if (dev > 4 || pts.some((_, j) => !flat(-110 + j * 10))) return { glow, building: null };
   const garageT = canvasTex(512, 128, (x, w, h) => {
     x.fillStyle = '#e9ecf0';
     x.fillRect(0, 0, w, h);

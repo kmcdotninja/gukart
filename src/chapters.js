@@ -311,8 +311,8 @@ function lusailTrack(La, Lb, K = -40, LOOP = 200, RL = 140, S0 = 80) {
     [0, 'shore', { side: 'out', len: La, d: 34 }],
     [40, 'kicker'],
     [70, 'items'],
-    [85, 'fork', { len: 205, tunnel: 'in' }],
-  ]); // the sky bridge over the marina, the subway under the towers
+    [0, 'nofork'],
+  ]); // (no split here: the marina promenade is one road, nothing down the middle of it)
   t.arc(90, 90, 0);
   // down the boulevard and round a loop-the-loop: 24 m up and over, the road stepping 30 m sideways so it clears itself
   t.straight(Lb * 0.45, 0, [

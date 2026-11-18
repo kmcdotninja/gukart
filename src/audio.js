@@ -87,6 +87,9 @@ const noise = c => {
   for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
   return noiseBuf;
 };
+// the shots in the air now making their sound (Sound.shot), and the watch that hushes any no longer being driven
+const LIVE = new Set();
+let WATCH = 0;
 const loopNoise = c => {
   const s = c.createBufferSource();
   s.buffer = noise(c);
@@ -732,6 +735,105 @@ export const Sound = {
     s.start(t, Math.random());
     s.stop(t + 0.32);
   },
+  // a shot in the air (src/race.js, the Physics Studio): its own sound for as long as it flies, heard from where it is.
+  // A rocket: the roar of its motor (a deep band of noise, a hissing one over it, a crackle that flutters). A blaster
+  // bolt: the hiss and whistle of it tearing through the air, and its hum. Each frame, voice.set(dist, closing, pan):
+  // louder as it closes in, panned to its side, its pitch up as it comes at you and dropping as it goes past (Doppler,
+  // the "neeeowm" of a missile going by); voice.stop() when it's gone
+  shot(rocket = true) {
+    if (!this.ctx || !this.on || this.quiet) return null;
+    const c = this.ctx,
+      out = c.createGain(),
+      pn = c.createStereoPanner ? c.createStereoPanner() : null;
+    out.gain.value = 0;
+    if (pn) {
+      out.connect(pn);
+      pn.connect(this.bus);
+    } else out.connect(this.bus);
+    const nodes = [],
+      bands = [];
+    const band = (type, f, q, v) => {
+      const s = loopNoise(c),
+        fl = c.createBiquadFilter(),
+        g = c.createGain();
+      fl.type = type;
+      fl.frequency.value = f;
+      fl.Q.value = q;
+      g.gain.value = v;
+      s.connect(fl);
+      fl.connect(g);
+      g.connect(out);
+      nodes.push(s);
+      bands.push([fl, f]);
+      return g;
+    };
+    let flutter = null,
+      tone = null;
+    if (rocket) {
+      band('lowpass', 520, 0.7, 1.1); // the roar
+      band('bandpass', 1500, 0.9, 0.38); // the hiss of the exhaust
+      const cr = band('bandpass', 3800, 1.4, 0.12); // the crackle, fluttering
+      flutter = c.createOscillator();
+      const fg = c.createGain();
+      flutter.frequency.value = 23;
+      fg.gain.value = 0.1;
+      flutter.connect(fg);
+      fg.connect(cr.gain);
+      flutter.start();
+    } else {
+      band('bandpass', 2600, 3.2, 0.9); // the tearing hiss, a whistle in it
+      band('highpass', 6000, 0.7, 0.18);
+      tone = c.createOscillator();
+      const tg = c.createGain(),
+        tf = c.createBiquadFilter();
+      tone.type = 'sawtooth';
+      tone.frequency.value = 340;
+      tf.type = 'lowpass';
+      tf.frequency.value = 900;
+      tg.gain.value = 0.07;
+      tone.connect(tf);
+      tf.connect(tg);
+      tg.connect(out);
+      tone.start();
+    }
+    const self = this;
+    let gone = false;
+    // (a paused race stops asking: the voice falls silent on its own rather than roaring on under the menu)
+    const v = {
+      seen: performance.now(),
+      hush() {
+        out.gain.setTargetAtTime(0, c.currentTime, 0.05);
+      },
+      set(dist, closing = 0, pan = 0, loud = 1) {
+        if (gone) return;
+        v.seen = performance.now();
+        const t = c.currentTime,
+          // (an exaggerated Doppler: the drop as it passes is the sound of it)
+          dop = Math.max(0.55, Math.min(1.6, 340 / Math.max(120, 340 - closing * 2.2))),
+          near = Math.min(1, (rocket ? 14 : 9) / Math.max(dist, 3)) ** 1.15,
+          vol = (self.quiet ? 0 : 1) * near * (rocket ? 0.42 : 0.3) * loud;
+        out.gain.setTargetAtTime(vol, t, 0.04);
+        for (const [fl, f] of bands) fl.frequency.setTargetAtTime(f * dop * (0.85 + 0.15 * near), t, 0.05);
+        if (tone) tone.frequency.setTargetAtTime(340 * dop, t, 0.05);
+        if (pn) pn.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)) * 0.85, t, 0.05);
+      },
+      stop() {
+        if (gone) return;
+        gone = true;
+        const t = c.currentTime;
+        out.gain.setTargetAtTime(0, t, 0.06);
+        for (const n of [...nodes, flutter, tone]) n?.stop(t + 0.4);
+        setTimeout(() => (pn || out).disconnect(), 600);
+        LIVE.delete(v);
+      },
+    };
+    LIVE.add(v);
+    WATCH ||= setInterval(() => {
+      const now = performance.now();
+      for (const x of LIVE) if (now - x.seen > 150) x.hush();
+    }, 120);
+    return v;
+  },
   blip(freq, dur = 0.12, type = 'sine', vol = 0.18, slide = 1.5) {
     if (!this.ctx || !this.on || this.quiet) return;
     const c = this.ctx,
@@ -922,30 +1024,48 @@ export const Sound = {
     this.bell(big ? 1760 : 2350, 0, big ? 0.12 : 0.08, 0.18);
     this.thump(big ? 140 : 200, 60, 0.15, big ? 0.25 : 0.12);
   },
-  // the blaster: a sharp laser pew, a bright tone diving fast, a click of noise on the front of it
+  // the blaster: a hard crack as it fires, the bolt's energy snapping down in pitch through a filter (not a bare square
+  // wave: that was a toy's beep), a hiss of air torn open, a punch of body under it
   zap() {
     if (!this.ctx || !this.on || this.quiet) return;
     const c = this.ctx,
       t = c.currentTime,
       o = c.createOscillator(),
+      o2 = c.createOscillator(),
+      f = c.createBiquadFilter(),
       g = c.createGain();
-    o.type = 'square';
-    o.frequency.setValueAtTime(2200, t);
-    o.frequency.exponentialRampToValueAtTime(380, t + 0.13);
-    g.gain.setValueAtTime(0.11, t);
-    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.15);
-    o.connect(g);
+    o.type = 'sawtooth';
+    o2.type = 'sawtooth';
+    o.frequency.setValueAtTime(1500, t);
+    o.frequency.exponentialRampToValueAtTime(140, t + 0.2);
+    o2.frequency.setValueAtTime(1530, t);
+    o2.frequency.exponentialRampToValueAtTime(150, t + 0.2);
+    f.type = 'lowpass';
+    f.Q.value = 6;
+    f.frequency.setValueAtTime(5200, t);
+    f.frequency.exponentialRampToValueAtTime(500, t + 0.22);
+    g.gain.setValueAtTime(0.0005, t);
+    g.gain.exponentialRampToValueAtTime(0.09, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.24);
+    o.connect(f);
+    o2.connect(f);
+    f.connect(g);
     g.connect(this.bus);
     o.start(t);
-    o.stop(t + 0.17);
-    this.burst({ f0: 4000, f1: 2500, dur: 0.05, vol: 0.05, q: 0.7 });
+    o2.start(t);
+    o.stop(t + 0.26);
+    o2.stop(t + 0.26);
+    this.burst({ f0: 6000, f1: 2500, dur: 0.06, vol: 0.2, q: 0.6, type: 'highpass', attack: 0.002 }); // the crack
+    this.burst({ f0: 3000, f1: 900, dur: 0.3, vol: 0.07, q: 1.2, attack: 0.01 }); // the air
+    this.thump(180, 60, 0.14, 0.16);
   },
-  // a rocket away: a deep kick, a roaring whoosh sweeping up as it leaves, and a crackling tail
+  // a rocket away: the motor lighting (a hard crack, a deep kick), a blast of exhaust, and the roar of it going
+  // (its flight is its own sound after that: shot())
   rocket() {
-    this.thump(140, 45, 0.35, 0.32);
-    this.burst({ f0: 260, f1: 2400, dur: 0.75, vol: 0.32, q: 1.1, attack: 0.03 });
-    this.burst({ f0: 3500, f1: 1800, dur: 1.1, vol: 0.06, q: 0.6, type: 'highpass', attack: 0.08 });
-    this.blip(220, 0.35, 'sawtooth', 0.05, 2.6);
+    this.thump(120, 38, 0.45, 0.4);
+    this.burst({ f0: 5000, f1: 1500, dur: 0.09, vol: 0.22, q: 0.5, type: 'highpass', attack: 0.002 });
+    this.burst({ f0: 1400, f1: 260, dur: 0.6, vol: 0.34, q: 0.6, type: 'lowpass', attack: 0.01 });
+    this.burst({ f0: 900, f1: 2600, dur: 0.9, vol: 0.12, q: 0.9, attack: 0.05 });
   },
   // something blowing up near you: a deep boom, a roar of low noise, debris crackling after
   explode(near = 1) {

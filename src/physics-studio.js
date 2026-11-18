@@ -31,6 +31,7 @@ import { Sound } from './audio.js';
 import { buildTrack, buildRoad, buildForks, buildForkRoads } from './track.js';
 import { buildWorld } from './world.js';
 import { CHAPTERS } from './chapters.js';
+import { Garage } from './garage.js';
 
 const $ = s => document.querySelector(s);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -45,7 +46,8 @@ const tex = buildTextures();
 const S = new THREE.Scene();
 S.background = new THREE.Color('#9fc4e8');
 S.fog = new THREE.Fog('#dfe5ea', 120, 900);
-S.add(new THREE.HemisphereLight('#e2efff', '#8a6a48', 1.5));
+const hemi = new THREE.HemisphereLight('#e2efff', '#8a6a48', 1.5);
+S.add(hemi);
 const sun = new THREE.DirectionalLight('#fff1d6', 3);
 sun.castShadow = true;
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 400 });
@@ -318,17 +320,27 @@ function useStage(which) {
     S.add(box);
     buildRoad(box, tr, tex);
     buildForkRoads(box, tr, tex);
-    buildWorld(box, tr, tex, { low: false, city: 'kano', gantry: 'kano.old' }).sky.visible = false;
-    city = { tr, box };
+    const world = buildWorld(box, tr, tex, { low: false, city: 'kano', gantry: 'kano.old' });
+    world.sky.visible = false;
+    // (its moving parts run as in a race: the monorail's train had sat on the road at the start, never set on its beam)
+    world.update(0, 0, cam);
+    city = { tr, box, world };
   }
   const inCity = which === 'city',
     items = which === 'items';
   stage = which;
   plain.visible = which === 'plain';
   if (city) city.box.visible = inCity;
+  if (items && !room) buildRoom();
   show.visible = items;
-  S.background.set(items ? '#070a18' : '#9fc4e8');
-  S.fog.far = items ? 1e5 : 900;
+  hemi.visible = sun.visible = !items; // (the workshop has its own lights)
+  S.background.copy(items ? room.bg : new THREE.Color('#9fc4e8'));
+  S.fog.color.set(items ? room.bg : '#dfe5ea');
+  S.fog.near = items ? room.near : 120;
+  S.fog.far = items ? room.far : 900;
+  S.environment = items ? ENV.tex : null; // (the garage's reflections)
+  S.environmentIntensity = items ? room.env : 1;
+  orbit.maxDistance = items ? 16 : 110; // (inside the workshop's walls)
   sun.castShadow = true;
   if (inCity) {
     const F = city.tr.frame(CITY_S, city.tr.newFrame());
@@ -345,7 +357,10 @@ function useStage(which) {
   renderButtons();
   if (items) {
     imp.clear();
-    for (const sh of shots) root.remove(sh.m);
+    for (const sh of shots) {
+      sh.voice?.stop();
+      root.remove(sh.m);
+    }
     shots.length = 0;
     clearProps();
     clearChilis();
@@ -1039,12 +1054,12 @@ function solid() {
   return hitList;
 }
 // a ray from a (stage frame) along dir for len: the first solid thing, as a world point, its normal and its colour
-function rayHit(a, dir, len) {
+function rayHit(a, dir, len, only = null) {
   const wa = root.localToWorld(a.clone()),
     wd = dir.clone().transformDirection(root.matrixWorld);
   ray.set(wa, wd);
   ray.far = len + 0.3;
-  const h = ray.intersectObjects(solid(), false)[0];
+  const h = (only ? ray.intersectObject(only, false) : ray.intersectObjects(solid(), false))[0];
   if (!h) return null;
   const o = h.object,
     n = (h.face?.normal || V(0, 1, 0)).clone();
@@ -1064,7 +1079,7 @@ function rayHit(a, dir, len) {
     const m = Array.isArray(o.material) ? o.material[0] : o.material;
     if (m?.color) colour = '#' + m.color.getHexString();
   }
-  return { point: h.point, normal: n, colour };
+  return { point: h.point, normal: n, colour, object: o };
 }
 const shots = [];
 let rocketSpeed = 80;
@@ -1129,6 +1144,17 @@ function stepShots(dt) {
     s.p.addScaledVector(s.dir, step);
     s.m.position.copy(s.p);
     const wp = root.localToWorld(s.p.clone());
+    // its sound in flight, heard from the camera: a rocket's roar, a bolt's hiss, the drop in pitch as it goes by
+    {
+      const d = wp.distanceTo(cam.position);
+      s.voice ||= Sound.shot?.(s.kind === 'rocket');
+      if (s.voice) {
+        const right = V(1, 0, 0).applyQuaternion(cam.quaternion),
+          closing = s.lastD != null ? (s.lastD - d) / Math.max(dt, 1e-3) : 0;
+        s.voice.set(d, closing, d > 0.5 ? wp.clone().sub(cam.position).dot(right) / d : 0);
+      }
+      s.lastD = d;
+    }
     if (s.kind === 'rocket') {
       const tail = root.localToWorld(s.p.clone().addScaledVector(s.dir, -2));
       fx.spark(tail, Math.random() < 0.5 ? '#ffd27a' : '#ff8a1f', 2.2, 0.18);
@@ -1153,6 +1179,25 @@ function stepShots(dt) {
       } else hitCar(hit, null, true, 'zap'); // (a blaster bolt: the race's zap)
       continue;
     }
+    // locked on to a car, as in a race: nothing on the way stops it. A crate in its way is smashed to planks and a wall
+    // is shot through (a hole in, blown out the far side), and it flies on to the car
+    if (s.target) {
+      for (const c of crates) if (!c.gone && c.p.distanceTo(s.p) < 1.4) smash(c, s.dir.clone().multiplyScalar(1.2));
+      const w = (s.inWall = (s.inWall || 0) - step) > 0 ? null : rayHit(from, s.dir, step);
+      if (w) {
+        const wd = s.dir.clone().transformDirection(root.matrixWorld);
+        let out = null;
+        for (const D of [6, 16, 40])
+          if ((out = rayHit(root.worldToLocal(w.point.clone().addScaledVector(wd, D)), s.dir.clone().negate(), D - 0.5, w.object)))
+            break;
+        out ||= { point: w.point.clone().addScaledVector(wd, 0.3), normal: wd.clone() };
+        imp.pierce(w.point, w.normal, out.point, out.normal, w.colour, s.kind === 'rocket', w.object);
+        s.inWall = out.point.distanceTo(root.localToWorld(from.clone())) + 0.3;
+        Sound.hitMark(s.kind === 'rocket');
+      }
+      if (s.life <= 0) root.remove(s.m);
+      continue;
+    }
     if (crates.some(c => !c.gone && c.p.distanceTo(s.p) < 1.2)) {
       boom(s, wp, back(), '#c08a4a', true);
       continue;
@@ -1165,7 +1210,11 @@ function stepShots(dt) {
     if (s.p.y <= 0.05) boom(s, root.localToWorld(s.p.clone().setY(0.02)), V(0, 1, 0), '#4a4c52');
     else if (s.life <= 0) root.remove(s.m);
   }
-  for (let i = shots.length - 1; i >= 0; i--) if (shots[i].life <= 0) shots.splice(i, 1);
+  for (let i = shots.length - 1; i >= 0; i--)
+    if (shots[i].life <= 0) {
+      shots[i].voice?.stop();
+      shots.splice(i, 1);
+    }
 }
 
 /* ---------- THE ITEMS: a showroom, each item turning on a plinth ---------- */
@@ -1176,43 +1225,18 @@ show.visible = false;
 S.add(show);
 const turn = new THREE.Group();
 turn.position.y = 0.5;
-{
-  const bg = new THREE.Mesh(
-    new THREE.SphereGeometry(70, 32, 16),
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      vertexShader:
-        'varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-      fragmentShader:
-        'varying float vY; void main(){ gl_FragColor = vec4(mix(vec3(.03,.04,.1), vec3(.1,.13,.3), smoothstep(-.05,.7,vY)), 1.); }',
-    }),
-  );
-  show.add(bg);
-  const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(60, 64).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: '#0c1230', roughness: 0.3, metalness: 0.4 }),
-  );
-  floor.receiveShadow = true;
-  show.add(floor);
-  const plinth = new THREE.Mesh(
-    new THREE.CylinderGeometry(3, 3.2, 0.5, 64),
-    new THREE.MeshStandardMaterial({ color: '#1b2550', roughness: 0.35, metalness: 0.5 }),
-  );
-  plinth.position.y = 0.25;
-  plinth.receiveShadow = true;
-  show.add(plinth);
-  const band = new THREE.Mesh(
-    new THREE.TorusGeometry(3.02, 0.05, 8, 96).rotateX(Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: '#ff6a00' }),
-  );
-  band.position.y = 0.5;
-  show.add(band);
-  // a rim light from behind, so every edge of the item reads against the dark
-  const rim = new THREE.DirectionalLight('#9fc0ff', 2.2);
-  rim.position.set(-6, 8, -10);
-  show.add(rim);
-  show.add(turn);
+show.add(turn);
+// the room: the garage's own, Doha's daylight workshop round its stand (src/garage.js, src/workshop.js), built the
+// first time THE ITEMS opens. Lowered so the stand's deck sits where the item turns (y 0.5)
+let room = null;
+function buildRoom() {
+  const g = new Garage(tex, { room: 'workshop', city: 'doha' });
+  g.setLights(true);
+  const grp = new THREE.Group();
+  grp.position.y = 0.5 - 1.03; // (the deck's top in the garage is at 1.03)
+  for (const c of [...g.scene.children]) grp.add(c);
+  show.add(grp);
+  room = { g, bg: g.scene.background.clone(), near: g.scene.fog.near, far: g.scene.fog.far, env: g.scene.environmentIntensity };
 }
 const ITEMS = [
   {
@@ -1330,7 +1354,7 @@ function showItem(it) {
     c.k.root.position.set(0, 0.5, 0);
     it.car(c);
   }
-  cam.position.set(...it.cam);
+  cam.position.set(...it.cam).multiplyScalar(1.4); // (back a little: the workshop round it in view)
   orbit.target.set(0, 1.4, 0);
   $('#scName').textContent = it.name;
   $('#abName').textContent = it.name;
@@ -1340,6 +1364,7 @@ function showItem(it) {
 // the showroom's frame: turning, and the cars' item looks running
 function stepShow(dt) {
   turn.rotation.y += dt * 0.5;
+  room.g.turn.rotation.y = turn.rotation.y; // the stand's deck turns with it
   for (const c of cars) {
     c.yaw += dt * 0.5;
     c.k.root.rotation.set(0, c.yaw, 0);
@@ -1390,6 +1415,34 @@ const SCEN = [
     at: [[0.3, () => fire('rocket', V(0, 1.7, -46), V(0, 1, -10), cars[0])]],
     cam: [-16, 6, -8],
     look: [0, 2, 8],
+  },
+  {
+    id: 'through',
+    name: 'ROCKET THROUGH A WALL',
+    plainOnly: true,
+    about:
+      "As in a race: a rocket locked on to a kart on the far side of a wall. Nothing stops a locked rocket short: it punches a hole in the wall, blows the wall out the other side, and flies on into the kart. Only a dodge gets you out of its way.",
+    set: () => {
+      wallProp();
+      car(1, 'kart', 0, WALL_Z + 12, { speed: 6 });
+    },
+    at: [[0.3, () => fire('rocket', L, V(0, 2.5, WALL_Z), cars[0])]],
+    cam: [-18, 8, WALL_Z - 6],
+    look: [0, 3, WALL_Z + 4],
+  },
+  {
+    id: 'boltthrough',
+    name: 'BLASTER THROUGH A WALL',
+    plainOnly: true,
+    about:
+      "The blaster's bolts, locked on to a kart behind a wall: each one goes through, a small hole in and a puff of chips out the far side, and on into the kart.",
+    set: () => {
+      wallProp();
+      car(1, 'kart', 0, WALL_Z + 12, { speed: 6 });
+    },
+    at: [0, 1, 2, 3].map(i => [0.3 + i * 0.18, () => fire('bolt', L, V(-2 + i * 1.3, 2.5, WALL_Z), cars[0])]),
+    cam: [-18, 8, WALL_Z - 6],
+    look: [0, 3, WALL_Z + 4],
   },
   {
     id: 'blast',
@@ -1628,13 +1681,16 @@ const SCEN = [
 let cur = SCEN[0],
   t = 0,
   done = new Set();
-function play(sc) {
+function play(sc, again = false) {
   Sound.init();
   cur = sc;
   t = 0;
   done = new Set();
   imp.clear();
-  for (const s of shots) root.remove(s.m);
+  for (const s of shots) {
+    s.voice?.stop();
+    root.remove(s.m);
+  }
   shots.length = 0;
   shake = 0;
   blinkers.length = 0;
@@ -1656,8 +1712,11 @@ function play(sc) {
       cp = [x, Math.max(cp[1], 7), cp[2] - (Math.abs(cp[0]) - Math.abs(x)) * 0.8];
     }
   }
-  cam.position.copy(root.localToWorld(V(...cp)));
-  orbit.target.copy(root.localToWorld(V(...lp)));
+  // (played again on its loop, the camera stays wherever you've turned it: only a new scenario sets it)
+  if (!again) {
+    cam.position.copy(root.localToWorld(V(...cp)));
+    orbit.target.copy(root.localToWorld(V(...lp)));
+  }
   $('#scName').textContent = sc.name;
   $('#abName').textContent = sc.name;
   $('#abText').textContent = sc.about;
@@ -1758,6 +1817,7 @@ function resize() {
   cam.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
+new ResizeObserver(resize).observe(gl); // (the stage grows and shrinks with the page round it)
 resize();
 let last = performance.now();
 function frame(now) {
@@ -1766,7 +1826,7 @@ function frame(now) {
   last = now;
   t += dt;
   const showing = stage === 'items';
-  if (!showing && looping && t > (cur.len || 6.5)) play(cur);
+  if (!showing && looping && t > (cur.len || 6.5)) play(cur, true);
   if (!showing)
     for (const [at, fn] of cur.at)
       if (t >= at && !done.has(fn)) {
@@ -1774,10 +1834,11 @@ function frame(now) {
         fn();
       }
   stepShots(dt);
+  if (city && stage === 'city') city.world.update(dt, performance.now() / 1000, cam); // (the train going round, flags, water)
   for (const b of blinkers) {
     const on = Math.sin(now / 1000 * 12) > 0;
     b.light.visible = on;
-    b.ring.material.opacity = 0.3 + (on ? 0.3 : 0);
+    b.ring.material.opacity = 0.6 + (on ? 0.4 : 0);
   }
   // the action over, the drivers ease off (so nobody carries on down the stage into the canal)
   if (showing) stepShow(dt);
@@ -1812,5 +1873,5 @@ function frame(now) {
   cam.position.sub(sh);
 }
 useStage('plain');
-if (import.meta.env.DEV) window.studio = { cars, play, SCEN }; // (dev: the tools look in)
+if (import.meta.env.DEV) window.studio = { cars, play, SCEN, cam, orbit, root }; // (dev: the tools look in)
 requestAnimationFrame(frame);

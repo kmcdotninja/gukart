@@ -1066,6 +1066,7 @@ export function buildForks(tr) {
   // a circuit can say exactly where its fork goes ([s, 'fork', { len, tunnel: 'in' | 'out' }]: Doha's are placed by hand
   // where they suit the city); otherwise search for the longest clear, plain stretch (Kano)
   const pin = tr.feats.find(f => f.type === 'fork');
+  if (tr.feats.some(f => f.type === 'nofork')) return []; // (a circuit can say it has no split at all: Lusail)
   let best = null;
   if (pin) {
     const a0 = Math.floor(tr.wrapS(pin.s) / seg);

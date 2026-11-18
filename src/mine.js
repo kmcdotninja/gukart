@@ -1,8 +1,8 @@
-// The mine, after the user's picture of a real one: a squat round case of olive-drab steel with a rolled lip, its lid
+// The mine, after the user's picture of a real one: a squat round case of steel, painted warning red, with a rolled lip, its lid
 // stepped up in rings to a raised middle; on top the fuze, a scalloped cap (six lobes) with its safety pin and ring
 // pull; on the side a screw plug and a wire carrying handle; stencilled markings on the lid and round the side.
 // Game-sized (1.6 m across) to read on the road at speed, with a red lens in the fuze that blinks when it's armed and
-// a red warning ring glowing on the road under it. Built once, cloned for each one dropped (the race's, the Physics
+// a red glow spilling across the road round it. Built once, cloned for each one dropped (the race's, the Physics
 // Studio's). Sits on y 0.
 import * as THREE from 'three';
 
@@ -30,8 +30,9 @@ function stencil(w, h, draw) {
 function build() {
   const g = new THREE.Group();
   const R = 0.8;
-  const olive = new THREE.MeshStandardMaterial({ color: '#76703f', roughness: 0.5, metalness: 0.35 }),
-    oliveD = new THREE.MeshStandardMaterial({ color: '#5f5a31', roughness: 0.55, metalness: 0.35 }),
+  // painted warning red (the user's call: it must be seen at speed), lit a little from within so it reads at night too
+  const olive = new THREE.MeshStandardMaterial({ color: '#d0201a', emissive: '#ff1a0e', emissiveIntensity: 0.28, roughness: 0.42, metalness: 0.3 }),
+    oliveD = new THREE.MeshStandardMaterial({ color: '#7a0f0c', emissive: '#ff1a0e', emissiveIntensity: 0.12, roughness: 0.5, metalness: 0.3 }),
     steel = new THREE.MeshStandardMaterial({ color: '#8c8a7a', roughness: 0.35, metalness: 0.8 });
   // the case: one turned profile, from the foot up the side, round the lip and up the lid's steps to the middle
   const prof = [
@@ -166,11 +167,31 @@ function build() {
     b.position.y = 0.2;
     g.add(b);
   }
-  // the warning ring on the road under it
+  // the glow on the road round it: a bright red ring at its foot and a red light spilling out across the road to 2.6 m,
+  // so you see it coming and steer round it (it pulses with the lens)
+  const glowT = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const x = c.getContext('2d'),
+      gr = x.createRadialGradient(128, 128, 0, 128, 128, 128),
+      rr = (R + 0.2) / 2.6; // (the ring, as a share of the glow's radius)
+    gr.addColorStop(0, 'rgba(255,40,30,0.9)');
+    gr.addColorStop(rr * 0.9, 'rgba(255,40,30,0.9)');
+    gr.addColorStop(rr, 'rgba(255,90,70,1)');
+    gr.addColorStop(rr + 0.06, 'rgba(255,40,30,0.75)');
+    gr.addColorStop(0.65, 'rgba(255,30,20,0.28)');
+    gr.addColorStop(1, 'rgba(255,20,10,0)');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 256, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
   const warn = new THREE.Mesh(
-    new THREE.RingGeometry(R + 0.15, R + 0.32, 48).rotateX(-Math.PI / 2),
+    new THREE.CircleGeometry(2.6, 48).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({
-      color: '#ff2b1f',
+      map: glowT,
+      color: '#ffffff',
       transparent: true,
       opacity: 0.55,
       depthWrite: false,
