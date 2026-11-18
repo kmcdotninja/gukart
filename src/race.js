@@ -172,6 +172,14 @@ export function itemCrate() {
   return CRATE();
 }
 
+// a rocket going off on a car: a big fireball, a wide orange shockwave, dark smoke and flame thrown out (the race's, and
+// the Physics Studio's)
+export function carBoom(fx, pos) {
+  fx.boom(pos, true);
+  fx.ring(pos, '#ff9a3a', 34);
+  for (let i = 0; i < 4; i++) fx.spark(pos, i % 2 ? '#3a3330' : '#ffb24a', 3 + i, 0.7);
+}
+
 export const WEAPONS = {
   blaster: { name: 'Blaster', ammo: 16, color: '#6fd3ff' },
   rocket: { name: 'Rocket', ammo: 2, color: '#ff6a00' },
@@ -188,13 +196,19 @@ import { initPowers, resetPowers, firePower, updatePowers, posePower } from './p
 import { roofHeights } from './roofs.js';
 import { STUNTS, pickStunt, stuntReward } from './stunts.js';
 import { makeTyreFire } from './tyrefire.js';
+import { Impacts, blastKick } from './impacts.js';
+import { makeRocket } from './rocket.js';
+import { makeMine } from './mine.js';
+import { makeBolt } from './bolt.js';
+import { popChili, updateChilis, clearChilis } from './chili.js';
+import { Shockwaves } from './shockwave.js';
 const POWER_ROAD = 0.35; // (how much of a power's SPEED shows on the road: 3 gives 1.7x)
 const DRIFT_COL = ['#ffffff', '#6fd3ff', '#ff9a1f', '#d65cff'];
 const FLAME_COL = ['#ff9a1f', '#6fd3ff', '#ff9a1f', '#d65cff', '#ff3b1f', '#9fe4ff', '#ffd23a'];
 const Y = new THREE.Vector3(0, 1, 0);
 
 // one-shot effects: flashes, rings, sparks
-class FX {
+export class FX {
   constructor(scene, tex) {
     const sprite = map => {
       const s = new THREE.Sprite(
@@ -206,6 +220,7 @@ class FX {
     };
     this.items = Array.from({ length: 120 }, () => ({ s: sprite(tex.glow), life: 0 }));
     this.rings = Array.from({ length: 10 }, () => ({ s: sprite(tex.ring), life: 0 }));
+    this.scene = scene;
     this.n = 0;
     this.r = 0;
   }
@@ -238,6 +253,19 @@ class FX {
       this.spark(pos, i % 2 ? '#ffb23a' : '#ff5a1f', 0.9, 0.7, v);
     }
   }
+  // the Shockwave item: its dome and ground ring out to radius from ground (under the car), a crackle at the car (at)
+  shock(ground, at, radius) {
+    (this.shocks ||= new Shockwaves(this.scene)).fire(ground, radius);
+    this.spark(at, '#ffffff', 5, 0.15);
+    this.spark(at, '#b18cff', 9, 0.35);
+    const v = new THREE.Vector3();
+    for (let i = 0; i < 14; i++) {
+      v.set(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5)
+        .normalize()
+        .multiplyScalar(14 + Math.random() * 10);
+      this.spark(at, i % 2 ? '#d9c8ff' : '#8f6bff', 0.8, 0.5, v);
+    }
+  }
   zap(pos) {
     this.spark(pos, '#9fe4ff', 3.2, 0.18);
     const v = new THREE.Vector3();
@@ -247,6 +275,7 @@ class FX {
     }
   }
   update(dt) {
+    this.shocks?.update(dt);
     for (const it of this.items) {
       if (it.life <= 0) continue;
       it.life -= dt;
@@ -359,6 +388,15 @@ class Confetti {
 }
 
 // the finish, dressed for the last lap: an arch with a chequered FINISH banner, flags, balloon clusters
+// how far a point is from the segment a to b (a shot's step: did it pass through a car?)
+const _ab = new THREE.Vector3(),
+  _ap = new THREE.Vector3();
+function distToSeg(x, y, z, a, b) {
+  _ab.subVectors(b, a);
+  _ap.set(x - a.x, y - a.y, z - a.z);
+  const t = Math.max(0, Math.min(1, _ap.dot(_ab) / Math.max(1e-6, _ab.lengthSq())));
+  return _ap.addScaledVector(_ab, -t).length();
+}
 function finishArch(tr) {
   const g = new THREE.Group(),
     F = tr.frame(0, tr.newFrame());
@@ -434,6 +472,8 @@ export class Race {
     this.quality = quality;
     this.F = tr.newFrame();
     this.fx = new FX(scene, tex);
+    clearChilis();
+    this.impacts = new Impacts(scene, this.fx); // (what a shot does to a wall, a building, the road: src/impacts.js)
     this.confetti = new Confetti(scene);
     this.arch = finishArch(tr);
     scene.add(this.arch);
@@ -596,18 +636,6 @@ export class Race {
       }
 
     // projectile and mine meshes
-    this.boltGeo = new THREE.CylinderGeometry(0.3, 0.3, 4, 8).rotateX(Math.PI / 2); // (a fat, bright bolt you can follow)
-    this.boltMat = new THREE.MeshBasicMaterial({
-      color: '#9fe4ff',
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-    });
-    this.rocketGeo = new THREE.CylinderGeometry(0.32, 0.32, 1.8, 10).rotateX(Math.PI / 2);
-    this.rocketMat = new THREE.MeshPhongMaterial({ color: '#ff6a00', emissive: '#5a1d00', shininess: 80 });
-    this.mineGeo = new THREE.CylinderGeometry(1, 1.1, 0.4, 14);
-    this.mineMat = new THREE.MeshPhongMaterial({ color: '#ffc400', emissive: '#3a2a00', shininess: 60 });
-    this.mineLightGeo = new THREE.SphereGeometry(0.25, 8, 6);
-    this.mineLight = new THREE.MeshBasicMaterial({ color: '#ff2b2b' });
     this.projs = [];
     this.mines = [];
     this.dust = Array.from({ length: 70 }, () => {
@@ -621,6 +649,7 @@ export class Race {
     this.dustI = 0;
     this.tq = new THREE.Quaternion();
     this.yq = new THREE.Quaternion();
+    this.zAxis = new THREE.Vector3(0, 0, 1);
     this.mx = new THREE.Matrix4();
     this.v1 = new THREE.Vector3();
     this.v2 = new THREE.Vector3();
@@ -785,6 +814,7 @@ export class Race {
     }
     for (const p of this.projs) this.scene.remove(p.m);
     for (const m of this.mines) this.scene.remove(m.m);
+    this.impacts?.clear();
     this.projs = [];
     this.mines = [];
     this.events = [];
@@ -931,7 +961,7 @@ export class Race {
       P = k === this.player;
     this.note(w === 'yaji' ? 'boost' : 'fire', k);
     if (w === 'blaster') {
-      const m = new THREE.Mesh(this.boltGeo, this.boltMat);
+      const m = makeBolt(); // (the bolt as drawn: src/bolt.js)
       this.scene.add(m);
       this.projs.push({
         type: 'bolt',
@@ -948,8 +978,7 @@ export class Race {
       k.flashT = 0.06;
       if (P) Sound.zap();
     } else if (w === 'rocket') {
-      const m = new THREE.Mesh(this.rocketGeo, this.rocketMat);
-      m.castShadow = true;
+      const m = makeRocket(); // (the rocket as drawn: src/rocket.js; a shot never hits itself or another shot)
       this.scene.add(m);
       this.projs.push({
         type: 'rocket',
@@ -960,15 +989,14 @@ export class Race {
         life: 4,
         m,
         h: 1.7,
-        target: this.targetAhead(k),
+        target: this.targetAhead(k, 150, 16), // (someone close enough ahead to see it land)
       });
       k.cool = 0.5;
       k.flashT = 0.12;
       if (P) Sound.rocket();
     } else if (w === 'shock') {
-      const pos = this.tr.point(k.s, k.lat, 1.5);
-      this.fx.ring(pos, '#b18cff', 46);
-      this.fx.spark(pos, '#d9c8ff', 12, 0.3);
+      // the dome of it bursting out to its reach (src/shockwave.js)
+      this.fx.shock(this.tr.point(k.s, k.lat, 0), this.tr.point(k.s, k.lat, 1.5), 24);
       for (const o of this.karts)
         if (o !== k && Math.abs(this.dS(o.s, k.s)) < 24 && Math.abs(o.lat - k.lat) < 20) this.hit(o, 'shock', k);
       k.cool = 0.5;
@@ -977,21 +1005,17 @@ export class Race {
         this.shake = 0.3;
       }
     } else if (w === 'mines') {
-      const m = new THREE.Group(),
-        body = new THREE.Mesh(this.mineGeo, this.mineMat),
-        light = new THREE.Mesh(this.mineLightGeo, this.mineLight);
-      body.castShadow = true;
-      light.position.y = 0.35;
-      m.add(body, light);
+      const { root: m, light, ring } = makeMine(); // (the mine as drawn: src/mine.js)
       this.scene.add(m);
       const s = this.tr.wrapS(k.s - 4),
         F = this.tr.frame(s, this.tr.newFrame());
-      m.matrix.makeBasis(F.l, F.u, F.t).setPosition(F.p.clone().addScaledVector(F.l, k.lat).addScaledVector(F.u, 0.25));
+      m.matrix.makeBasis(F.l, F.u, F.t).setPosition(F.p.clone().addScaledVector(F.l, k.lat).addScaledVector(F.u, 0.03));
       m.matrixAutoUpdate = false;
-      this.mines.push({ s, lat: k.lat, m, light, arm: 0.5, life: 50 });
+      this.mines.push({ s, lat: k.lat, m, light, ring, arm: 0.5, life: 50 });
       k.cool = 0.35;
       if (P) Sound.blip(300, 0.15, 'triangle', 0.12, 0.6);
     } else if (w === 'yaji') {
+      popChili(k.m.root, this.fx); // (its pepper pops up over the car and bursts: src/chili.js)
       k.boost = Math.max(k.boost, 1.3);
       k.boostLvl = 4;
       k.cool = 0.45;
@@ -1002,7 +1026,7 @@ export class Race {
     if (P) this.ev.weapon(k.weapon, k.ammo, false);
   }
 
-  hit(k, type, by) {
+  hit(k, type, by, blast = null) {
     if (k.finished && k !== this.player) return;
     if (k.pwImmune) return; // (up in the air on its special power: nothing on the road can touch it)
     const pos = this.tr.point(k.s, k.lat, 1.5 + k.air);
@@ -1037,12 +1061,20 @@ export class Race {
         k.drift = 0;
         this.knocked(k, by);
       } else if (by === this.player) this.addScore(10, 'Hit');
+      if (by === this.player && k !== this.player) this.hitMarker(type === 'boom');
     } else {
+      if (by === this.player && k !== this.player && k.spin <= 0) this.hitMarker(type === 'boom');
       if (k.spin > 0) return;
       if (type === 'boom') {
         const heavy = k.m.type === 'monster';
-        this.fx.boom(pos);
-        k.vy = Math.max(k.vy, heavy ? 5 : 8);
+        // a real hit: a big fireball, an orange shockwave, smoke, and the car blown up and flipped over
+        carBoom(this.fx, pos);
+        this.impacts.carHit(pos, k.m.paintCol, blast ? k.m.root.position.clone().sub(blast.at).setY(0) : null);
+        k.vy = Math.max(k.vy, blast ? blast.kick.up : heavy ? 9 : 13);
+        k.tumble = 1;
+        k.tumbleA = 0;
+        k.tumbleX = 1;
+        k.tumbleZ = 0;
         k.fly = true;
         k.spin = heavy ? 0.9 : 1.3;
         k.speed *= heavy ? 0.6 : 0.4;
@@ -1053,6 +1085,13 @@ export class Race {
         k.spin = 0.9;
         k.speed *= 0.5;
       }
+      // a rocket's blast throws it away from where it went off, and it tumbles the way it was thrown: rolled over from
+      // a blast beside it, flipped end over end from one in front or behind (src/impacts.js blastKick)
+      if (blast) {
+        const side = this.blastAway(k, blast);
+        k.tumbleX = Math.abs(side.l) > Math.abs(side.t) ? 0 : side.t >= 0 ? 1 : -1;
+        k.tumbleZ = k.tumbleX ? 0 : -(Math.sign(side.l) || 1); // (the top rolls away from the blast)
+      }
       if (k === this.player && this.upg?.has('armour')) k.spin *= 0.7; // the Armour upgrade: back on it sooner
       k.drift = 0;
       k.charge = 0;
@@ -1061,7 +1100,8 @@ export class Race {
         k.speed *= 0.45;
         k.ghost = 1.6;
         k.lane = ((k.lat - by.lat >= 0 ? 1 : -1) * W) / 2.6;
-      } // dropped back and off the line of whoever hit them
+      }
+      if (blast) k.speed += blast.kick.push * blast.t * 0.5; // (a blast behind it throws it on; in front, back) // dropped back and off the line of whoever hit them
       this.knocked(k, by);
       const pp = this.player.m.root.position;
       if (k === this.player || by === this.player || Math.hypot(pos.x - pp.x, pos.z - pp.z) < 40) {
@@ -1070,6 +1110,24 @@ export class Race {
       }
     }
     if (k === this.player) this.shake = Math.max(this.shake, type === 'zap' ? 0.15 : 0.6);
+  }
+  // a blast's shove on a car: its sideways part a slide across the road (k.blastV, dying away, stopped by the walls),
+  // returned split along the road (t) and across it (l)
+  blastAway(k, blast) {
+    const F = this.tr.frame(k.s, this.blastF || (this.blastF = this.tr.newFrame())),
+      d = k.m.root.position.clone().sub(blast.at).setY(0);
+    if (d.lengthSq() < 0.01) d.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    d.normalize();
+    const t = d.dot(F.t),
+      l = d.dot(F.l);
+    blast.t = t;
+    k.blastV = (k.blastV || 0) + blast.kick.push * l;
+    return { t, l };
+  }
+  // your shot landed: a sharp tink and a hit marker flashed in the middle of the screen (bigger for a rocket)
+  hitMarker(big) {
+    Sound.hitMark?.(big);
+    this.ev.hitMark?.(big);
   }
   knocked(k, by) {
     if (by === this.player && k !== this.player) {
@@ -1298,6 +1356,12 @@ export class Race {
         k.s += ds;
         k.lat += k.speed * Math.sin(k.rh) * dt;
         k.rh = wrapA(k.rh - kc * ds);
+        if (k.blastV) {
+          // thrown sideways by a blast: sliding across the road, the slide dying away
+          k.lat += k.blastV * dt;
+          k.blastV *= Math.max(0, 1 - dt * 2.5);
+          if (Math.abs(k.blastV) < 0.1) k.blastV = 0;
+        }
         // the turn-off: cross its line on its side of the road and you're on the shortcut
         // the fork: whichever side of the road you're on when you reach it is the way you go
         if (Fk.length && s0 < Fk[0].sA && k.s >= Fk[0].sA) {
@@ -1439,6 +1503,7 @@ export class Race {
         const s = Math.sign(k.lat),
           into = Math.abs(Math.sin(k.rh));
         k.lat = s * lim;
+        if (k.blastV * s > 0) k.blastV = 0; // (a wall stops the slide)
         if (into > 0.12) k.speed *= 1 - clamp(into * 0.5, 0, 0.4) * Math.min(1, dt * 30); // glancing touches just slide along
         k.rh = lerp(k.rh, 0, Math.min(1, dt * 6));
         if (k === P && into > 0.25) {
@@ -1702,37 +1767,75 @@ export class Race {
       }
 
     // ---- projectiles and mines
+    // the shots fly through the world (not along the road): straight, a rocket or a bolt with a target turning onto it
+    // at its own rate; each step is checked against the cars, the buildings, walls and gates along the road (a ray the
+    // length of the step), and the road or ground under it. Whatever it meets first, it hits
     for (const p of this.projs) {
       p.life -= dt;
-      const step = p.v * dt;
-      p.s = tr.wrapS(p.s + step);
-      if (p.target && !p.target.finished) {
-        const ahead = this.dS(p.target.s, p.s);
-        if (ahead > -2 && ahead < 200)
-          p.lat = lerp(p.lat, p.target.lat, Math.min(1, dt * (p.type === 'rocket' ? 5 : 10))); // (the blaster's bolts lock on fast)
+      if (!p.pos) {
+        p.pos = tr.point(p.s, p.lat, p.h);
+        p.dir = tr.T[tr.idx(p.s)].clone().normalize();
       }
-      p.lat = clamp(p.lat, -W / 2 - 2, W / 2 + 2);
-      const F = tr.frame(p.s, this.F);
-      p.m.position.copy(F.p).addScaledVector(F.l, p.lat).addScaledVector(F.u, p.h);
-      this.mx.makeBasis(F.l, F.u, F.t);
-      p.m.quaternion.setFromRotationMatrix(this.mx);
-      if (p.type === 'rocket') this.fx.spark(p.m.position, '#ff9a1f', 1.4, 0.2);
-      else if (Math.random() < 0.5) this.fx.spark(p.m.position, '#9fe4ff', 0.9, 0.12); // (the bolt's trail)
+      const T = p.target && !p.target.finished ? p.target : null;
+      if (T) {
+        const want = this.v3
+          .copy(T.m.root.position)
+          .setY(T.m.root.position.y + 1.1)
+          .sub(p.pos)
+          .normalize();
+        p.dir.lerp(want, Math.min(1, dt * (p.type === 'rocket' ? 4 : 10))).normalize();
+      }
+      const step = p.v * dt,
+        from = p.pos.clone();
+      p.pos.addScaledVector(p.dir, step);
+      p.s = tr.nearest(p.pos.x, p.pos.z).i * tr.seg; // (where along the lap it is, for anything that asks)
+      p.m.position.copy(p.pos);
+      p.m.quaternion.setFromUnitVectors(this.zAxis, p.dir);
+      if (p.type === 'rocket') {
+        // its flame and a thick trail of smoke behind it, so you can follow it all the way in
+        this.fx.spark(p.pos, Math.random() < 0.5 ? '#ffd27a' : '#ff8a1f', 2.2, 0.18);
+        if (Math.random() < 0.8) this.fx.spark(p.pos, '#c9c4bc', 2.6, 0.6);
+      } else if (Math.random() < 0.5) this.fx.spark(p.pos, '#9fe4ff', 0.9, 0.12); // (the bolt's trail)
+      // a car: within reach of the step it just flew
+      let done = false;
       for (const k of ks) {
         if (k === p.owner || k.br || (k.finished && k !== P)) continue;
-        const d = this.dS(k.s, p.s);
-        if (d > -step - 2 && d < 2.2 && Math.abs(k.lat - p.lat) < (p.type === 'bolt' ? 3.2 : 2.6) && k.air < 3) {
-          this.hit(k, p.type === 'bolt' ? 'zap' : 'boom', p.owner);
+        const kp = k.m.root.position,
+          d = distToSeg(kp.x, kp.y + 1, kp.z, from, p.pos);
+        if (d < (p.type === 'bolt' ? 2.6 : 2.3)) {
+          if (p.type === 'rocket') {
+            // a direct hit: the blast throws it on the way the rocket was going, and catches the cars round it
+            const at = kp.clone().addScaledVector(p.dir, -3);
+            this.hit(k, 'boom', p.owner, { kick: blastKick(0, VSTATS[k.m.type].mass), at });
+            this.blastCars(kp.clone(), p.owner, k);
+            const dd = kp.distanceTo(P.m.root.position);
+            if (k !== P && dd < 50) this.shake = Math.max(this.shake, 0.45 * (1 - dd / 50));
+          } else this.hit(k, 'zap', p.owner);
           p.life = 0;
+          done = true;
           break;
         }
       }
+      if (done) continue;
+      // the world: a building, a wall, a gate, a barrier in the way; or down onto the road or the ground
+      const w = this.shotHits(from, p.dir, step);
+      if (w) {
+        this.shotImpact(p, w.point, w.normal, w.colour);
+        continue;
+      }
+      const gy = this.groundAt(p.pos.x, p.pos.z);
+      if (p.pos.y < gy + 0.1) {
+        this.shotImpact(p, p.pos.clone().setY(gy), this.v3.set(0, 1, 0).clone(), '#5a5650');
+        continue;
+      }
       if (p.life <= 0 && p.type === 'rocket') {
-        this.fx.boom(p.m.position, false);
-        const d = this.dS(p.s, this.player.s);
-        if (Math.abs(d) < 90) Sound.explode(Math.max(0.25, 1 - Math.abs(d) / 90));
+        // out of fuel in mid-air: it goes off where it is
+        this.fx.boom(p.pos, false);
+        const dd = p.pos.distanceTo(P.m.root.position);
+        if (dd < 90) Sound.explode(Math.max(0.25, 1 - dd / 90));
       }
     }
+    this.impacts.update(dt, (x, z) => this.groundAt(x, z));
     this.projs = this.projs.filter(p => {
       if (p.life > 0) return true;
       this.scene.remove(p.m);
@@ -1741,7 +1844,8 @@ export class Race {
     for (const mn of this.mines) {
       mn.arm -= dt;
       mn.life -= dt;
-      mn.light.visible = Math.sin(this.clock * 12) > 0;
+      mn.light.visible = mn.arm <= 0 && Math.sin(this.clock * 12) > 0;
+      mn.ring.material.opacity = mn.arm <= 0 ? 0.3 + 0.3 * Math.max(0, Math.sin(this.clock * 12)) : 0;
       if (mn.arm <= 0)
         for (const k of ks)
           if (!k.br && Math.abs(this.dS(k.s, mn.s)) < 2.2 && Math.abs(k.lat - mn.lat) < 2.4 && k.air < 1.5) {
@@ -1785,6 +1889,7 @@ export class Race {
     this.place(dt);
     this.animate(dt);
     this.fx.update(dt);
+    updateChilis(dt);
     this.confetti.update(dt);
     if (this.head && this.night) {
       const r = P.m.root;
@@ -2016,9 +2121,10 @@ export class Race {
       // (it leans out of the corner a little: firm springs, not a soft car rolling over on its tyres)
       m.body.rotation.z = lerp(m.body.rotation.z, clamp(k.yawRate * Math.abs(k.speed) * 0.002, -0.065, 0.065), e);
       // flips and tricks turn the whole vehicle; the body alone leans, pitches and bounces on its suspension
-      m.rig.rotation.x = (k.tumble > 0 ? k.tumbleA : 0) - k.trickP;
+      const tA = k.tumble > 0 ? k.tumbleA : 0;
+      m.rig.rotation.x = tA * (k.tumbleX ?? 1) - k.trickP;
       m.rig.rotation.y = k.trickA;
-      m.rig.rotation.z = k.trickR;
+      m.rig.rotation.z = k.trickR + tA * (k.tumbleZ ?? 0);
       m.rig.position.y = k.trickL;
       m.body.rotation.x = lerp(
         m.body.rotation.x,
@@ -2047,6 +2153,94 @@ export class Race {
     }
   }
 
+  // the height of the road or ground under a point (the road's own height on it, the ground just under the road's
+  // level beside it)
+  groundAt(x, z) {
+    const tr = this.tr,
+      n = tr.nearest(x, z);
+    return n.d < W / 2 + 1.5 ? tr.P[n.i].y : Math.min(tr.P[n.i].y, 0) - 0.35;
+  }
+  // a shot's step against the city: the buildings, walls, gates and barriers (not the cars, the road, the ground, the
+  // sky or the effects; the road and ground are by height, groundAt). Worked out once a race: what can be hit
+  shotHits(from, dir, len) {
+    if (!this.hitList) {
+      const skip = new Set(this.all.map(k => k.m.root));
+      this.hitList = [];
+      const walk = o => {
+        if (skip.has(o) || !o.visible || o.userData.noHit) return;
+        if ((o.isMesh || o.isInstancedMesh) && !o.isSprite && o.geometry && !o.material?.transparent) {
+          const g = o.geometry,
+            tris = (g.index ? g.index.count : g.attributes.position?.count || 0) / 3;
+          if (tris < 30000) this.hitList.push(o); // (the ground and the road's huge sheets: by their height instead)
+        }
+        for (const c of o.children) walk(c);
+      };
+      for (const c of this.scene.children) walk(c);
+    }
+    this.ray ||= new THREE.Raycaster();
+    this.ray.set(from, dir);
+    this.ray.near = 0;
+    this.ray.far = len + 0.3;
+    const h = this.ray.intersectObjects(this.hitList, false)[0];
+    if (!h) return null;
+    const o = h.object,
+      normal = (h.face?.normal || this.v3.set(0, 1, 0)).clone();
+    if (o.isInstancedMesh && h.instanceId != null) {
+      const im = new THREE.Matrix4();
+      o.getMatrixAt(h.instanceId, im);
+      normal.transformDirection(im);
+    }
+    normal.transformDirection(o.matrixWorld);
+    if (normal.dot(dir) > 0) normal.negate(); // (always facing back at the shot)
+    let colour = '#9a8a78';
+    if (o.isInstancedMesh && o.instanceColor && h.instanceId != null) {
+      const c = new THREE.Color();
+      o.getColorAt(h.instanceId, c);
+      colour = '#' + c.getHexString();
+    } else {
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (m?.color && !m.map) colour = '#' + m.color.getHexString();
+      else if (m?.color) colour = '#' + m.color.clone().multiplyScalar(0.8).getHexString();
+    }
+    return { point: h.point, normal, colour };
+  }
+  // a shot hits the world: the impact (src/impacts.js); a rocket's blast throws cars near it, and you hear and feel it
+  // by how near you are
+  shotImpact(p, point, normal, colour) {
+    p.life = 0;
+    const big = p.type === 'rocket';
+    this.impacts.impact(point, normal, big ? 'rocket' : 'bolt', colour);
+    const P = this.player,
+      dd = point.distanceTo(P.m.root.position);
+    if (big) {
+      if (dd < 110) Sound.explode(Math.max(0.2, 1 - dd / 110));
+      if (dd < 50) this.shake = Math.max(this.shake, 0.45 * (1 - dd / 50));
+      this.blastCars(point, p.owner);
+    } else if (dd < 40) Sound.hitMark?.(false);
+  }
+  // a rocket's blast at a point on the cars round it (but skip): near ones blown up and over, further ones shoved
+  blastCars(point, owner, skip = null) {
+    for (const k of this.karts) {
+      if (k === skip) continue;
+      const kd = k.m.root.position.distanceTo(point),
+        kick = blastKick(kd, VSTATS[k.m.type].mass);
+      if (!kick) continue;
+      const blast = { kick, at: point };
+      if (kick.near) this.hit(k, 'boom', owner === k ? null : owner, blast);
+      else if (!k.fly && !k.pwImmune && !(k.shield > 0)) {
+        // further out: a hop and a shove away from it, slowed
+        k.vy = Math.max(k.vy, kick.up);
+        k.fly = true;
+        k.speed *= 0.85;
+        this.blastAway(k, blast);
+        k.speed += kick.push * blast.t * 0.5;
+      }
+    }
+  }
+  // fire a car's special power (the recordings fire Buddy's while he's on autopilot: tools/record.mjs)
+  usePower(k) {
+    return firePower(this, k);
+  }
   // a shot of nitro (yours from the button, a rival's when it sees a straight): a third of the bottle for a boost
   useNitro(k) {
     if (k.nitro < 0.3 || k.spin > 0) return false;

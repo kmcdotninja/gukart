@@ -2856,6 +2856,7 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
   }
   const kart = {
     nitroCol: custom?.nitro || '#4fb0ff',
+    paintCol: goldPaint ? '#e0a812' : paintCol, // (what a rocket knocks off it is this colour: src/impacts.js)
     type,
     V,
     root,

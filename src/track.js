@@ -178,6 +178,16 @@ export function buildTrack(def) {
         wall[i] = W / 2 + 0.2;
         hall[i] = 1;
       }
+  // ...and a funnel into each hall: over the last 30 m before it the edge closes in from the open shoulders to the
+  // hall's walls, so a car running wide is guided in through the doorway rather than snapped sideways at it
+  for (const f of feats)
+    if (f.type === 'airport' || f.type === 'hall')
+      for (let d = seg / 2; d <= 30; d += seg / 2) {
+        const i = wrap(Math.floor(wrapS(f.s - d) / seg));
+        if (hall[i]) continue;
+        const w = W / 2 + 0.2 + 9.5 * (d / 30);
+        if (!wall[i] || wall[i] > w) wall[i] = w;
+      }
   const kickers = feats.filter(f => f.type === 'kicker').map(f => ({ s: f.s, gap: [f.s + 3, f.s + 24] }));
   const inGap = new Uint8Array(N);
   for (const k of kickers)

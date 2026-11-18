@@ -440,6 +440,25 @@ export function buildEmirDrive(scene, tr, f, W, reserve) {
       for (const sx of [-1, 1])
         put(box(off - HW, 0.12, z1 - z0), lam('#e2c99a'), sx * ((off + HW) / 2), 0, (z0 + z1) / 2);
 
+  /* ---------- the wing walls: flaring out before the great gate to gather you in (the road's edge closes in with them:
+     track.js funnels into every hall) ---------- */
+  for (const sx of [-1, 1]) {
+    const x0 = W / 2 + 0.2 + 9.5,
+      x1 = W / 2 + 0.2 + 9.5 * (6 / 30),
+      z0 = -30,
+      z1 = -6,
+      len = Math.hypot(x1 - x0, z1 - z0),
+      ang = Math.atan2(sx * (x1 - x0), z1 - z0),
+      cx = sx * ((x0 + x1) / 2 + 0.8),
+      cz = (z0 + z1) / 2;
+    put(wallGeo(1.6, 6, len), mud, cx, 0, cz, ang);
+    for (let k = 0; k < len; k += 2.4) {
+      const u = k / len;
+      put(box(1, 0.9, 1.4), yel, sx * (x0 + (x1 - x0) * u + 0.8), 6, z0 + (z1 - z0) * u, ang);
+    }
+    put(box(0.5, 1.2, len), grn, sx * ((x0 + x1) / 2 + 0.05), 0, cz, ang);
+  }
+
   /* ---------- the gates ---------- */
   gateTower(0, 26, 12, W + 30, 'GIDAN SARKI');
   gateTower(115, 19, 8, W + 14, null);

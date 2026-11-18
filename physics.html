@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gukart Physics Studio</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&display=swap">
+  <style>
+    /* the Physics Studio: the Vehicle Studio's look (studio.html): navy glass cards with cut corners, orange slanted tags, stripe sliders */
+    :root { --navy: #0b1330; --navy-2: #131f4a; --glass: rgba(12, 21, 54, .8); --line: #6fd3ff; --line-dim: rgba(111, 211, 255, .45); --orange: #ff6a00; --orange-2: #ff9a3c; --hazard: #ffc400; --white: #f4f7ff; --muted: #9fb0dc; --race: 'Barlow Condensed', 'Arial Narrow', sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #060a1c; color: var(--white); font-family: var(--race); }
+    button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 16px 16px 40px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 340px; }
+    @media (max-width: 960px) { .page { grid-template-columns: 1fr; } }
+    header { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    h1 { margin: 0; font-style: italic; font-weight: 900; font-size: 36px; letter-spacing: .02em; line-height: 1; }
+    h1 span { color: var(--orange); }
+    .slant { clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+    .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tabs button { height: 40px; padding: 0 20px; font-style: italic; font-weight: 800; font-size: 18px; background: var(--navy-2); }
+    .tabs button.on { background: var(--orange); }
+    .card { --cut: 14px; position: relative; background: var(--glass); border: 1.5px solid var(--line-dim); clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+    .tag { display: inline-flex; align-items: center; gap: 10px; height: 28px; padding: 0 30px 0 14px; margin: -1px 0 12px -1px; background: var(--orange); font-style: italic; font-weight: 800; font-size: 18px; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+    .tag i { width: 6px; height: 100%; background: rgba(255, 255, 255, .9); transform: skewX(-28deg); }
+    .pad { padding: 0 14px 14px; }
+    main, .side { display: grid; gap: 14px; align-content: start; min-width: 0; }
+
+    /* the stage */
+    .stage { aspect-ratio: 16 / 9; min-height: 300px; overflow: hidden; background: #0a1028; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+    .stage canvas:active { cursor: grabbing; }
+    .stage .tag { position: absolute; top: 0; left: 0; margin: 0; z-index: 2; }
+    .powname { position: absolute; left: 18px; bottom: 16px; z-index: 2; pointer-events: none; }
+    .powname small { display: block; font-style: italic; font-weight: 800; font-size: 15px; letter-spacing: .1em; color: var(--hazard); }
+    .powname b { display: block; font-style: italic; font-weight: 900; font-size: 56px; line-height: .9; text-shadow: 0 4px 24px rgba(0, 0, 0, .5); }
+    .timeline { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; z-index: 2; background: rgba(255, 255, 255, .08); }
+    .timeline i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--orange), var(--hazard)); }
+    .hint { position: absolute; right: 18px; bottom: 18px; z-index: 2; font-style: italic; font-weight: 700; font-size: 13px; letter-spacing: .1em; color: rgba(255, 255, 255, .45); }
+    @media (max-width: 640px) { .powname b { font-size: 38px; } .hint { display: none; } }
+
+    /* the big button */
+    .go { position: relative; width: 100%; height: 66px; font-style: italic; font-weight: 900; font-size: 30px; background: linear-gradient(100deg, var(--orange), var(--orange-2)); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18); clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+    .go::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 40%; background: repeating-linear-gradient(-62deg, rgba(255, 255, 255, .22) 0 9px, transparent 9px 22px); -webkit-mask: linear-gradient(90deg, transparent, #000 75%); mask: linear-gradient(90deg, transparent, #000 75%); }
+    .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+    .btn2, .btn3 { height: 46px; font-style: italic; font-weight: 800; font-size: 19px; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
+    .btn2 { background: var(--white); color: var(--navy); } .btn3 { background: var(--navy-2); }
+
+    /* the power card: its line, then its numbers */
+    .pline { margin: 0 0 14px; font-style: italic; font-weight: 700; font-size: 20px; line-height: 1.3; }
+    .stunts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+    .stunts button { min-height: 62px; padding: 8px 14px; text-align: left; background: var(--navy-2); clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+    .stunts button b { display: block; font-style: italic; font-weight: 800; font-size: 19px; }
+    .stunts button small { display: block; opacity: .75; font-size: 13px; letter-spacing: .04em; }
+    .stunts button.on { background: var(--hazard); color: var(--navy); }
+    .stunts button.combo b { color: var(--hazard); }
+    .stunts button.combo.on b { color: var(--navy); }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .chips span { height: 30px; display: inline-flex; align-items: center; padding: 0 16px; background: var(--navy-2); font-style: italic; font-weight: 800; font-size: 16px; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+    .chips span b { color: var(--hazard); margin-left: 6px; }
+
+    /* sliders: the stripe bar */
+    .sliders { display: grid; gap: 10px; }
+    .sl { display: grid; grid-template-columns: 130px 1fr 54px; align-items: center; gap: 10px; }
+    .sl span { font-style: italic; font-weight: 700; font-size: 16px; }
+    .sl output { font-style: italic; font-weight: 700; font-size: 15px; text-align: right; color: var(--hazard); }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; margin: 0; background: transparent; transform: skewX(-24deg); cursor: pointer; --v: 50%; }
+    input[type=range]::-webkit-slider-runnable-track { height: 10px; background: linear-gradient(90deg, transparent var(--v), #1b2552 var(--v)), repeating-linear-gradient(-62deg, #ff6a00 0 8px, #ff9a3c 8px 14px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+    input[type=range]::-moz-range-track { height: 10px; background: linear-gradient(90deg, transparent var(--v), #1b2552 var(--v)), repeating-linear-gradient(-62deg, #ff6a00 0 8px, #ff9a3c 8px 14px); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 5px; height: 20px; margin-top: -5px; border: 0; border-radius: 0; background: #fff3dc; box-shadow: 0 0 10px #ffd29a, 0 0 18px #ff9a3c; }
+    input[type=range]::-moz-range-thumb { width: 5px; height: 20px; border: 0; border-radius: 0; background: #fff3dc; box-shadow: 0 0 10px #ffd29a, 0 0 18px #ff9a3c; }
+
+    /* the line-up: every vehicle's numbers side by side, this one lit */
+    .lineup { display: grid; gap: 4px; }
+    .lineup .lr { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center; font-style: italic; font-weight: 700; font-size: 14px; color: var(--muted); }
+    .lineup .bars { display: flex; gap: 3px; align-items: end; height: 26px; }
+    .lineup .bars i { flex: 1; background: #24305f; }
+    .lineup .bars i.me { background: var(--orange); }
+
+    .ident h2 { margin: 0; font-style: italic; font-weight: 900; font-size: 40px; line-height: 1; }
+    .ident p { margin: 6px 0 12px; font-style: italic; font-weight: 700; font-size: 17px; color: var(--muted); }
+    .note { font-style: italic; font-weight: 700; font-size: 14px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+    .fit { font-style: italic; font-weight: 700; font-size: 16px; }
+    .fit.ok { color: #7dffa6; } .fit.bad { color: #ff8f8f; }
+  
+    .scen { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+    .scen button { min-height: 52px; padding: 8px 14px; text-align: left; background: var(--navy-2); clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+    .scen button b { display: block; font-style: italic; font-weight: 800; font-size: 19px; }
+    .scen button:disabled { opacity: .35; cursor: default; }
+    .about { color: var(--muted); font-size: 16px; line-height: 1.35; margin: 0; }
+    #abName { margin: 0 0 6px; font-style: italic; font-weight: 900; font-size: 26px; }
+    .go.stopped { background: var(--navy-2); }
+    .scen button.on { background: var(--hazard); color: var(--navy); }
+    .sl { display: grid; grid-template-columns: 120px 1fr 56px; gap: 10px; align-items: center; margin: 8px 0; font-style: italic; font-weight: 700; font-size: 16px; }
+    .sl input { width: 100%; accent-color: var(--orange); }
+    .sl output { text-align: right; color: var(--hazard); }
+    .note { color: var(--muted); font-size: 14px; letter-spacing: .02em; line-height: 1.3; margin: 10px 0 0; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>GUKART <span>PHYSICS STUDIO</span></h1>
+      <nav class="tabs" id="stages"><button data-st="plain">TEST FACILITY</button><button data-st="city">IN THE CITY</button><button data-st="items">THE ITEMS</button></nav>
+    </header>
+    <main>
+      <section class="card stage">
+        <div class="tag"><span>LIVE</span><i></i><i></i></div>
+        <div class="powname"><small id="scLabel">SCENARIO</small><b id="scName">ROCKET INTO A WALL</b></div>
+        <div class="hint">DRAG TO TURN · SCROLL TO ZOOM</div>
+        <canvas id="gl"></canvas>
+      </section>
+      <button class="go" id="stop">STOP</button>
+      <section class="card">
+        <div class="tag"><span id="scenTag">SCENARIOS</span><i></i><i></i></div>
+        <div class="pad"><div class="scen" id="scen"></div></div>
+      </section>
+    </main>
+    <aside class="side">
+      <section class="card">
+        <div class="tag"><span>ABOUT</span><i></i><i></i></div>
+        <div class="pad"><h2 id="abName"></h2><p class="about" id="abText"></p></div>
+      </section>
+      <section class="card">
+        <div class="tag"><span>THE PHYSICS</span><i></i><i></i></div>
+        <div class="pad" id="sliders"></div>
+      </section>
+    </aside>
+  </div>
+  <script type="module" src="/src/physics-studio.js"></script>
+</body>
+</html>

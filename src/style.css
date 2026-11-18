@@ -2315,6 +2315,33 @@ body:has(#garage:not([hidden])) #menu {
 .bump {
   animation: bump 0.35s ease-out;
 }
+/* a place gained or lost: the number flashes green or red as it pulses */
+.bump.up {
+  animation:
+    bump 0.35s ease-out,
+    placeUp 0.6s ease-out;
+}
+.bump.down {
+  animation:
+    bump 0.35s ease-out,
+    placeDown 0.6s ease-out;
+}
+@keyframes placeUp {
+  0% {
+    color: #3dff8a;
+  }
+  100% {
+    color: inherit;
+  }
+}
+@keyframes placeDown {
+  0% {
+    color: #ff4a4a;
+  }
+  100% {
+    color: inherit;
+  }
+}
 @keyframes bump {
   0% {
     transform: scale(1.3);
@@ -2623,16 +2650,53 @@ body:has(#garage:not([hidden])) #menu {
   text-shadow: 4px 4px 0 var(--orange);
 }
 .center.ko {
-  font-size: clamp(40px, 11vw, 68px);
+  /* (a word, not a wall: small and up high, so the middle of the screen stays clear to watch the crash) */
+  top: 17%;
+  font-size: clamp(22px, 5.5vw, 38px);
 }
 .center.ko .pop {
   background: var(--orange);
   color: var(--white);
-  padding: 2px 30px 6px 22px;
+  padding: 2px 20px 4px 14px;
   clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
 }
 .center.ko .pop {
   white-space: nowrap;
+}
+/* a hit marker: a white X in the middle of the screen as your shot lands, gone in a moment */
+#hitMark {
+  position: fixed;
+  left: 50%;
+  top: 46%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  background:
+    linear-gradient(45deg, transparent 44%, #fff 44%, #fff 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, #fff 44%, #fff 56%, transparent 56%);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
+}
+#hitMark.on {
+  animation: hitmark 0.28s ease-out;
+}
+#hitMark.on.big {
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  animation: hitmark 0.4s ease-out;
+}
+@keyframes hitmark {
+  0% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
 }
 /* a takedown: a flash of warm light round the edges of the screen */
 body.ko-flash::after {
@@ -3008,7 +3072,7 @@ body.ko-flash::after {
     height: 26px;
   }
   .center.ko {
-    font-size: 34px;
+    font-size: 22px;
   }
   .center.small {
     font-size: 46px;

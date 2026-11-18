@@ -184,10 +184,14 @@ function frame(now) {
     if (p.rank !== game.lastPos) {
       hud.pos.textContent = p.rank;
       hud.posSfx.textContent = ordinal(p.rank).toUpperCase();
-      const b = $('#posBig');
-      b.classList.remove('bump');
+      // feedback for every change of place: the number pulses (green up, red down) and two quick notes say which way
+      const b = $('#posBig'),
+        up = game.lastPos != null && p.rank < game.lastPos,
+        down = game.lastPos != null && p.rank > game.lastPos;
+      b.classList.remove('bump', 'up', 'down');
       void b.offsetWidth;
-      b.classList.add('bump');
+      b.classList.add('bump', ...(up ? ['up'] : down ? ['down'] : []));
+      if (game.state === 'race' && (up || down)) Sound.place(up);
       game.lastPos = p.rank;
     }
     hud.timer.textContent = fmtTime(

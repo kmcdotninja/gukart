@@ -209,7 +209,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
       uniforms: {
         uNight: { value: 0 },
-        uCity: { value: coast ? 1 : 0 },
+        uCity: { value: coast || city === 'kano' ? 1 : 0 }, // (a big city's night sky, lit from below: Kano's too)
         uMoon: { value: new THREE.Vector3(0.5, 0.45, -0.74).normalize() },
         uSun: { value: new THREE.Vector3(-0.6, 0.55, 0.45).normalize() }, // (the sun light's own direction, buddy.js SUN)
         uTime: { value: 0 },
@@ -1880,12 +1880,39 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   ])
     inst.build(scene);
 
+  function oldCityPlaces() {
+    const out = [],
+      f1 = type => tr.feats.find(f => f.type === type),
+      add = (name, sub, s, o = {}) => {
+        const p = tr.point(s, 0);
+        out.push({ name, sub, x: p.x, y: p.y, z: p.z, s, back: 34, lat: 0, h: 4, lookH: 10, ...o });
+      };
+    const gate = tr.feats.find(f => f.type === 'gate');
+    if (gate) add(gate.name, 'The way into the old city', gate.s, { lookH: 14, back: 44 });
+    if (hollow)
+      add('DALA HILL', 'Hollow now: the race climbs inside it', tr.feats.find(f => f.type === 'gate')?.s ?? 0, {
+        x: hill.x,
+        z: hill.z,
+        lookH: 40,
+        back: 120,
+      });
+    const dye = f1('dye');
+    if (dye) add('KOFAR MATA', 'Indigo dye pits, five centuries old', dye.s + 20, { lookH: 4 });
+    const mk = f1('market');
+    if (mk) add('KURMI MARKET', 'Trading here since the 1400s', mk.s + 40, { lookH: 6 });
+    const pal = f1('emirdrive');
+    if (pal) add('GIDAN RUMFA', "Through the Emir's palace", pal.s + 150, { lookH: 14, back: 80 });
+    return out.sort((a, b) => a.s - b.s).slice(0, 4);
+  }
   return {
     sky,
     water,
     hill,
     palace: palaceAt,
     places: dk.places || [],
+    // the old city's landmarks for the race's introduction (the drone flies to each before the countdown; the map
+    // lists them its own way, snapshots.js): in the order the lap meets them
+    introPlaces: city === 'kano' && !coast ? oldCityPlaces() : null,
     // the start lights: n red pods lit (0..5), or 'go' for all green
     startLights(n) {
       startLamps.forEach((pod, k) =>

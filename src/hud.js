@@ -208,6 +208,18 @@ export const events = {
     setTimeout(() => document.body.classList.remove('ko-flash'), 450);
     Haptics.big?.();
   },
+  // a hit marker: a white X flashed in the middle of the screen as your shot lands (no words)
+  hitMark(big) {
+    let m = document.getElementById('hitMark');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'hitMark';
+      document.body.appendChild(m);
+    }
+    m.className = '';
+    void m.offsetWidth;
+    m.className = big ? 'on big' : 'on';
+  },
   flash(text) {
     banner(text.toUpperCase(), 'ko', 700);
   },

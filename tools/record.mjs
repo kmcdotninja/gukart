@@ -4,6 +4,9 @@
 //   node tools/record.mjs --circuit pearl --seconds 30 --out recordings/pearl.mp4
 //   node tools/record.mjs --frames 120                      (a quick check: a couple of seconds)
 //   node tools/record.mjs --launch                          (the launch video: Doha's garage, then a race on Msheireb, 45 s)
+//   node tools/record.mjs --lap                            (one lap of Kano's Old City by day from the cockpit, in the
+//                                                            Roadster: the flyover, the jumps and their stunts, the
+//                                                            palace, weapons and its SKY ROCKET, the pack kept close)
 //   node tools/record.mjs --photo                           (photo mode: the last seconds of a race on Kano's Old City,
 //                                                            the line, the results with the replay behind them, PHOTO,
 //                                                            the camera swung round the kart, the shutter, the Polaroid)
@@ -30,22 +33,25 @@ const arg = (name, def) => {
   return i > 0 ? process.argv[i + 1] : def;
 };
 const showcase = process.argv.includes('--showcase');
+const lap = process.argv.includes('--lap');
 const photo = process.argv.includes('--photo');
 const launch = process.argv.includes('--launch') || showcase;
-const circuit = arg('circuit', photo ? 'old' : showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
+const circuit = arg('circuit', photo || lap ? 'old' : showcase ? 'pearl' : launch ? 'msheireb' : 'lusail');
 // the city the circuit is in (and whose garage it opens): Doha unless told otherwise (--city singapore --circuit changi)
-const city = arg('city', photo ? 'kano' : 'doha');
+const city = arg('city', photo || lap ? 'kano' : 'doha');
 const FPS = 60;
-const frames = +arg('frames', 0) || Math.round(+arg('seconds', photo ? 19 : launch ? 45 : 60) * FPS);
+const frames = +arg('frames', 0) || Math.round(+arg('seconds', photo ? 19 : lap ? 150 : launch ? 45 : 60) * FPS); // (--lap stops itself when the lap is done)
 const out = arg(
   'out',
-  photo
-    ? 'recordings/photo-mode.mp4'
-    : showcase
-      ? 'recordings/showcase.mp4'
-      : launch
-        ? 'recordings/launch.mp4'
-        : `recordings/${circuit}.mp4`,
+  lap
+    ? 'recordings/old-city-lap.mp4'
+    : photo
+      ? 'recordings/photo-mode.mp4'
+      : showcase
+        ? 'recordings/showcase.mp4'
+        : launch
+          ? 'recordings/launch.mp4'
+          : `recordings/${circuit}.mp4`,
 );
 // the launch video, one take with no titles: Doha's home, into the garage, through the vehicles, the muscle car dressed
 // in Buddy Orange with flames and turbo wheels, saved, then PLAY and a race on Msheireb. [second, what is clicked]
@@ -96,10 +102,24 @@ const SHOWCASE = [
   [29.7, '#qNext'],
   [30.4, '#qNext'],
 ];
-const [W, H] = arg('size', showcase ? '1920x1080' : '1512x982') // (the showcase is plain 1080p)
+// one lap of the Old City (--lap): home, the city's map (the camera flies up over the island and holds), back home, QUICK
+// RACE (RACE, its NEXT, then how hard, the city, the circuit, the time of day: GO), and the race's introduction of the
+// city's places plays before the countdown. [second, what is clicked]
+const LAP = [
+  [1.2, '#mapBtn'],
+  [7.5, '#mapBack'],
+  [9.0, '#quickBtn'],
+  [10.2, '#mCards .mcard[data-mode="gp"]'],
+  [11.0, '#mCards .mcard.on'],
+  [11.8, '#qNext'],
+  [12.5, '#qNext'],
+  [13.2, '#qNext'],
+  [13.9, '#qNext'],
+];
+const [W, H] = arg('size', showcase || lap ? '1920x1080' : '1512x982') // (the showcase is plain 1080p)
   .split('x')
   .map(Number);
-const scale = +arg('scale', showcase ? 1 : 2);
+const scale = +arg('scale', showcase || lap ? 1 : 2);
 const DT = 1000 / FPS;
 const mute = process.argv.includes('--mute');
 const RATE = 48000; // 800 samples a frame
@@ -112,8 +132,16 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: scale });
 page.on('pageerror', e => console.log('page error:', e.message));
 await page.addInitScript(
-  ([c, launch, showcase, city]) => {
+  ([c, launch, showcase, city, lap]) => {
     const set = (k, v) => localStorage.setItem('gukart.' + k, JSON.stringify(v));
+    if (lap) {
+      set('view', 'fp'); // the cockpit
+      set('night', false); // daylight
+      set('veh', 'roadster');
+      set('owned', ['veh:roadster']);
+      set('earned', 0);
+      set('level', 'normal');
+    }
     set('city', city);
     set('circuit.' + city, c);
     set('mode', 'gp');
@@ -129,7 +157,7 @@ await page.addInitScript(
       set('level', 'normal');
     }
   },
-  [circuit, launch, showcase, city],
+  [circuit, launch, showcase, city, lap],
 );
 // the game's sound goes into an offline context exactly as long as the video; the game's own resume() calls (it wakes the
 // sound on a key press or a new race) do nothing, only this script moves it on
@@ -202,6 +230,7 @@ await page.goto('http://127.0.0.1:4198/#capture');
 console.log(`booting ${city} · ${circuit} ...`);
 await page.waitForFunction(() => window.gukart?.ready, null, { timeout: 300000, polling: 200 });
 await page.clock.pauseAt(Date.now() + 1000);
+if (lap) await page.evaluate(() => (window.gukart.recIntro = true)); // (the race's introduction of the city plays, as in the game)
 
 // in the page: step the game and every CSS animation/transition by one frame
 await page.evaluate(() => {
@@ -228,14 +257,14 @@ const step = async () => {
 // home > QUICK RACE > RACE > the setup (the card is already picked); then a few frames so the screens settle. The launch video starts on
 // the home screen instead and clicks its way along as it records
 for (let i = 0; i < 20; i++) await step();
-if (!launch) {
+if (!launch && !lap) {
   await page.evaluate(() => document.querySelector('#quickBtn').click());
   for (let i = 0; i < 30; i++) await step();
 }
 // the sound starts with the video: its first sample is the first frame
 if (!mute && !photo) await page.evaluate(() => window.gukart.Sound.init());
 // RACE (open it, then its NEXT), then the QUICK RACE setup already on this circuit and time of day: NEXT (city), NEXT (circuit), GO
-if (!launch)
+if (!launch && !lap)
   await page.evaluate(() => {
     document.querySelector('#mCards .mcard[data-mode="gp"]').click(); // opens RACE
     document.querySelector('#mCards .mcard.on').click(); // its NEXT
@@ -287,8 +316,9 @@ const ffDone = new Promise(r => ff.on('close', r));
 const cdp = await page.context().newCDPSession(page);
 
 const t0 = Date.now();
-let auto = false;
-const clicks = (showcase ? SHOWCASE : launch ? LAUNCH : []).map(([t, sel]) => [Math.round(t * FPS), sel]);
+let auto = false,
+  stoppedEarly = false;
+const clicks = (showcase ? SHOWCASE : launch ? LAUNCH : lap ? LAP : []).map(([t, sel]) => [Math.round(t * FPS), sel]);
 // when the race starts (its card, then GO): the music is laid in afterwards, the menus' track until then, the race's after
 let raceFrom = -1,
   goFrom = -1,
@@ -309,7 +339,7 @@ for (let f = 0; f < frames; f++) {
       }, sel);
       if (!ok) console.log(`  (nothing to click at ${(f / FPS).toFixed(1)}s: ${sel})`);
     }
-  if (showcase && auto)
+  if ((showcase || lap) && auto)
     // the showcase's race director: Buddy eases off when he gets clear, and a rival that drops behind him is pulled
     // back up, so the race stays a fight all the way (positions change, the crew right there in every shot)
     await page.evaluate(() => {
@@ -360,6 +390,28 @@ for (let f = 0; f < frames; f++) {
       if (t >= 13) break;
     }
   }
+  if (lap && auto) {
+    const done = await page.evaluate(() => {
+      const R = window.gukart.game.race,
+        P = R.player;
+      // something to shoot: a blaster now and then, a rocket for the long straights
+      // (handed over only with someone in reach ahead, so the shots land where you can see them)
+      if (!P.weapon && Math.random() < 0.02 && R.targetAhead(P, 120, 14)) {
+        P.weapon = Math.random() < 0.5 ? 'blaster' : 'rocket';
+        P.ammo = P.weapon === 'blaster' ? 10 : 2;
+        R.ev.weapon?.(P.weapon, P.ammo, true);
+      }
+      // the special power, when someone's close ahead
+      const ahead = R.karts.some(o => o !== P && R.dS(o.s, P.s) > 4 && R.dS(o.s, P.s) < 40);
+      if (ahead && Math.random() < 0.02) R.usePower(P);
+      return P.lap >= 1 && R.dS(P.s, 0) > 60; // (round once, and a moment past the line)
+    });
+    if (done) {
+      console.log(`  the lap's done at ${(f / FPS).toFixed(1)}s`);
+      stoppedEarly = true;
+      break;
+    }
+  }
   await step();
   if (!mute) await page.evaluate(n => window.__audioStep(n), RATE / FPS);
   {
@@ -393,6 +445,8 @@ for (let f = 0; f < frames; f++) {
 }
 ff.stdin.end();
 let code = await ffDone;
+// (stopped early, the lap done: the rest of the sound is rendered at once, then trimmed to the picture by -shortest)
+if (!mute && stoppedEarly) await page.evaluate(n => window.__audioStep(n), frames * (RATE / FPS));
 // the music, mixed under the game's own sound the way the game plays it (src/music.js): the menus' track from the start,
 // faded out as the race card comes up; the race's track from GO, lower, under the engines. (The game plays it through
 // a media element, which a recording's offline sound can't take, so it's laid in here.)

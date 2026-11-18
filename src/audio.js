@@ -597,13 +597,13 @@ export const Sound = {
         slot.type = r.type;
       } // a different rival is nearest: retune the same engine, don't build another
       const near = Math.max(0, 1 - Math.abs(r.dist) / 60),
-        dop = Math.max(0.8, Math.min(1.25, 1 - (((r.dist > 0 ? 1 : -1) * r.rel) / 340) * 6));
+        dop = Math.max(0.72, Math.min(1.35, 1 - (((r.dist > 0 ? 1 : -1) * r.rel) / 340) * 9)); // (the pitch drops hard as it passes)
       // a rival far off is quiet and muffled; it gets clear and loud only as it comes past
       slot.v.update(
-        { speed: r.speed, throttle: 1, doppler: dop, gain: near * near * 0.6, pan: r.side * 0.8, muffle: 1 - near },
+        { speed: r.speed, throttle: 1, doppler: dop, gain: near ** 1.6 * 0.95, pan: r.side * 0.9, muffle: 1 - near },
         dt,
       );
-      if (slot.d > 0 !== r.dist > 0 && Math.abs(r.dist) < 8 && Math.abs(r.rel) > 3) this.passBy(r.side); // they've just come past, or you've passed them
+      if (slot.d > 0 !== r.dist > 0 && Math.abs(r.dist) < 10 && Math.abs(r.rel) > 2) this.passBy(r.side); // they've just come past, or you've passed them
       slot.d = r.dist;
     });
   },
@@ -627,12 +627,12 @@ export const Sound = {
       pn = c.createStereoPanner ? c.createStereoPanner() : null;
     s.buffer = noise(c);
     f.type = 'bandpass';
-    f.Q.value = 1.1;
-    f.frequency.setValueAtTime(1800, t);
-    f.frequency.exponentialRampToValueAtTime(500, t + 0.5);
+    f.Q.value = 0.9;
+    f.frequency.setValueAtTime(2000, t);
+    f.frequency.exponentialRampToValueAtTime(420, t + 0.6);
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.08, t + 0.12);
-    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.6);
+    g.gain.linearRampToValueAtTime(0.24, t + 0.1); // (a real whoosh as it goes by: it's one of the best sounds in the race)
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.75);
     s.connect(f);
     f.connect(g);
     if (pn) {
@@ -642,7 +642,8 @@ export const Sound = {
       pn.connect(this.bus);
     } else g.connect(this.bus);
     s.start(t, Math.random());
-    s.stop(t + 0.65);
+    s.stop(t + 0.8);
+    this.thump(120, 70, 0.35, 0.12); // (and the body of it: a low push of air)
   },
   // touching down after a jump: a low thud, harder for a bigger drop
   land(hard = 0.5) {
@@ -916,6 +917,11 @@ export const Sound = {
     this.burst({ f0: 2400, f1: 600, dur: 0.12, vol: 0.12, q: 0.7, attack: 0.004 });
     this.burst({ f0: 1800, f1: 500, dur: 0.1, vol: 0.08, q: 0.7, at: 0.09 });
   },
+  // your shot landed: a bright tink on top of a dull thud (a rocket's is bigger)
+  hitMark(big = false) {
+    this.bell(big ? 1760 : 2350, 0, big ? 0.12 : 0.08, 0.18);
+    this.thump(big ? 140 : 200, 60, 0.15, big ? 0.25 : 0.12);
+  },
   // the blaster: a sharp laser pew, a bright tone diving fast, a click of noise on the front of it
   zap() {
     if (!this.ctx || !this.on || this.quiet) return;
@@ -969,6 +975,11 @@ export const Sound = {
       o.start(t);
       o.stop(t + dur + 0.05);
     }
+  },
+  // your place changes: two quick notes up for a place gained, down for one lost
+  place(up) {
+    this.bell(up ? 880 : 659, 0, 0.09, 0.22);
+    this.bell(up ? 1319 : 494, 0.08, 0.09, 0.3);
   },
   // a stunt landed clean: a quick rising chime, one note more for each stunt in the combo, a cheer for a combo
   stuntLand(n = 1) {

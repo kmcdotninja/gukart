@@ -9,6 +9,19 @@ import { centralTrack, jabiTrack, gatewayTrack } from './abtracks.js';
 
 // Kano is a figure of eight: the two lobes meet at one crossing, where the flyover leg rides 12 m over the start straight.
 // No spirals, no loops: straight ramps up and down, humps that throw you in the air, jumps over the canals.
+// an eased bend: the turn tightens in, holds, and opens out again (a trapezoid of curvature, a quarter of it each way),
+// so there's no sudden change of lock going in or coming out. R is its tightest radius
+function eased(t, R, deg, list) {
+  const n = 12,
+    L = (((Math.abs(deg) * Math.PI) / 180) * R) / 0.75,
+    shape = u => Math.min(1, u / 0.25, (1 - u) / 0.25),
+    ks = Array.from({ length: n }, (_, i) => shape((i + 0.5) / n)),
+    sum = ks.reduce((a, b) => a + b, 0);
+  ks.forEach((k, i) => {
+    const ang = (deg * k) / sum;
+    t.arc(L / n / ((Math.abs(ang) * Math.PI) / 180), ang, 0, i === 0 ? list : undefined);
+  });
+}
 function kanoTrack(Lr, Lf) {
   const t = turtle();
   const hump = (L, h, list) => {
@@ -63,8 +76,10 @@ function kanoTrack(Lr, Lf) {
   // through Gidan Rumfa: off the last straight, 300 m straight through the Emir's palace from its great gate to its back
   // gate (emirpalace.js), a hairpin round, and 300 m back past it to rejoin the straight. The detour comes back to
   // the same line (+90, -180, +90), so the rest of the lap keeps its shape; only the last straight gets shorter
-  t.straight(10, 0);
-  t.arc(40, 90, 0, [[15, 'coins', { lat: 0, n: 6 }]]);
+  // (out of the dye-pit bend, room to straighten up, then an eased turn in: it tightens and opens gradually, no
+  // sudden change of lock between the two bends)
+  t.straight(18, 0);
+  eased(t, 33, 90, [[15, 'coins', { lat: 0, n: 6 }]]);
   // (30 m of open road after the turn before the great gate, so you're lined up for the arch, and 10 m after the
   // back gate before the hairpin)
   t.straight(340, 0, [
@@ -75,7 +90,7 @@ function kanoTrack(Lr, Lf) {
     [180, 'items'],
     [270, 'coins', { lat: 4, wave: 1 }],
   ]);
-  t.arc(40, -180, 0, [
+  t.arc(36, -180, 0, [
     [40, 'coins', { lat: 5, wave: 1 }],
     [90, 'items'],
   ]);
@@ -86,7 +101,7 @@ function kanoTrack(Lr, Lf) {
     [210, 'gate', { name: 'KOFAR WAMBAI' }],
     [290, 'gate', { name: 'KOFAR DAWANAU' }],
   ]);
-  t.arc(40, 90, 0);
+  eased(t, 33, 90);
   t.straight(Lf, 0, [
     [10, 'items'],
     [Math.max(15, Lf - 45), 'pad', { lat: 0 }],

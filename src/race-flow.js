@@ -26,7 +26,7 @@ export const INTRO = 2.4; // seconds: the drone sweep down the grid before the c
 // four places; after that only the orbit and one place. A tap, a click or a key skips it.
 const FLY_OPEN = 3,
   FLY_SHOT = 2;
-export function raceIntro(then) {
+export function raceIntro(then, quick = false) {
   // the World Tour's Final dresses up: THE FINAL on the introduction; fireworks and the crowd at the start
   // (src/main.js); a gold badge on the HUD all race
   const t = game.mode === 'cup' && cupOf();
@@ -39,7 +39,16 @@ export function raceIntro(then) {
   circuitFlyby(() => {
     game.flybyDone = true;
     raceIntro(then);
-  });
+  }, quick);
+}
+// racing it again (RACE AGAIN, RESTART RACE, RETRY): the cards and the HUD away, then the short introduction (the view
+// from high over the track, down onto the grid, the countdown), never a cut straight back to the car
+export function raceAgain() {
+  for (const id of ['#results', '#pause', '#quitAsk', '#controls', '#settings']) $(id).hidden = true;
+  $('#hud').style.visibility = '';
+  $('#hud').hidden = true;
+  hidePodium();
+  raceIntro(startRace, true);
 }
 // where the drone films a place from: circling it about 45 to 60 m out and 16 m up, on a side where nothing stands
 // between it and the place (a ray from the camera to the place, against the city), as near as it can be to the way
@@ -72,14 +81,14 @@ function droneSpot(p) {
   hide.forEach(o => (o.visible = true));
   return best || { a: a0, r: 48, h: 26 }; // (no clear side: from higher, over what's in the way)
 }
-function circuitFlyby(then) {
+function circuitFlyby(then, quick = false) {
   const tr = game.track,
     key = 'introSeen.' + game.RID,
     first = !store.get(key, false),
-    places = (game.world.places || []).filter(p => p.s != null),
-    pick = first ? places.slice(0, 4) : places.slice(0, 1);
+    places = (game.world.introPlaces || game.world.places || []).filter(p => p.s != null),
+    pick = quick ? [] : first ? places.slice(0, 4) : places.slice(0, 1);
   store.set(key, true);
-  if (location.hash === '#capture') return then(); // (pictures and recordings go straight to the race)
+  if (location.hash === '#capture' && !window.gukart?.recIntro) return then(); // (pictures go straight to the race; a recording that wants the city shown first sets recIntro: tools/record.mjs --lap)
   game.race.reset(); // the grid lines up; the roads are empty
   for (const p of pick) p.cine ||= droneSpot(p);
   const km = (tr.len / 1000).toFixed(1).replace('.0', ''),
@@ -87,7 +96,7 @@ function circuitFlyby(then) {
     shots = [
       {
         kind: 'orbit',
-        dur: first ? FLY_OPEN : 1.6,
+        dur: first && !quick ? FLY_OPEN : 1.8,
         kicker: game.final ? 'THE FINAL' : chapter.name.toUpperCase(),
         name: cname,
         sub: goalLine(),
@@ -323,10 +332,7 @@ export function initRaceFlow() {
     } else swap(c, $('#pause'), -1);
   });
   $('#resumeBtn').addEventListener('click', togglePause);
-  $('#restartBtn').addEventListener('click', () => {
-    $('#hud').style.visibility = '';
-    startRace();
-  });
+  $('#restartBtn').addEventListener('click', raceAgain);
   // quitting a race asks first (Free Drive's END DRIVE just ends it: it shows your drive, nothing is lost)
   $('#quitBtn').addEventListener('click', () => {
     if (game.school) {
@@ -357,7 +363,7 @@ export function initRaceFlow() {
   });
   // in a cup the results card's buttons go on through it: NEXT RACE, FINAL STANDINGS, NEW CUP; RETRY RACE runs it again
   $('#againBtn').addEventListener('click', () => {
-    if (game.mode !== 'cup') return startRace();
+    if (game.mode !== 'cup') return raceAgain();
     if (game.cupFinal) newCup();
     else cupNext();
   });

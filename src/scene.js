@@ -53,7 +53,7 @@ export function setNight(on) {
         chapter.id === 'singapore' ||
         chapter.id === 'kaduna' ||
         chapter.id === 'abuja' ||
-        (chapter.id === 'kano' && game.circuit?.id === 'metro')),
+        chapter.id === 'kano'), // (Kano in 2070 is a big lit city, its old city too: the city's night, not a dark one)
     sg = on && chapter.id === 'singapore',
     L = (d, n, c, g) => (on ? (sg ? g : city ? c : n) : d); // day, a dark night, a big city's night, Singapore's
   sun.color.set(L('#ffe2b8', '#8fa8ff', '#b4bfff', '#a8b4ff'));

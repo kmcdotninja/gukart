@@ -13,7 +13,7 @@ import { $, show, hide, whip } from './dom.js';
 import { chapter, game } from './game.js';
 import { CHAPTERS } from './chapters.js';
 import { swapCircuit } from './circuit.js';
-import { raceIntro, startRace } from './race-flow.js';
+import { raceIntro, startRace, raceAgain } from './race-flow.js';
 import { showPodium } from './podium.js';
 import { RACERS, rivalNames } from './buddy.js';
 import { paintTop } from './results.js';
@@ -350,7 +350,7 @@ export function retryCupRace() {
   t.retries--;
   save(t);
   $('#retryBtn').hidden = true;
-  startRace();
+  raceAgain();
 }
 
 // the results card's big button: on to the next race, the Final, the final standings; or, short of the points for
