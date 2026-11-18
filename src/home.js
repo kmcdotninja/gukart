@@ -101,7 +101,13 @@ export function initHome() {
   // the World Tour: start it, or carry on (in another city, the game goes there first)
   $('#goBtn').addEventListener('click', () => {
     Sound.init();
-    // the tours first (one card each, a lock on one not open yet); a tour's route, then its START or CONTINUE
+    // CONTINUE (a tour under way): straight on to its next race, no page to pick from
+    if (cupOf()) {
+      screenOut($('#menu'));
+      playCup();
+      return;
+    }
+    // START: the tours first (one card each, a lock on one not open yet); a tour's route, then its START
     $('#menu').hidden = true; // (the page is a room of its own, like Quick Race's: home isn't under it)
     showRoute();
   });
