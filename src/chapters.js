@@ -59,17 +59,37 @@ function kanoTrack(Lr, Lf) {
     [12, 'gate', { name: 'KOFAR MATA' }],
     [25, 'dye', { len: 120 }],
   ]);
-  t.arc(80, -135, 0, [
-    [40, 'coins', { lat: -4, wave: 1 }],
-    [90, 'palace'],
+  t.arc(80, -135, 0, [[40, 'coins', { lat: -4, wave: 1 }]]);
+  // through Gidan Rumfa: off the last straight, 300 m straight through the Emir's palace from its great gate to its back
+  // gate (emirpalace.js), a hairpin round, and 300 m back past it to rejoin the straight. The detour comes back to
+  // the same line (+90, -180, +90), so the rest of the lap keeps its shape; only the last straight gets shorter
+  t.straight(10, 0);
+  t.arc(40, 90, 0, [[15, 'coins', { lat: 0, n: 6 }]]);
+  // (30 m of open road after the turn before the great gate, so you're lined up for the arch, and 10 m after the
+  // back gate before the hairpin)
+  t.straight(340, 0, [
+    [30, 'palace'],
+    [30, 'emirdrive', { len: 300 }],
+    [30, 'hall', { len: 300 }],
+    [90, 'coins', { lat: 0, n: 10, gap: 6 }],
+    [180, 'items'],
+    [270, 'coins', { lat: 4, wave: 1 }],
   ]);
+  t.arc(40, -180, 0, [
+    [40, 'coins', { lat: 5, wave: 1 }],
+    [90, 'items'],
+  ]);
+  t.straight(340, 0, [
+    [30, 'walls', { len: 140 }],
+    [70, 'pad', { lat: 0 }],
+    [120, 'kicker'],
+    [210, 'gate', { name: 'KOFAR WAMBAI' }],
+    [290, 'gate', { name: 'KOFAR DAWANAU' }],
+  ]);
+  t.arc(40, 90, 0);
   t.straight(Lf, 0, [
-    [20, 'walls', { len: Lf * 0.5 }],
-    [35, 'kicker'],
-    [100, 'items'],
-    [Lf - 45, 'pad', { lat: 0 }],
-    [Lf - 175, 'gate', { name: 'KOFAR WAMBAI' }],
-    [Lf - 85, 'gate', { name: 'KOFAR DAWANAU' }],
+    [10, 'items'],
+    [Math.max(15, Lf - 45), 'pad', { lat: 0 }],
   ]);
   return t;
 }
@@ -325,10 +345,11 @@ export const ABUJA_CIRCUITS = [
   { id: 'gateway', name: 'The Gateway', track: closer(gatewayTrack), fn: gatewayTrack },
 ];
 
-// Kano is three circuits: the Old City figure of eight (its records keep the plain 'kano' key they always had), Dala Hill,
+// Kano is three circuits: the Old City figure of eight through the Emir's palace (records under 'kano.palace': the
+// plain 'kano' ones were set on the shorter lap before the palace drive), Dala Hill,
 // and Kano City through the modern metropolis
 export const KANO_CIRCUITS = [
-  { id: 'old', name: 'Old City', track: closedKano, fn: kanoTrack, rid: 'kano' },
+  { id: 'old', name: 'Old City', track: closedKano, fn: kanoTrack, rid: 'kano.palace' }, // (its records start again with the palace drive)
   { id: 'dala', name: 'Dala Hill', track: closer(dalaTrack), fn: dalaTrack },
   { id: 'metro', name: 'Kano City', track: closer(kanoCityTrack), fn: kanoCityTrack },
 ];

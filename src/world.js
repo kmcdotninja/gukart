@@ -6,6 +6,9 @@ import { W, BW } from './track.js';
 import { buildGantry, pitStraight } from './gantry.js';
 import { clamp, lerp, sstep, fbm, rng } from './util.js';
 import { canvasTex, loopKnot, starKnot, diamondBand } from './textures.js';
+import { dressKano2070, knotBanner } from './kano2070.js';
+import { buildHollowDala, HOLLOW_R } from './dalahollow.js';
+import { buildEmirDrive } from './emirpalace.js';
 
 // many copies of one shape in one draw call
 class Inst {
@@ -90,6 +93,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     coast = doha || city === 'singapore' || kd; // (a big modern city on the water: its sea comes from the circuit's features, its own scenery)
   let isLand = () => true;
   const occ = [];
+  // (Kano 2070's lit pieces on the old gates: [material, glow by day, glow at night])
+  const lit70 = [];
   // the canals under the jumps: the ground drops away there
   const gaps = tr.kickers.map(k => {
     const m = (k.gap[0] + k.gap[1]) / 2,
@@ -275,7 +280,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   water.position.set(C.x, -1.4, C.z);
   if (!coast) scene.add(water);
 
-  // Dala Hill: the rocky hill at the heart of old Kano, set in the widest open spot inside the loop
+  // Dala Hill: the rocky hill at the heart of old Kano, set in the widest open spot inside the loop (in 2070, on the
+  // Dala circuit, a hollow mountain with a world inside it)
+  const hollow = opts.gantry === 'kano.dala';
   let hill = { x: C.x, z: C.z, d: 0 };
   for (let x = tr.box.min.x; x <= tr.box.max.x; x += 8)
     for (let z = tr.box.min.z; z <= tr.box.max.z; z += 8) {
@@ -517,8 +524,9 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     m.position.set(hill.x, -2, hill.z);
     m.castShadow = m.receiveShadow = true;
-    if (!coast) scene.add(m);
-    if (!coast) reserve(hill.x, hill.z, hr + 6);
+    // (on the Dala circuit the hill is the hollow mountain the road climbs inside: dalahollow.js)
+    if (!coast && !hollow) scene.add(m);
+    if (!coast) reserve(hill.x, hill.z, hollow ? HOLLOW_R : hr + 6);
   }
 
   /* ---------- builders ---------- */
@@ -688,7 +696,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   // the old mud gates, from what's known of each: Kansakali the first (c. 1095-1135, never rebuilt: low, thick, worn),
   // Na'isa ("I can prove my mettle", demolished 2010, shown as it stood), Dan Agundi (1499, rebuilt 2014: crisp twin
   // towers), Wambai (1118, rebuilt wide in concrete: flat lintel, painted, green bands), Dawanau (c. 1470, still standing)
-  const CREAM = ['rgba(70,40,18,.55)', 'rgba(255,244,222,.6)', '#efdcb8'];
+  const CREAM0 = ['rgba(70,40,18,.55)', 'rgba(255,244,222,.6)', '#efdcb8'];
   const EARTH_GATES = {
     'KOFAR KANSAKALI': {
       mud: '#b98a66',
@@ -714,7 +722,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       D: 5,
       zanko: true,
       bands: true,
-      pal: CREAM,
+      pal: CREAM0,
       ink: '#6b3a1c',
       plateBg: '#efdcb8',
       trim: '#f4efe6',
@@ -729,7 +737,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       D: 6,
       zanko: true,
       merlons: true,
-      pal: CREAM,
+      pal: CREAM0,
       ink: '#7a3f1f',
       plateBg: '#efdcb8',
       trim: '#efdcb8',
@@ -869,24 +877,38 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         if (sz < 0) p.rotation.y = Math.PI;
         g.add(p);
       }
+      if (future) {
+        Object.assign(m, { emissive: new THREE.Color('#ffffff'), emissiveMap: m.map });
+        lit70.push([m, 0.2, 1.1]);
+      }
+      return m;
     };
-    const RED = ['rgba(90,20,28,.4)', 'rgba(255,255,255,.75)', '#e0334a'];
+    // Kano in 2070 (not Zaria's Kofar Doka): every gate keeps its shape, and its Hausa relief is gold and lit from the
+    // wall (a little by day, glowing at night), with gold light strips up the inner edges of the arch
+    const future = city === 'kano',
+      GOLD = ['rgba(90,50,10,.45)', 'rgba(255,250,228,.8)', '#f2b544'],
+      gold = new THREE.MeshLambertMaterial({ color: '#ffc65c', emissive: '#ffb23c' });
+    if (future) lit70.push([gold, 0.35, 1.4]);
     let side;
     if (name === 'KOFAR NASSARAWA') {
       // rebuilt 2014: a white portal, crenellated, the piers' inner edges lined in red, the Kano horned emblem in red on
       // top, the name painted in red on the beam; a red pavilion with white trim and an arched opening each side
+      // In 2070 it keeps its shape, and its patterns light up: the knots and diamonds in gold, glowing from the wall, gold
+      // light strips up the piers' inner edges and under the beam, the horned emblem lit red from within
       const white = mat('#f1efe9'),
         red = mat('#e0334a'),
+        redLit = new THREE.MeshLambertMaterial({ color: '#e0334a', emissive: '#ff2a44' }),
         pw = 3.4,
         H = 15.5,
         D = 4;
       for (const sx of [-1, 1]) {
         blk(pw, H + 1.2, D, white, sx * (a + pw / 2), 0, 0);
-        for (const sz of [-1, 1]) blk(0.35, 11, 0.12, red, sx * (a + 0.2), 0, sz * (D / 2 + 0.05));
+        for (const sz of [-1, 1]) blk(0.45, 11, 0.12, gold, sx * (a + 0.24), 0, sz * (D / 2 + 0.05));
         for (let k = 0; k < 3; k++)
           for (const sz of [-1, 1]) blk(0.6, 0.7, 0.5, white, sx * (a + 0.5 + k * 1.2), H + 1.2, sz * (D / 2 - 0.25));
       }
       blk(2 * a, 4.3, D, white, 0, H - 4.3, 0);
+      for (const sz of [-1, 1]) blk(2 * a, 0.2, 0.12, gold, 0, H - 4.42, sz * (D / 2 + 0.05));
       for (let x = -a + 0.6; x <= a - 0.4; x += 1.25)
         for (const sz of [-1, 1]) blk(0.6, 0.6, 0.5, white, x, H, sz * (D / 2 - 0.25));
       for (const sz of [-1, 1]) {
@@ -914,12 +936,12 @@ export function buildWorld(scene, tr, tex, opts = {}) {
           bevelThickness: 0.08,
           bevelSegments: 2,
         }).translate(0, 0, -0.4),
-        red,
+        redLit,
       );
       emb.position.set(0, H + 0.1, 0);
       emb.castShadow = true;
       g.add(emb);
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.5, 20).rotateX(Math.PI / 2), white);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.5, 20).rotateX(Math.PI / 2), gold);
       disc.position.set(0, H + 2.4, 0);
       g.add(disc);
       for (const sx of [-1, 1]) {
@@ -935,11 +957,12 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       }
       for (const sx of [-1, 1])
         reliefPanel(2.6, 9.6, sx * (a + pw / 2), 1.2, D / 2 + 0.03, (x, w, h, k) => {
-          starKnot(x, w / 2, 1.5 * k, 1.85 * k, RED);
-          loopKnot(x, w / 2, 4.3 * k, 1.9 * k, RED);
-          diamondBand(x, 0.15 * k, w - 0.15 * k, 6.8 * k, 0.95 * k, RED);
-          diamondBand(x, 0.15 * k, w - 0.15 * k, 8.75 * k, 0.95 * k, RED);
+          starKnot(x, w / 2, 1.5 * k, 1.85 * k, GOLD);
+          loopKnot(x, w / 2, 4.3 * k, 1.9 * k, GOLD);
+          diamondBand(x, 0.15 * k, w - 0.15 * k, 6.8 * k, 0.95 * k, GOLD);
+          diamondBand(x, 0.15 * k, w - 0.15 * k, 8.75 * k, 0.95 * k, GOLD);
         });
+      lit70.push([redLit, 0.12, 0.8]);
       side = a + pw + 8.5;
     } else if (name === 'KOFAR MATA') {
       // Kofar Mata: an arcade of red-orange arches, every pier topped with pointed horns, white strips down the pier faces;
@@ -977,7 +1000,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         horns(x1 - 0.45, hb, 1);
         for (const xe of [x0, x1])
           for (const sz of [-1, 1])
-            blk(0.35, hb - 0.2, 0.1, white, xe + (xe === x0 ? 0.3 : -0.3), 0, sz * (D / 2 + 0.04));
+            blk(0.35, hb - 0.2, 0.1, future ? gold : white, xe + (xe === x0 ? 0.3 : -0.3), 0, sz * (D / 2 + 0.04));
       }
       for (const sz of [-1, 1]) {
         const p = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.3), plate('KOFAR MATA', 9, 1.3, '#d9532f', '#f4f1ea'));
@@ -985,7 +1008,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         if (sz < 0) p.rotation.y = Math.PI;
         g.add(p);
       }
-      const z = D / 2 + 0.03;
+      const z = D / 2 + 0.03,
+        CREAM = future ? GOLD : CREAM0;
       for (const sx of [-1, 1]) {
         reliefPanel(1.6, 7.5, sx * (a + pw / 2), 1.2, z, (x, w, h, k) => {
           for (const y of [1.3, 3.75, 6.2]) diamondBand(x, 0, w, y * k, 1.15 * k, CREAM);
@@ -997,12 +1021,13 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     } else {
       // the older mud gates, each its own: earth towers either side of an arched wall over the road, zanko on the
       // towers, the name over the arch, and the Hausa relief down the towers (and over the arch where there's room)
-      const o = EARTH_GATES[name] || EARTH_GATES['KOFAR DAWANAU'],
+      const o0 = EARTH_GATES[name] || EARTH_GATES['KOFAR DAWANAU'],
+        o = future ? { ...o0, pal: GOLD } : o0,
         { tw, th, H, spring, crown, D } = o;
       const grnd = rng(name.length * 97 + 11),
         gr = (lo, hi) => lo + (hi - lo) * grnd(); // its own dice, so the city around stays put
       const mud = new THREE.MeshLambertMaterial({ color: o.mud, map: mudGrain() }),
-        trim = mat(o.trim);
+        trim = future ? gold : mat(o.trim);
       archBlock(-a, a, H, 2 * a, spring, crown, D, mud);
       const TD = D + 1;
       for (const sx of [-1, 1]) {
@@ -1010,6 +1035,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
           hh = th + (o.ruin ? sx * 1.3 : 0);
         blk(tw, hh, TD, mud, cx, 0, 0);
         if (o.bands) for (const y of [hh - 1.6, 1.2]) blk(tw + 0.06, 0.35, TD + 0.06, trim, cx, y, 0);
+        if (future) for (const sz of [-1, 1]) blk(0.4, hh - 1.2, 0.12, gold, sx * (a + 0.22), 0, sz * (TD / 2 + 0.05));
         if (o.zanko)
           for (const ex of [-1, 1])
             for (const ez of [-1, 1]) {
@@ -1182,7 +1208,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
   // tower (yellow crenellations with horned corners, the tall pointed lobed arch with its toothed yellow frame,
   // a balcony, the gateway below, a green plinth), lower wings either side with framed windows, the beams (toron)
   // sticking out of the walls, the Emir's halls inside
-  let palaceAt = null;
+  let palaceAt = null,
+    emir = null;
   function palace() {
     // the site: the open ground nearest the middle of the island that the compound fits in
     const half = 50;
@@ -1578,7 +1605,12 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         }
   if (!coast) {
     bunting(fr(60));
-    palace();
+    // (on the Old City the road drives through the palace itself: emirpalace.js; elsewhere it stands on its own)
+    const drive = tr.feats.find(f => f.type === 'emirdrive');
+    if (drive) {
+      emir = buildEmirDrive(scene, tr, drive, W, reserve);
+      palaceAt = emir.at;
+    } else palace();
   }
   // houses: the dense old city along the middle of the lap, scattered compounds elsewhere
   if (!coast)
@@ -1633,6 +1665,11 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     C,
   };
   if (coast) opts.dress?.(dk); // the city itself (doha.js): it may hand back night(n), update(t) and its places
+  // Kano in 2070 (all three circuits): the zanko towers, the maglev, the solar pyramids round the old city (kano2070.js)
+  const k70 = city === 'kano' ? dressKano2070(dk) : null,
+    dala = hollow ? buildHollowDala(scene, tr, hill, W) : null;
+  // (the dye pits glow indigo from below, a little by day and deep at night)
+  if (k70) Object.assign(dye.mat, { emissive: new THREE.Color('#3a2fd0') });
   if (!coast)
     for (let k = 0; k < 90; k++) {
       const a = rand() * Math.PI * 2,
@@ -1700,6 +1737,14 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     blending: THREE.AdditiveBlending,
     opacity: 0,
   });
+  // (Kano in 2070: a green banner with the knot on every post, hung from two short brackets, facing down the road)
+  const flagged = city === 'kano',
+    lampFlags = [],
+    flagG = new THREE.PlaneGeometry(1.1, 2.7).rotateY(Math.PI / 2).translate(0, 5.05, 0.85),
+    flagArmG = mergeGeometries([
+      new THREE.BoxGeometry(0.1, 0.1, 1.5).translate(0, 6.45, 0.75),
+      new THREE.BoxGeometry(0.1, 0.1, 1.5).translate(0, 3.65, 0.75),
+    ]);
   const lampPosts = [],
     lampBulbs = [],
     lampPools = [],
@@ -1725,6 +1770,10 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       if (!free(p.x, p.z, 0.6, W / 2 + 2)) continue;
       LM.compose(p, LQ.setFromAxisAngle(LY, Math.atan2(-tr.L[i].x * sd, -tr.L[i].z * sd)), L1);
       lampPosts.push(postG.clone().applyMatrix4(LM));
+      if (flagged) {
+        lampPosts.push(flagArmG.clone().toNonIndexed().applyMatrix4(LM));
+        lampFlags.push(flagG.clone().applyMatrix4(LM));
+      }
       lampBulbs.push(bulbG.clone().applyMatrix4(LM));
       lampGlows.push((sgLamp ? new THREE.Vector3(0, 10.75, 4.2) : new THREE.Vector3(0, 7.7, 2.8)).applyMatrix4(LM));
       const q = tr.beside(i, sd * (W / 2 - 5));
@@ -1739,6 +1788,13 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     pool.renderOrder = 1;
     scene.add(pool);
     scene.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(lampGlows), glowM));
+    if (lampFlags.length)
+      scene.add(
+        new THREE.Mesh(
+          mergeGeometries(lampFlags),
+          new THREE.MeshLambertMaterial({ map: knotBanner(), side: THREE.DoubleSide }),
+        ),
+      );
   }
 
   for (const inst of [
@@ -1782,7 +1838,11 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       poolM.opacity = n;
       glowM.opacity = n;
       dk.night?.(n);
+      k70?.night(n);
+      if (k70) dye.mat.emissiveIntensity = 0.15 + n * 0.85;
       for (const [m, k] of gateGlow) m.emissiveIntensity = n * k;
+      for (const [m, d, k] of lit70) m.emissiveIntensity = d + (k - d) * n;
+      emir?.night(n);
     },
     // the day haze: the sky's own horizon colour, so the far city fades into the sky rather than into a band
     skyFog: skyDay.hz,
@@ -1790,6 +1850,8 @@ export function buildWorld(scene, tr, tex, opts = {}) {
       sky.position.copy(cam.position);
       sky.material.uniforms.uTime.value = t; // (the clouds drift)
       dk.update?.(t);
+      k70?.update(t);
+      dala?.update(t);
       waterTex.offset.x = t * 0.004;
       waterTex.offset.y = t * 0.002;
       for (const c of cloths) c.m.rotation.x = Math.sin(t * 1.8 + c.ph) * 0.12;
