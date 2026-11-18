@@ -50,8 +50,9 @@ let step = 0;
 const MODE_PIC = { gp: '/modes/race.jpg', tt: '/modes/time-trial.jpg', free: '/modes/free-drive.jpg' };
 const modePic = id => MODE_PIC[id];
 const placePic = (city, circ, night) => `/places/${city}${circ ? '-' + circ : ''}${night ? '-night' : ''}.jpg`;
+// (a card marked is-new carries its NEW tag as an element of its own: the card's ::before is its shading)
 const card = (cls, data, img, name, sub) =>
-  `<button class="q-card ${cls}" ${data}><img src="${img}" alt=""><span class="q-body"><b class="q-name">${name}</b><span class="q-sub">${sub}</span></span></button>`;
+  `<button class="q-card ${cls}" ${data}><img src="${img}" alt="">${/\bis-new\b/.test(cls) ? '<em class="new-tag q-new">NEW</em>' : ''}<span class="q-body"><b class="q-name">${name}</b><span class="q-sub">${sub}</span></span></button>`;
 
 export function openModes(from) {
   modesFrom = from;
