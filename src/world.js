@@ -814,6 +814,7 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     })());
 
   // the city gates across the road (kofa), each built as the real one stands today
+  const G70 = {}; // (geometries the 2070 gatehouse shares between its many stakes)
   function gate(f, name) {
     const i = idxOf(f),
       g = new THREE.Group(),
@@ -891,35 +892,107 @@ export function buildWorld(scene, tr, tex, opts = {}) {
     if (future) lit70.push([gold, 0.35, 1.4]);
     let side;
     if (name === 'KOFAR NASSARAWA') {
-      // rebuilt 2014: a white portal, crenellated, the piers' inner edges lined in red, the Kano horned emblem in red on
-      // top, the name painted in red on the beam; a red pavilion with white trim and an arched opening each side
-      // In 2070 it keeps its shape, and its patterns light up: the knots and diamonds in gold, glowing from the wall, gold
-      // light strips up the piers' inner edges and under the beam, the horned emblem lit red from within
-      const white = mat('#f1efe9'),
-        red = mat('#e0334a'),
+      // Kofar Nassarawa in 2070, rebuilt as a grand gatehouse in the old mud style (after the user's picture of Kano): a
+      // wide block of sand-coloured render over the road with a tall pointed arch, crenellated along the top, wooden
+      // stakes (toron) out of its faces; a cone tower either side, tapering, studded with stakes, tipped in white. What
+      // made it Kofar Nassarawa stays: the red horned Kano emblem on top (lit from within) and its name across the front.
+      // In gold: the Hausa relief either side of the arch and a band of light round it, glowing at night
+      const sand = new THREE.MeshLambertMaterial({ color: '#d9a066', map: mudGrain() }),
+        wood = mat('#6b4426'),
+        white = mat('#f4f1ea'),
         redLit = new THREE.MeshLambertMaterial({ color: '#e0334a', emissive: '#ff2a44' }),
-        pw = 3.4,
-        H = 15.5,
-        D = 4;
-      for (const sx of [-1, 1]) {
-        blk(pw, H + 1.2, D, white, sx * (a + pw / 2), 0, 0);
-        for (const sz of [-1, 1]) blk(0.45, 11, 0.12, gold, sx * (a + 0.24), 0, sz * (D / 2 + 0.05));
-        for (let k = 0; k < 3; k++)
-          for (const sz of [-1, 1]) blk(0.6, 0.7, 0.5, white, sx * (a + 0.5 + k * 1.2), H + 1.2, sz * (D / 2 - 0.25));
+        FW = 2 * a + 22,
+        H = 21,
+        D = 8,
+        spring = 9.5,
+        apex = 16;
+      // the gatehouse: the block with the pointed arch cut through it
+      const sh = new THREE.Shape();
+      sh.moveTo(-FW / 2, 0);
+      sh.lineTo(FW / 2, 0);
+      sh.lineTo(FW / 2, H);
+      sh.lineTo(-FW / 2, H);
+      sh.lineTo(-FW / 2, 0);
+      const hole = new THREE.Path();
+      hole.moveTo(-a, 0);
+      hole.lineTo(-a, spring);
+      hole.quadraticCurveTo(-a, apex - 2.5, 0, apex);
+      hole.quadraticCurveTo(a, apex - 2.5, a, spring);
+      hole.lineTo(a, 0);
+      hole.lineTo(-a, 0);
+      sh.holes.push(hole);
+      const body = new THREE.Mesh(
+        new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: false, curveSegments: 18 }).translate(0, 0, -D / 2),
+        sand,
+      );
+      {
+        const uv = body.geometry.attributes.uv;
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 9, uv.getY(i) / 9);
       }
-      blk(2 * a, 4.3, D, white, 0, H - 4.3, 0);
-      for (const sz of [-1, 1]) blk(2 * a, 0.2, 0.12, gold, 0, H - 4.42, sz * (D / 2 + 0.05));
-      for (let x = -a + 0.6; x <= a - 0.4; x += 1.25)
-        for (const sz of [-1, 1]) blk(0.6, 0.6, 0.5, white, x, H, sz * (D / 2 - 0.25));
+      body.castShadow = body.receiveShadow = true;
+      g.add(body);
+      // the band of light round the arch, both faces, and a gold frame just outside it
+      const band = new THREE.Shape(
+        hole.getPoints(30).map(v => new THREE.Vector2(v.x * (1 + 1.6 / a), v.y < 0.01 ? 0 : v.y + 1.6)),
+      );
+      band.holes.push(hole);
       for (const sz of [-1, 1]) {
-        const p = new THREE.Mesh(
-          new THREE.PlaneGeometry(20, 2.2),
-          plate('KOFAR NASSARAWA', 20, 2.2, '#d8243e', '#f1efe9'),
-        );
+        const m = new THREE.Mesh(new THREE.ExtrudeGeometry(band, { depth: 0.3, bevelEnabled: false }), gold);
+        m.position.z = sz * (D / 2) + (sz > 0 ? 0 : -0.3);
+        g.add(m);
+      }
+      // crenellations along the top, and a stepped crown in the middle under the emblem
+      for (let x = -FW / 2 + 1; x <= FW / 2 - 1; x += 2.4) blk(1.4, 1.6, D * 0.92, sand, x, H, 0);
+      blk(10, 2.2, D * 0.92, sand, 0, H, 0);
+      blk(6, 1.8, D * 0.9, sand, 0, H + 2.2, 0);
+      // stakes out of both faces, in rows (clear of the arch)
+      for (const y of [4.5, 11, 17.5])
+        for (let x = -FW / 2 + 2; x <= FW / 2 - 2; x += 3.6) {
+          if (Math.abs(x) < a + 2.4 && y < apex + 1.8) continue;
+          for (const sz of [-1, 1]) {
+            const st = new THREE.Mesh(
+              (G70.stake ||= new THREE.CylinderGeometry(0.17, 0.17, 1.9, 5).rotateX(Math.PI / 2)),
+              wood,
+            );
+            st.position.set(x, y, sz * (D / 2 + 0.75));
+            st.castShadow = true;
+            g.add(st);
+          }
+        }
+      // the cone towers, one either side
+      for (const sx of [-1, 1]) {
+        const tx = sx * (FW / 2 + 3.2);
+        const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 6, 33, 14).translate(0, 16.5, 0), sand);
+        cone.position.x = tx;
+        cone.castShadow = cone.receiveShadow = true;
+        g.add(cone);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(1.1, 3.6, 14).translate(0, 34.8, 0), white);
+        tip.position.x = tx;
+        g.add(tip);
+        for (let y = 5; y < 30; y += 5)
+          for (let q = 0; q < 7; q++) {
+            const an = (q / 7) * Math.PI * 2 + y * 0.7,
+              r = 6 - (y / 33) * 4.9 + 0.7;
+            const st = new THREE.Mesh(
+              (G70.stakeR ||= new THREE.CylinderGeometry(0.15, 0.15, 1.7, 5).rotateZ(Math.PI / 2)),
+              wood,
+            );
+            st.position.set(tx + Math.cos(an) * r, y, Math.sin(an) * r);
+            st.rotation.y = -an;
+            g.add(st);
+          }
+      }
+      // the name across the front, lit at night
+      for (const sz of [-1, 1]) {
+        const pm = plate('KOFAR NASSARAWA', 22, 2.4, '#ffe2a8', '#5a3418');
+        Object.assign(pm, { emissive: new THREE.Color('#ffffff'), emissiveMap: pm.map });
+        lit70.push([pm, 0.15, 1]);
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(22, 2.4), pm);
         p.position.set(0, H - 2.4, sz * (D / 2 + 0.03));
         if (sz < 0) p.rotation.y = Math.PI;
         g.add(p);
       }
+      // the Kano emblem on the crown: the red horns round a gold sun
       const em = new THREE.Shape();
       em.moveTo(-2.1, 4.4);
       em.quadraticCurveTo(-2.6, 0.2, 0, 0);
@@ -938,32 +1011,23 @@ export function buildWorld(scene, tr, tex, opts = {}) {
         }).translate(0, 0, -0.4),
         redLit,
       );
-      emb.position.set(0, H + 0.1, 0);
+      emb.scale.setScalar(1.25);
+      emb.position.set(0, H + 4, 0);
       emb.castShadow = true;
       g.add(emb);
       const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.5, 20).rotateX(Math.PI / 2), gold);
-      disc.position.set(0, H + 2.4, 0);
+      disc.scale.setScalar(1.25);
+      disc.position.set(0, H + 7, 0);
       g.add(disc);
-      for (const sx of [-1, 1]) {
-        // the pavilions
-        const cx = sx * (a + pw + 4.2);
-        archBlock(cx - 4, cx + 4, 7.2, 3.4, 3.6, 5.6, 6, red);
-        blk(8.6, 0.6, 6.6, white, cx, 7.2, 0);
-        blk(8, 0.25, 6, white, cx, 7.8, 0);
-        for (let k = -3; k <= 3; k++)
-          for (const sz of [-1, 1]) blk(0.12, 1.1, 0.12, white, cx + k * 1.2, 7.8, sz * 2.9);
-        for (const sz of [-1, 1]) blk(8, 0.12, 0.12, white, cx, 8.9, sz * 2.9);
-        for (const sz of [-1, 1]) blk(0.3, 7.2, 0.1, white, cx - sx * 3.85, 0, sz * 3.03);
-      }
+      // the gold relief either side of the arch, both faces
       for (const sx of [-1, 1])
-        reliefPanel(2.6, 9.6, sx * (a + pw / 2), 1.2, D / 2 + 0.03, (x, w, h, k) => {
-          starKnot(x, w / 2, 1.5 * k, 1.85 * k, GOLD);
-          loopKnot(x, w / 2, 4.3 * k, 1.9 * k, GOLD);
-          diamondBand(x, 0.15 * k, w - 0.15 * k, 6.8 * k, 0.95 * k, GOLD);
-          diamondBand(x, 0.15 * k, w - 0.15 * k, 8.75 * k, 0.95 * k, GOLD);
+        reliefPanel(4, 13, sx * (a + 5.5), 1.5, D / 2 + 0.03, (x, w, h, k) => {
+          starKnot(x, w / 2, 2 * k, 2.6 * k, GOLD);
+          loopKnot(x, w / 2, 6 * k, 2.6 * k, GOLD);
+          for (let y = 9.4; y < h / k - 1; y += 1.8) diamondBand(x, 0.2 * k, w - 0.2 * k, y * k, 1.1 * k, GOLD);
         });
       lit70.push([redLit, 0.12, 0.8]);
-      side = a + pw + 8.5;
+      side = FW / 2 + 9.5;
     } else if (name === 'KOFAR MATA') {
       // Kofar Mata: an arcade of red-orange arches, every pier topped with pointed horns, white strips down the pier faces;
       // the wide middle arch spans the road, two smaller ones each side over the walkways
