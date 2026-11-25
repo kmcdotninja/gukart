@@ -82,12 +82,55 @@
     .note { font-style: italic; font-weight: 700; font-size: 14px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
     .fit { font-style: italic; font-weight: 700; font-size: 16px; }
     .fit.ok { color: #7dffa6; } .fit.bad { color: #ff8f8f; }
+
+    /* On a computer the whole studio fits one screen: the car fills the left, PLAY and every stunt sit under it,
+       and the rest is a column on the right that scrolls by itself. Phones keep the stacked page. */
+    @media (min-width: 961px) {
+      html, body { height: 100%; overflow: hidden; }
+      .page { max-width: none; height: 100vh; padding: 14px 16px; grid-template-rows: auto minmax(0, 1fr); }
+      main { display: flex; flex-direction: column; min-height: 0; gap: 12px; }
+      .stage { aspect-ratio: auto; flex: 1 1 auto; min-height: 0; }
+      .dock { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+      .dock .go { height: auto; min-height: 66px; }
+      .stunts-card .tag { margin-bottom: 8px; }
+      .stunts-card .pad { padding: 0 10px 10px; }
+      .stunts-card .pline { display: none; }
+      .stunts-card .stunts { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+      .stunts-card .stunts button { min-height: 44px; padding: 5px 10px; }
+      .stunts-card .stunts button b { font-size: 16px; }
+      .stunts-card .stunts button small { font-size: 11px; }
+      .side { overflow-y: auto; min-height: 0; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--line-dim) transparent; }
+      .side::-webkit-scrollbar { width: 6px; } .side::-webkit-scrollbar-thumb { background: var(--line-dim); }
+    }
+    @media (max-width: 960px) { .dock { display: grid; gap: 14px; } }
+
+    /* PLAY THE POWER sits on the stage, bottom-right, across from the power's name; the hint moves up */
+    .go.onstage { position: absolute; right: 18px; bottom: 18px; z-index: 3; width: auto; height: 58px; padding: 0 34px; font-size: 26px; }
+    .go.onstage ~ .hint, .stage .hint { bottom: auto; top: 16px; }
+    @media (max-width: 640px) { .go.onstage { height: 44px; padding: 0 20px; font-size: 19px; right: 10px; bottom: 10px; } }
+    @media (min-width: 961px) { .dock { grid-template-columns: 1fr; } }
+
+    /* DRIVE / DESIGN: Design is the four-view studio the vehicles were designed in (design.html) */
+
+    /* the vehicles sit at the far end of the header, away from DRIVE / DESIGN */
+    #veh { margin-left: auto; }
+    /* DESIGN: the four views fill the stage; the power's name, PLAY and the stunts step aside */
+    body.designing .powname, body.designing .go.onstage, body.designing .timeline, body.designing .hint, body.designing .stage > .tag, body.designing .dock { display: none; }
+    .dpad { position: absolute; inset: 0; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; }
+    .dcell { position: relative; cursor: grab; touch-action: none; }
+    .dcell:active { cursor: grabbing; }
+    .dcell .tag { position: absolute; top: 0; left: 0; margin: 0; height: 26px; font-size: 15px; padding-right: 24px; }
+    .dreset, .dresetall { position: absolute; height: 28px; padding: 0 14px; font-style: italic; font-weight: 800; font-size: 14px; background: var(--navy-2); clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+    .dreset { right: 10px; top: 8px; }
+    .dresetall { right: 10px; bottom: 10px; background: var(--orange); }
+    .dreset:hover { background: #1d2c66; }
   </style>
 </head>
 <body>
   <div class="page">
     <header>
       <h1>VEHICLE <span>STUDIO</span></h1>
+      <nav class="tabs viewsw"><button class="on" data-view="drive">DRIVE</button><button data-view="design">DESIGN</button></nav>
       <nav class="tabs" id="veh"></nav>
     </header>
 
@@ -98,10 +141,10 @@
         <div class="hint">DRAG TO TURN THE CAR</div>
         <div class="timeline"><i id="tl"></i></div>
         <canvas id="gl"></canvas>
+        <button class="go onstage" id="play">PLAY THE POWER</button>
       </section>
-      <button class="go" id="play">PLAY THE POWER</button>
-
-      <section class="card">
+      <div class="dock">
+      <section class="card stunts-card">
         <div class="tag"><span>STUNTS</span><i></i><i></i></div>
         <div class="pad">
           <p class="pline">Stunts happen by themselves on a big jump. What you're doing as you fly picks it (steering, braking, both or neither), and a long jump chains a combo. Every landing pays a boost.</p>
@@ -109,6 +152,18 @@
         </div>
       </section>
 
+      </div>
+    </main>
+
+    <aside class="side">
+      <section class="card ident">
+        <div class="tag"><span>VEHICLE</span><i></i><i></i></div>
+        <div class="pad">
+          <h2 id="vName">KART</h2>
+          <p id="vNote"></p>
+          <div class="chips" id="vChips"></div>
+        </div>
+      </section>
       <section class="card">
         <div class="tag"><span>SPECIAL POWER</span><i></i><i></i></div>
         <div class="pad">
@@ -123,17 +178,6 @@
         <div class="pad">
           <div class="sliders" id="statSl"></div>
           <p class="note">The same numbers the race uses: 1 is the Kart. Each vehicle further up the price ladder is a little faster; the bars below compare all eight.</p>
-        </div>
-      </section>
-    </main>
-
-    <aside class="side">
-      <section class="card ident">
-        <div class="tag"><span>VEHICLE</span><i></i><i></i></div>
-        <div class="pad">
-          <h2 id="vName">KART</h2>
-          <p id="vNote"></p>
-          <div class="chips" id="vChips"></div>
         </div>
       </section>
       <section class="card">
@@ -155,5 +199,6 @@
     </aside>
   </div>
   <script type="module" src="/src/studio.js"></script>
+
 </body>
 </html>

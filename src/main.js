@@ -491,3 +491,17 @@ Sound.keepAlive(); // wake the sound after the phone sleeps or the tab comes bac
 Feedback.init(); // every button's sound and buzz (src/feedback.js)
 if (isTouch && Tilt.mode === 'tilt') Tilt.set('tilt'); // tilt steering, if it was chosen (src/tilt.js)
 boot();
+
+// Shown inside another page (a talk's slides, in an iframe): Page Down / Page Up are the presenter's clicker, so they go
+// up to that page to change slides; the game keeps every other key, the arrows included. Played on its own, nothing
+// changes.
+if (window.parent !== window)
+  addEventListener(
+    'keydown',
+    e => {
+      if (e.key !== 'PageDown' && e.key !== 'PageUp') return;
+      e.preventDefault();
+      parent.postMessage({ deckKey: e.key }, '*');
+    },
+    true,
+  );

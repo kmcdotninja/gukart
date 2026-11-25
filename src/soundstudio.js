@@ -200,11 +200,37 @@ $('#reset').onclick = () => {
   buildSliders();
   $('#msg').textContent = `${type.toUpperCase()} is back to its default sound.`;
 };
+// COPY SETTINGS gives JSON that explains itself: which studio, vehicle and engine, where it goes in the code, what moved
+// from the default (with the slider's name and range), every value, and a "notes" field for what you're after, so
+// whoever gets it (Claude included) knows exactly what it is and can apply it or suggest better values
+const num = v => Math.round(v * 1e4) / 1e4;
+function settingsNote() {
+  const def = { ...ENGINE_BASE, ...(VEHICLE_SOUND[type] || {}) },
+    changed = {};
+  for (const [k, label, min, max] of SL)
+    if (Math.abs(params[k] - def[k]) > 1e-6) changed[k] = { slider: label, default: num(def[k]), mine: num(params[k]), range: [min, max] };
+  const entry = { ...(VEHICLE_SOUND[type] || {}) };
+  for (const k of Object.keys(changed)) entry[k] = num(params[k]);
+  return JSON.stringify(
+    {
+      what: 'Gukart Sound Studio settings',
+      vehicle: type,
+      engine: engineMode() === 'supra' ? 'supra: the recording, pitched to the revs (one choice for every vehicle)' : 'synth: our engine, synthesised (one choice for every vehicle)',
+      goesIn: `src/audio.js → VEHICLE_SOUND.${type} (each value overrides ENGINE_BASE)`,
+      changed,
+      values: Object.fromEntries(SL.map(([k]) => [k, num(params[k])])),
+      pasteReady: { [type]: entry },
+      notes: '',
+    },
+    null,
+    2,
+  );
+}
 $('#copy').onclick = async () => {
-  const txt = JSON.stringify({ mode: engineMode(), [type]: diff() });
+  const txt = settingsNote();
   try {
     await navigator.clipboard.writeText(txt);
-    $('#msg').textContent = 'Copied: ' + txt;
+    $('#msg').textContent = 'Copied. Paste it with a line on what you want it to sound like.';
   } catch {
     $('#msg').textContent = txt;
   }
@@ -433,6 +459,60 @@ function resize() {
     cam.updateProjectionMatrix();
   }
 }
+/* ---------- the rev counter ----------
+   One circle (centre 100,100, radius 68) carries everything, so nothing sits off it: a 270° dial from bottom-left round
+   to bottom-right, 0 to the next thousand above the redline; a numbered tick every 1000 rpm outside the
+   ring; the red zone from the redline exactly; and the revs, orange up to the redline and red past it. Rebuilt whenever
+   the redline changes (a vehicle, or the REDLINE slider). */
+const TACH = { cx: 100, cy: 100, r: 68, a0: (135 * Math.PI) / 180, sweep: (270 * Math.PI) / 180 };
+const tPt = (f, r = TACH.r) => [TACH.cx + r * Math.cos(TACH.a0 + TACH.sweep * f), TACH.cy + r * Math.sin(TACH.a0 + TACH.sweep * f)];
+const tArc = (f0, f1) => {
+  if (f1 - f0 < 0.0005) return '';
+  const [x0, y0] = tPt(f0),
+    [x1, y1] = tPt(f1);
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${TACH.r} ${TACH.r} 0 ${(f1 - f0) * 270 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+};
+let tachMax = 0,
+  tachRed = 0,
+  tachFill = null,
+  tachOver = null;
+function buildTach() {
+  const red = params.redline;
+  const max = Math.ceil((red + 300) / 1000) * 1000;
+  if (max === tachMax && red === tachRed) return;
+  tachMax = max;
+  tachRed = red;
+  const fr = red / max;
+  let ticks = '';
+  for (let v = 0; v <= max; v += 1000) {
+    const f = v / max,
+      big = v % 1000 === 0;
+    const [x0, y0] = tPt(f, TACH.r + 9),
+      [x1, y1] = tPt(f, TACH.r + (big ? 16 : 13));
+    ticks += `<line class="tick${big ? ' big' : ''}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>`;
+    if (big) {
+      const [tx, ty] = tPt(f, TACH.r + 23);
+      ticks += `<text class="tickn${v >= red ? ' red' : ''}" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}">${v / 1000}</text>`;
+    }
+  }
+  document.getElementById('tachSvg').innerHTML = `
+    <defs><linearGradient id="tg" gradientUnits="userSpaceOnUse" x1="32" y1="0" x2="168" y2="0"><stop offset="0" stop-color="#ff6a00"/><stop offset="1" stop-color="#ffc400"/></linearGradient></defs>
+    <path d="${tArc(0, 1)}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="12"/>
+    <path d="${tArc(fr, 1)}" fill="none" stroke="#e02a2a" stroke-opacity=".38" stroke-width="12"/>
+    <path id="tachFill" fill="none" stroke="url(#tg)" stroke-width="12"/>
+    <path id="tachOver" fill="none" stroke="#ff3b3b" stroke-width="12"/>
+    ${ticks}`;
+  tachFill = document.getElementById('tachFill');
+  tachOver = document.getElementById('tachOver');
+}
+function tach(rpm) {
+  buildTach();
+  const f = Math.max(0, Math.min(1, rpm / tachMax)),
+    fr = tachRed / tachMax;
+  tachFill.setAttribute('d', tArc(0, Math.min(f, fr)));
+  tachOver.setAttribute('d', f > fr ? tArc(fr, f) : '');
+}
+
 function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -612,10 +692,7 @@ function tick(now) {
     $('#kmh').textContent = kmh;
     $('#gear').textContent = Sound.voice ? Sound.voice.gear + 1 : 'N';
     $('#rpm').textContent = (Sound.voice ? Math.round(Sound.voice.rpm / 50) * 50 : 0) + ' RPM';
-    $('#tachArc').setAttribute(
-      'stroke-dasharray',
-      `${Math.max(0, Math.min(1, Sound.voice ? Sound.voice.rpm / (params.redline * 1.05) : 0)) * 100} 100`,
-    );
+    tach(Sound.voice ? Sound.voice.rpm : 0);
     const st = !Sound.ctx
       ? 'TAP A SCENE OR HOLD GAS'
       : inAir

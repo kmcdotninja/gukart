@@ -24,6 +24,7 @@ import { store } from './util.js';
 import { STUNTS, STUNT_ORDER, stuntReward } from './stunts.js';
 import { makeTyreFire } from './tyrefire.js';
 import { puffT, makeThrusters, makeVapour, makeBall, makeBoom, makeCannon, makeCannonball } from './powerfx.js';
+import { createDesign } from './studio-design.js';
 
 const $ = s => document.querySelector(s);
 const IDS = Object.keys(VSTATS_BASE);
@@ -272,6 +273,7 @@ $('#veh').onclick = e => {
   history.replaceState(null, '', '?v=' + type);
   document.querySelectorAll('#veh button').forEach(x => x.classList.toggle('on', x === b));
   paint();
+  if (design) design.setVehicle(type);
 };
 const fill = el => el.style.setProperty('--v', ((el.value - el.min) / (el.max - el.min)) * 100 + '%');
 const fmt = (v, step) => (+v).toFixed(step < 0.01 ? 3 : step < 1 ? 2 : 0);
@@ -351,11 +353,49 @@ $('#reset').onclick = () => {
   paint();
   $('#msg').textContent = `The ${VEHICLES[type].name} is back to its defaults.`;
 };
+// COPY NUMBERS gives JSON that explains itself: which studio and vehicle, where its numbers live in the code, what moved
+// from the default (with the slider's name and range), every value, and a "notes" field for what you're after, so
+// whoever gets it (Claude included) knows exactly what it is and can apply it or suggest better values
+const num = v => Math.round(v * 1e4) / 1e4;
+function numbersNote() {
+  const P = POWERS_BASE[type],
+    handling = {},
+    power = {};
+  for (const [k, info] of Object.entries(STAT_INFO)) {
+    const d = VSTATS_BASE[type][k],
+      v = VSTATS[type][k];
+    if (Math.abs(v - d) > 1e-6) handling[k] = { slider: info.name, default: num(d), mine: num(v), range: [info.min, info.max] };
+  }
+  for (const [k, [d, label, min, max]] of Object.entries(P.p)) {
+    const v = POWERS[type][k];
+    if (Math.abs(v - d) > 1e-6) power[k] = { slider: label, default: num(d), mine: num(v), range: [min, max] };
+  }
+  return JSON.stringify(
+    {
+      what: 'Gukart Vehicle Studio numbers',
+      vehicle: type,
+      name: VEHICLES[type].name,
+      specialPower: P.name,
+      goesIn: {
+        handling: `src/vehicles.js → VSTATS_BASE.${type}`,
+        power: `src/vehicles.js → POWERS_BASE.${type}.p (the first number of each entry)`,
+      },
+      changed: { handling, power },
+      values: {
+        handling: Object.fromEntries(Object.keys(STAT_INFO).map(k => [k, num(VSTATS[type][k])])),
+        power: Object.fromEntries(Object.keys(P.p).map(k => [k, num(POWERS[type][k])])),
+      },
+      notes: '',
+    },
+    null,
+    2,
+  );
+}
 $('#copy').onclick = async () => {
-  const txt = JSON.stringify({ [type]: { stats: VSTATS[type], power: POWERS[type] } });
+  const txt = numbersNote();
   try {
     await navigator.clipboard.writeText(txt);
-    $('#msg').textContent = 'Copied: ' + txt;
+    $('#msg').textContent = 'Copied. Paste it with a line on how you want the car to feel.';
   } catch {
     $('#msg').textContent = txt;
   }
@@ -932,8 +972,24 @@ function frame(now) {
     cam.aspect = w / h;
     cam.updateProjectionMatrix();
   }
-  R.render(S, cam);
+  if (designing) design.draw(); // DESIGN: the four views take the stage
+  else R.render(S, cam);
   requestAnimationFrame(frame);
 }
+// DRIVE / DESIGN: the same stage, the same vehicle; DESIGN shows it on its own from four sides on a grid
+let design = null,
+  designing = false;
+const setView = on => {
+  designing = on;
+  if (on && !design) {
+    design = createDesign({ R, canvas, host: canvas.parentElement, tex });
+    design.setVehicle(type);
+  }
+  if (design) design.show(on);
+  document.body.classList.toggle('designing', on);
+  document.querySelectorAll('.viewsw button').forEach(x => x.classList.toggle('on', (x.dataset.view === 'design') === on));
+};
+document.querySelectorAll('.viewsw button').forEach(x => x.addEventListener('click', () => setView(x.dataset.view === 'design')));
+if (new URLSearchParams(location.search).get('view') === 'design') setView(true);
 paint();
 requestAnimationFrame(frame);
