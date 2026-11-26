@@ -2,6 +2,9 @@
 // back renders into a small picture, flipped left to right as a real mirror is (a car coming up behind on your left
 // shows on the mirror's left), then drawn into the glass of #mirror on the HUD. M moves it: hanging under the
 // progress bar, down at the bottom of the screen, or off. Not on phones (no M key, and a second render costs too much).
+//
+// The view behind is a second drawing of the whole city, so it's kept cheap: at the glass's size in CSS px (not the
+// screen's pixel ratio), without antialiasing, and refreshed every other frame (the glass keeps the last picture).
 import * as THREE from 'three';
 import { store, isTouch } from './util.js';
 import { $ } from './dom.js';
@@ -20,7 +23,11 @@ const flat = new THREE.Scene(),
     new THREE.ShaderMaterial({
       depthTest: false,
       depthWrite: false,
-      uniforms: { map: { value: null }, size: { value: new THREE.Vector2(1, 1) }, rad: { value: new THREE.Vector2(10, 10) } },
+      uniforms: {
+        map: { value: null },
+        size: { value: new THREE.Vector2(1, 1) },
+        rad: { value: new THREE.Vector2(10, 10) },
+      },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
       fragmentShader: `uniform sampler2D map; uniform vec2 size, rad; varying vec2 vUv;
         void main(){
@@ -33,6 +40,7 @@ const flat = new THREE.Scene(),
     }),
   );
 flat.add(quad);
+let odd = false;
 const at = new THREE.Vector3(),
   look = new THREE.Vector3();
 
@@ -65,35 +73,47 @@ export function renderMirror(renderer, scene, car) {
   const b = glass?.getBoundingClientRect();
   if (!b || b.width < 10) return;
   // the glass inside its frame
-  const r = { left: b.left + glass.clientLeft, top: b.top + glass.clientTop, width: glass.clientWidth, height: glass.clientHeight };
+  const r = {
+    left: b.left + glass.clientLeft,
+    top: b.top + glass.clientTop,
+    width: glass.clientWidth,
+    height: glass.clientHeight,
+  };
   r.bottom = r.top + r.height;
-  const dpr = renderer.getPixelRatio(),
-    w = Math.round(r.width * dpr),
-    h = Math.round(r.height * dpr);
+  const w = Math.round(r.width),
+    h = Math.round(r.height);
+  let fresh = false;
   if (!rt || rt.width !== w || rt.height !== h) {
     rt?.dispose();
-    rt = new THREE.WebGLRenderTarget(w, h, { samples: 4, type: THREE.HalfFloatType });
+    rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType });
     quad.material.uniforms.map.value = rt.texture;
+    fresh = true;
   }
   quad.material.uniforms.size.value.set(r.width, r.height);
   // the frame's corners (border-radius 14px / 40%), less its border
-  quad.material.uniforms.rad.value.set(Math.max(1, 14 - glass.clientLeft), Math.max(1, b.height * 0.4 - glass.clientTop));
-  // the camera: on the car's roof, looking back down the road behind it
-  car.updateMatrixWorld();
-  at.set(0, 2.1, 0).applyMatrix4(car.matrixWorld);
-  look.set(0, 1.3, -40).applyMatrix4(car.matrixWorld);
-  rear.position.copy(at);
-  rear.up.set(0, 1, 0);
-  rear.lookAt(look);
-  rear.aspect = r.width / r.height;
-  rear.updateProjectionMatrix();
+  quad.material.uniforms.rad.value.set(
+    Math.max(1, 14 - glass.clientLeft),
+    Math.max(1, b.height * 0.4 - glass.clientTop),
+  );
+  // the view behind: every other frame
+  if (fresh || (odd = !odd)) {
+    // the camera: on the car's roof, looking back down the road behind it
+    car.updateMatrixWorld();
+    at.set(0, 2.1, 0).applyMatrix4(car.matrixWorld);
+    look.set(0, 1.3, -40).applyMatrix4(car.matrixWorld);
+    rear.position.copy(at);
+    rear.up.set(0, 1, 0);
+    rear.lookAt(look);
+    rear.aspect = r.width / r.height;
+    rear.updateProjectionMatrix();
 
-  const shadows = renderer.shadowMap.autoUpdate;
-  renderer.shadowMap.autoUpdate = false; // (the frame's shadows are already drawn)
-  renderer.setRenderTarget(rt);
-  renderer.render(scene, rear);
-  renderer.setRenderTarget(null);
-  renderer.shadowMap.autoUpdate = shadows;
+    const shadows = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false; // (the frame's shadows are already drawn)
+    renderer.setRenderTarget(rt);
+    renderer.render(scene, rear);
+    renderer.setRenderTarget(null);
+    renderer.shadowMap.autoUpdate = shadows;
+  }
 
   const cv = renderer.domElement.getBoundingClientRect(),
     x = r.left - cv.left,
