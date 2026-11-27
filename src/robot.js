@@ -461,6 +461,36 @@ const setHs = (c, h, w) => {
   setH(c, 'R', mir(h), w);
 };
 
+// Fur far away: a driver 20 m off is a few dozen pixels tall and its strands are finer than a pixel, so it is drawn with
+// fewer shells spread over the same fur length (uN, the shell count the shader spreads the length over, follows), and
+// past 50 m with three. Close up (the player's own driver, the garage, the podium) every shell is drawn.
+const _fw = new THREE.Vector3(),
+  _cw = new THREE.Vector3();
+function furLod(renderer, scene, camera, geometry, material) {
+  const full = (geometry._full ??= geometry.instanceCount);
+  const d = _cw.setFromMatrixPosition(camera.matrixWorld).distanceTo(_fw.setFromMatrixPosition(this.matrixWorld));
+  const n = d < 20 ? full : d < 50 ? Math.max(4, Math.ceil(full / 2)) : Math.min(full, 3);
+  geometry.instanceCount = n;
+  if (material.uniforms.uN.value !== n) {
+    material._fullN ??= material.uniforms.uN.value;
+    material.uniforms.uN.value = n;
+    material.uniformsNeedUpdate = true;
+  }
+}
+function furShadow(renderer, object, camera, shadowCamera, geometry) {
+  geometry._full ??= geometry.instanceCount;
+  geometry.instanceCount = 1;
+}
+function furFull() {
+  const g = this.geometry,
+    m = this.material;
+  if (g._full) g.instanceCount = g._full;
+  if (m._fullN && m.uniforms.uN.value !== m._fullN) {
+    m.uniforms.uN.value = m._fullN;
+    m.uniformsNeedUpdate = true;
+  }
+}
+
 export class Robot {
   constructor(color, cupColor, layers = 10) {
     const P = parts(layers),
@@ -482,8 +512,13 @@ export class Robot {
       });
     const furMesh = (g, m) => {
       const o = new THREE.Mesh(g, m);
-      o.frustumCulled = false;
-      o.castShadow = true;
+      o.castShadow = true; // (culled like anything else: a driver behind the camera isn't drawn)
+      o.onBeforeRender = furLod;
+      o.onAfterRender = furFull;
+      // the shadow sees only the bare body (the depth pass ignores the fur's push outwards), so every shell past the first
+      // would land on the same spot: one is drawn, the same shadow for a fraction of the work
+      o.onBeforeShadow = furShadow;
+      o.onAfterShadow = furFull;
       return o;
     };
     const mBody = mat(0.05, layers),

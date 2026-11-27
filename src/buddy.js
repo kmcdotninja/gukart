@@ -2854,6 +2854,16 @@ export function makeKart(def, tex, layers = 10, type = def.veh || 'kart', custom
     else if (custom.decal === 'camo') for (const o of meshes) boxUV(o.geometry);
     else sideUV(meshes, chassis);
   }
+  // the tiniest parts (bolts, lamps, badges: under 10 cm across the middle) cast no shadow. At race distance a shadow
+  // texel is 7 to 14 cm, so theirs would be a pixel inside the body's own shadow, and each one was a draw of its own
+  root.updateMatrixWorld(true);
+  const ws = new THREE.Vector3();
+  root.traverse(o => {
+    if (!o.isMesh || !o.castShadow || o.geometry.isInstancedBufferGeometry) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+    o.getWorldScale(ws);
+    if (o.geometry.boundingSphere.radius * Math.max(ws.x, ws.y, ws.z) < 0.1) o.castShadow = false;
+  });
   const kart = {
     nitroCol: custom?.nitro || '#4fb0ff',
     paintCol: goldPaint ? '#e0a812' : paintCol, // (what a rocket knocks off it is this colour: src/impacts.js)
